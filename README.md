@@ -1,6 +1,6 @@
 # SubsidyPayment
 
-# Payload Exchange Extended (Campaign + Sponsor Subsidy Layer for x402)
+Payload Exchange Extended (Campaign + Sponsor Subsidy Layer for x402)
 
 目的: 
 x402 の 402 Paywall を Proxy で受け止め、スポンサーが支払いを肩代わりする代わりに、ユーザーのタスク実行やデータ提供を受け取れるようにします。
