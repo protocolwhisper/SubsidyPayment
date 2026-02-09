@@ -157,6 +157,5 @@ x402 の 402 Paywall を Proxy で受け止め、スポンサーが支払いを�
 - M2: Campaign Builder Chat と publish、Data Inbox(P1のToB)
 - M3: Profile Vault + Consent 完成(P1の運用要件)
 - M4: 通知と多クライアント向け API/SDK(P1後半)
-- M5: 推薦高度化と不正対策(P2)
 
 ---
