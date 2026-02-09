@@ -2,133 +2,160 @@
 
 Payload Exchange Extended (Campaign + Sponsor Subsidy Layer for x402)
 
-目的: 
-x402 の 402 Paywall を Proxy で受け止め、スポンサーが支払いを肩代わりする代わりに、ユーザーのタスク実行やデータ提供を受け取れるようにします。
-さらに、スポンサーは「キャンペーン」を作って配布し、ユーザーは主要 AI / 開発 UI 経由でも自然にこの仕組みを使えるようにします。
+Purpose:  
+Intercept the x402 402 Paywall via a proxy and enable sponsors to cover payments in exchange for user task execution and/or data provision.  
+Additionally, sponsors can create and distribute “campaigns,” allowing users to naturally utilize this mechanism through major AI / developer UIs.
 
 ---
 
 ## Product Scope
 
-### 何を実現するか
-- x402 で保護されたリソース(API/データ/デジタルコンテンツ等)へのアクセスに対して、次の支払い方法を提供する
-  - Sponsor が支払いを全額または一部負担する(代わりにユーザーにタスクやデータ提供を依頼)
-  - ユーザーが直接支払う(フォールバック)
-- Sponsor は「どのユーザーに」「何をしてほしいか」「いくら負担するか」をキャンペーンとして発行できる
-- User は「サービス名」または「やりたい機能・agentに使わせたい機能」から、スポンサー付きの x402 対応サービスを選んで実利用できる
-- User はプロフィールと survey 回答を保存して再利用し、毎回同じ入力を繰り返さなくていいようにする。
-- Agent 実行中にクレジットが尽きたら通知でタスク実行に誘導できる
+### What this product enables
+- Provides the following payment methods for access to x402-protected resources (APIs, data, digital content, etc.):
+  - Sponsors cover all or part of the payment (in exchange for requesting user tasks or data provision).
+  - Users pay directly (fallback).
+- Sponsors can issue campaigns defining:
+  - Which users to target  
+  - What they want users to do  
+  - How much they will subsidize
+- Users can select sponsor-backed x402-enabled services based on:
+  - Service name, or  
+  - Desired functionality / features they want agents to use
+- Users can store and reuse profiles and survey responses so they don’t have to repeat the same inputs each time.
+- When credits run out during agent execution, users can be notified and guided to complete tasks.
 
 ---
 
 ## Core Concepts
 
-- Resource: x402 で保護された上流の 有料endpoint 
-- Proxy: 402 を intercept し、Paywall とタスク導線を出す
-- Sponsor: 支払いを肩代わりする主体(企業、将来的には agent も含む)
-- Campaign: Sponsor が作る募集単位(対象、目的、予算、タスク、自社サービスへの登録、データ要求、同意条件)
-- Offer: Resource 単位のスポンサー条件(割引率、上限、必要タスク、収集データ)
-- Action Plugin: タスクやデータ収集を追加できるプラグイン拡張点
-- Consent Vault: 明示同意、利用目的、保持期間、連絡可否を管理する層
+- Resource: An upstream paid endpoint protected by x402  
+- Proxy: Intercepts 402 responses and presents the paywall and task flow  
+- Sponsor: The entity covering the payment (companies, and in the future, agents as well)  
+- Campaign: A recruitment unit created by sponsors (target, objective, budget, tasks, registration to sponsor services, data requests, consent conditions)  
+- Offer: Sponsor terms at the resource level (discount rate, cap, required tasks, collected data)  
+- Action Plugin: An extensible plugin layer for adding tasks or data collection  
+- Consent Vault: A layer managing explicit consent, usage purpose, retention period, and contact permissions  
 
 ---
 
 ## Requirements (Prioritized)
 
-### P0: まず動くこと(Upstream互換の土台を壊さない)
+### P0: Must work first (without breaking upstream compatibility)
+
 - x402 Proxy
-  - 上流 x402 resource に対するリクエストを proxy し、402 を受けたら Paywall を表示できる
-  - sponsor 支払いが成立したら、上流に支払いを行い、resource 応答をユーザーに返す
+  - Proxies requests to upstream x402 resources and displays a paywall upon receiving a 402 response
+  - When sponsor payment succeeds, executes payment upstream and returns the resource response to the user
+
 - Paywall UI
-  - 現在有効な sponsor 条件(ある場合)を表示し、タスク選択と実行ができる
-  - sponsor がいることをユーザーに明示できる
+  - Displays active sponsor conditions (if any) and allows task selection and execution
+  - Clearly indicates the presence of a sponsor to the user
+
 - Action Plugin System
-  - 既存の action を維持しつつ、追加タスクを後から増やせる
-  - タスク実行の開始/検証/完了が一貫したインタフェースで扱える
+  - Preserves existing actions while allowing additional tasks to be added later
+  - Provides a consistent interface for task start / verification / completion
+
 - Resource Discovery
-  - 利用可能な x402 resource を検索/閲覧できる
+  - Allows users to search and browse available x402 resources
+
 - Direct Payment (Fallback)
-  - sponsor がいない、または同意しない場合も、ユーザーが直接支払える導線を残す
-- ChatGPT 連携(MCP + Widget)
-  - MCP server を提供し、Paywall / Resource のウィジェット表示ができる
-  - sponsor がいない、または同意しない場合も、ユーザーが直接支払える導線を残す
-- Claudecode/OpenClaw 連携(MCP + Widget)
-  - Skills を提供し、Paywall / Resource のウィジェット表示ができる
+  - Maintains a direct payment path if no sponsor is available or if the user declines
+
+- ChatGPT Integration (MCP + Widget)
+  - Provides an MCP server enabling Paywall / Resource widget display
+  - Maintains direct payment fallback if no sponsor is available or consent is declined
+
+- Claudecode / OpenClaw Integration (MCP + Widget)
+  - Provides Skills enabling Paywall / Resource widget display
+
 - Deployment
-  - Vercel デプロイを第一級に扱い、iframe でのアセット読み込みが壊れない
-  - 必須 env が README に明記され、デプロイで再現できる
+  - Treats Vercel deployment as first-class; iframe asset loading must not break
+  - Required environment variables are documented in the README and deployments are reproducible
 
-完了条件(最低ライン)
-- ローカルと本番で、402 -> Paywall -> Action -> Sponsor支払い -> Resource返却 の一連が通る
-- sponsor 表示、同意表示が UI で確認できる
+Completion Criteria (Minimum)
+- End-to-end flow works locally and in production:  
+  402 → Paywall → Action → Sponsor payment → Resource delivery
+- Sponsor display and consent UI are visible and verifiable
 
 ---
 
-### P1: 追加要件の中核(プロダクトとして価値が出る部分)
+### P1: Core additional requirements (product value layer)
+
 #### ToB: Sponsor Campaign Builder (Chat AI UI)
-- Sponsor が自然言語の 1問1答でキャンペーンを作成できる
-  - ターゲット属性の入力から、推奨 x402 対応サービスが推薦順に出る
-  - 目的入力から、推奨タスクセット、推奨負担額、割引率/上限が提案される
-  - 作成者は提案を選ぶだけで publish できる
+
+- Sponsors can create campaigns through natural language Q&A
+  - From target attributes, recommended x402-enabled services are ranked and suggested
+  - From stated objectives, recommended task sets, subsidy amounts, discount rates, and caps are proposed
+  - Creators can publish by selecting proposals
+
 - Sponsor Dashboard
-  - キャンペーン一覧(状態、消化、完了数)
-  - Data Inbox(受領データの件数、内容確認、export)
+  - Campaign list (status, spend, completion count)
+  - Data Inbox (received data count, content review, export)
 
-#### ToC: “実際に使える” 入口を用意
-- User がサービス名検索で、スポンサー付きかどうかが分かる
-- User が「機能」検索で、スポンサー付き tool を選べる(例: scraping, design, storage)
+#### ToC: Practical user entry points
+
+- Users can search by service name and see sponsor availability
+- Users can search by function and choose sponsor-backed tools  
+  (e.g., scraping, design, storage)
+
 - Profile Vault
-  - Email, region, IP type, 利用中サービスなどの基本情報を保存できる
-  - survey 回答を保存し、タスク実行時に再利用できる
+  - Stores basic data such as email, region, IP type, and services in use
+  - Saves survey responses for reuse during task execution
+
 - Consent / Compliance
-  - 明示同意(チェック)なしにデータがスポンサーへ渡らない
-  - 利用目的、保持期間、スポンサー連絡可否を必ず表示する
+  - No data is transferred to sponsors without explicit opt-in consent
+  - Usage purpose, retention period, and sponsor contact permissions must be displayed
+
 - Notification
-  - agent 稼働中などでクレジットが尽きた際、通知でタスク導線へ遷移できる
+  - When credits are exhausted (e.g., during agent operation), users can be notified and guided to tasks
 
-完了条件(最低ライン)
-- Sponsor がキャンペーンを作って公開し、User 側検索/Paywall に露出する
-- Sponsor が Data Inbox で結果を確認できる
-- User がプロフィール保存と再利用で入力を短縮できる
-- 通知から Paywall に飛べる
-
----
-
-### P2: スケールのための要件(後から効いてくる)
-- Recommendation Engine の高度化
-  - ルール/タグ中心から、成果データを使った重み更新へ
-  - さらに embedding や協調フィルタリングは段階導入
-- 不正/低品質対策の強化
-  - 人間認証の強化(段階的)
-  - タスク proof の強化(外部連携、webhook、再検証)
-- 多クライアント統合の本格化
-  - ChatGPT 以外(Claude, Codex, OpenClaw等)向けに、共通の HTTP API と SDK を整備
-  - UI 埋め込み不可の環境でも “リンク型 paywall” で完結できる
-- 分析と監査
-  - ファネル(閲覧/開始/完了/支払い)の計測
-  - Sponsor の閲覧/エクスポート監査ログ
-  - データ redaction と最小化の運用
+Completion Criteria (Minimum)
+- Sponsors can create and publish campaigns visible in user search and paywalls
+- Sponsors can review results in the Data Inbox
+- Users can shorten inputs via profile storage and reuse
+- Notifications can route users to paywalls
 
 ---
 
-## Data Collection Framework (Action Pluginとして提供)
+### P2: Scale requirements (longer-term leverage)
+
+- Advanced Recommendation Engine
+  - Evolve from rule / tag-based logic to outcome-driven weighting
+  - Gradual introduction of embeddings and collaborative filtering
+
+- Fraud / Low-quality mitigation
+  - Progressive human verification
+  - Stronger task proof mechanisms (external integrations, webhooks, revalidation)
+
+- Multi-client integration expansion
+  - Provide a common HTTP API and SDK for clients beyond ChatGPT  
+    (Claude, Codex, OpenClaw, etc.)
+  - Enable completion via “link-based paywalls” even in environments where UI embedding is not possible
+
+- Analytics and audit
+  - Funnel tracking (view / start / complete / payment)
+  - Sponsor viewing / export audit logs
+  - Data redaction and minimization operations
+
+---
+
+## Data Collection Framework (Provided as Action Plugins)
 
 ### Basic personal data
 - Email
 - Region
 - IP type
-- SponsorページへのSignup要望(任意)
-- botでないことを保証する最低限の人間認証
+- Optional signup requests to sponsor pages
+- Minimum human verification to ensure the user is not a bot
 
 ### Survey data
 - Demographics
 - Goals / KPIs
 - Organization size
-- Prompt(必要性がある場合のみ)
-- Agents / skills used usually
+- Prompts (only when necessary)
+- Agents / skills usually used
 - Media consumption
 - Competitor usage
-- Satisfaction of current services
+- Satisfaction with current services
 - Price sensitivity
 - Switching triggers
 - Alternative comparisons
@@ -136,26 +163,34 @@ x402 の 402 Paywall を Proxy で受け止め、スポンサーが支払いを�
 ---
 
 ## Compliance (Must)
-- Explicit user consent (項目単位、スポンサー単位で管理できる)
+
+- Explicit user consent  
+  (manageable at item level and sponsor level)
 - Usage purpose disclosure
 - Data retention disclosure
-- Sponsor contact disclosure (ユーザーが可否を選べる)
+- Sponsor contact disclosure  
+  (user can opt in or opt out)
 
 ---
 
-## Non-Goals (初期ではやらない)
-- 完璧な KYC や重い本人確認
-- 高度な推薦モデルを最初から(まずはルール/タグで開始)
-- 全クライアントへのネイティブUI統合を最初から(まずはMCP + HTTPで吸収)
-- 重いデータ基盤連携(まずは export と監査ログ)
+## Non-Goals (Out of scope for initial phase)
+
+- Full KYC or heavy identity verification
+- Advanced recommendation models from the start  
+  (begin with rules / tags)
+- Native UI integrations for all clients from the start  
+  (absorb via MCP + HTTP first)
+- Heavy data infrastructure integrations  
+  (begin with export + audit logs)
 
 ---
 
 ## Suggested Milestones
-- M0: Upstream互換で end-to-end が通る(P0)
-- M1: サービス検索とスポンサー表示、実利用ルート(P1のToC前半)
-- M2: Campaign Builder Chat と publish、Data Inbox(P1のToB)
-- M3: Profile Vault + Consent 完成(P1の運用要件)
-- M4: 通知と多クライアント向け API/SDK(P1後半)
+
+- M0: End-to-end flow with upstream compatibility (P0)
+- M1: Service search, sponsor visibility, real usage routes (P1 ToC first half)
+- M2: Campaign Builder Chat, publishing, Data Inbox (P1 ToB)
+- M3: Profile Vault + Consent completion (P1 operational requirements)
+- M4: Notifications and multi-client API / SDK (P1 latter half)
 
 ---
