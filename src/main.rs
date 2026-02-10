@@ -15,6 +15,7 @@ use prometheus::{Encoder, TextEncoder};
 use sqlx::types::Json as DbJson;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::sync::RwLock;
+use tower_http::cors::{CorsLayer, Any};
 use tracing::info;
 use uuid::Uuid;
 
@@ -23,6 +24,12 @@ use crate::types::*;
 use crate::utils::*;
 
 fn build_app(state: SharedState) -> Router {
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any)
+        .allow_credentials(false);
+
     Router::new()
         .route("/health", get(health))
         .route("/profiles", post(create_profile).get(list_profiles))
@@ -47,6 +54,7 @@ fn build_app(state: SharedState) -> Router {
         .route("/creator/metrics/event", post(record_creator_metric_event))
         .route("/creator/metrics", get(creator_metrics))
         .route("/metrics", get(prometheus_metrics))
+        .layer(cors)
         .with_state(state)
 }
 
