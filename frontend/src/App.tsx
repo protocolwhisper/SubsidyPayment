@@ -140,7 +140,9 @@ function App() {
   const [paymentRequired, setPaymentRequired] = useState<PaymentRequired | null>(null);
 
   async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-    const response = await fetch(`/api${path}`, {
+    // 環境変数からAPIのベースURLを取得（開発環境では /api、本番環境では環境変数から）
+    const apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
+    const response = await fetch(`${apiBaseUrl}${path}`, {
       ...init,
       headers: {
         "content-type": "application/json",
@@ -406,7 +408,9 @@ function App() {
         headers["payment-signature"] = paymentSignature;
       }
 
-      const response = await fetch(`/api${path}`, {
+      // 環境変数からAPIのベースURLを取得
+      const apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
+      const response = await fetch(`${apiBaseUrl}${path}`, {
         method: "POST",
         headers,
         body: JSON.stringify(body)
