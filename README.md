@@ -38,6 +38,7 @@ export X402_NETWORK=base-sepolia
 export X402_PAY_TO=0x<seller_wallet_address>
 export X402_ASSET=0x<testnet_usdc_asset_address>
 export PUBLIC_BASE_URL=http://localhost:3000
+export CORS_ALLOW_ORIGINS=http://localhost:5173,https://subsidy-payment.vercel.app
 ```
 
 Run app:

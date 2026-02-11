@@ -6,7 +6,7 @@ mod utils;
 use axum::{
     Json, Router,
     extract::{Path, State},
-    http::{HeaderMap, HeaderName, HeaderValue, StatusCode},
+    http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode, header},
     response::{IntoResponse, Response},
     routing::{get, post},
 };
@@ -15,6 +15,7 @@ use prometheus::{Encoder, TextEncoder};
 use sqlx::types::Json as DbJson;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::sync::RwLock;
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tracing::info;
 use uuid::Uuid;
 
@@ -29,25 +30,56 @@ fn build_app(state: SharedState) -> Router {
         .route("/register", post(register_user))
         .route("/campaigns", post(create_campaign).get(list_campaigns))
         .route("/campaigns/discovery", get(list_campaign_discovery))
-        .route("/campaigns/:campaign_id", get(get_campaign))
+        .route("/campaigns/{campaign_id}", get(get_campaign))
         .route("/tasks/complete", post(complete_task))
-        .route("/tool/:service/run", post(run_tool))
-        .route("/proxy/:service/run", post(run_proxy))
+        .route("/tool/{service}/run", post(run_tool))
+        .route("/proxy/{service}/run", post(run_proxy))
         .route(
             "/sponsored-apis",
             post(create_sponsored_api).get(list_sponsored_apis),
         )
-        .route("/sponsored-apis/:api_id", get(get_sponsored_api))
-        .route("/sponsored-apis/:api_id/run", post(run_sponsored_api))
+        .route("/sponsored-apis/{api_id}", get(get_sponsored_api))
+        .route("/sponsored-apis/{api_id}/run", post(run_sponsored_api))
         .route(
             "/webhooks/x402scan/settlement",
             post(ingest_x402scan_settlement),
         )
-        .route("/dashboard/sponsor/:campaign_id", get(sponsor_dashboard))
+        .route("/dashboard/sponsor/{campaign_id}", get(sponsor_dashboard))
         .route("/creator/metrics/event", post(record_creator_metric_event))
         .route("/creator/metrics", get(creator_metrics))
         .route("/metrics", get(prometheus_metrics))
+        .layer(cors_layer_from_env())
         .with_state(state)
+}
+
+fn cors_layer_from_env() -> CorsLayer {
+    let layer = CorsLayer::new()
+        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_headers([
+            header::CONTENT_TYPE,
+            header::ACCEPT,
+            header::AUTHORIZATION,
+            HeaderName::from_static(PAYMENT_SIGNATURE_HEADER),
+            HeaderName::from_static(X402_VERSION_HEADER),
+        ]);
+
+    let configured = std::env::var("CORS_ALLOW_ORIGINS").unwrap_or_else(|_| "*".to_string());
+    if configured.trim() == "*" {
+        return layer.allow_origin(Any);
+    }
+
+    let origins: Vec<HeaderValue> = configured
+        .split(',')
+        .map(str::trim)
+        .filter(|origin| !origin.is_empty())
+        .filter_map(|origin| HeaderValue::from_str(origin).ok())
+        .collect();
+
+    if origins.is_empty() {
+        layer.allow_origin(Any)
+    } else {
+        layer.allow_origin(AllowOrigin::list(origins))
+    }
 }
 
 #[tokio::main]
