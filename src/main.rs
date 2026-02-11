@@ -6,7 +6,7 @@ mod utils;
 use axum::{
     Json, Router,
     extract::{Path, State},
-    http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode, header},
+    http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode},
     response::{IntoResponse, Response},
     routing::{get, post},
 };
@@ -55,13 +55,7 @@ fn build_app(state: SharedState) -> Router {
 fn cors_layer_from_env() -> CorsLayer {
     let layer = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
-        .allow_headers([
-            header::CONTENT_TYPE,
-            header::ACCEPT,
-            header::AUTHORIZATION,
-            HeaderName::from_static(PAYMENT_SIGNATURE_HEADER),
-            HeaderName::from_static(X402_VERSION_HEADER),
-        ]);
+        .allow_headers(Any);
 
     let configured = std::env::var("CORS_ALLOW_ORIGINS").unwrap_or_else(|_| "*".to_string());
     if configured.trim() == "*" {
@@ -70,9 +64,8 @@ fn cors_layer_from_env() -> CorsLayer {
 
     let origins: Vec<HeaderValue> = configured
         .split(',')
-        .map(str::trim)
-        .filter(|origin| !origin.is_empty())
-        .filter_map(|origin| HeaderValue::from_str(origin).ok())
+        .filter_map(|origin| normalize_origin(origin))
+        .filter_map(|origin| HeaderValue::from_str(&origin).ok())
         .collect();
 
     if origins.is_empty() {
@@ -80,6 +73,30 @@ fn cors_layer_from_env() -> CorsLayer {
     } else {
         layer.allow_origin(AllowOrigin::list(origins))
     }
+}
+
+fn normalize_origin(origin: &str) -> Option<String> {
+    // Accept common deploy-time formatting mistakes such as wrapping quotes,
+    // trailing slashes, and path fragments.
+    let cleaned = origin
+        .trim()
+        .trim_matches('"')
+        .trim_matches('\'')
+        .trim_end_matches('/');
+
+    if cleaned.is_empty() {
+        return None;
+    }
+
+    if let Some((scheme, rest)) = cleaned.split_once("://") {
+        let authority = rest.split('/').next().unwrap_or(rest).trim();
+        if authority.is_empty() {
+            return None;
+        }
+        return Some(format!("{scheme}://{authority}"));
+    }
+
+    Some(cleaned.to_string())
 }
 
 #[tokio::main]
