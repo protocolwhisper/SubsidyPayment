@@ -176,6 +176,18 @@ const TASK_CATEGORIES: TaskCategory[] = [
       "Local photo capture",
       "Site inspection"
     ]
+  },
+  {
+    name: "Developer Tasks",
+    tasks: [
+      "APIキー発行＋1回コール",
+      "SDK 実行",
+      "CLIサンプル実行",
+      "テンプレRepo fork",
+      "ワンクリックデプロイ",
+      "軽微バグ報告",
+      "ドキュメント誤字修正"
+    ]
   }
 ];
 
