@@ -49,14 +49,20 @@ type CreatorSummary = {
   }>;
 };
 
+type ServiceTaskConfig = {
+  service: string;
+  tasks: string[];
+  subsidy_per_call_cents: number;
+};
+
 type CampaignForm = {
   name: string;
   sponsor: string;
   target_roles: string;
   target_tools: string;
-  required_task: string;
-  subsidy_per_call_cents: number;
+  serviceConfigs: ServiceTaskConfig[];
   budget_cents: number;
+  require_human_verification: boolean;
 };
 
 type SponsoredApi = {
@@ -104,9 +110,9 @@ const defaultCampaignForm: CampaignForm = {
   sponsor: "",
   target_roles: "developer",
   target_tools: "scraping",
-  required_task: "signup_sponsor",
-  subsidy_per_call_cents: 5,
-  budget_cents: 500
+  serviceConfigs: [],
+  budget_cents: 500,
+  require_human_verification: false
 };
 
 type ServiceCategory = { name: string; services: string[] };
@@ -122,6 +128,55 @@ const KPI_OPTIONS = [
   "Cost per Signup",
   "Incremental Conversions",
   "Cost per Qualified Lead"
+];
+
+type TaskCategory = {
+  name: string;
+  tasks: string[];
+};
+
+const TASK_CATEGORIES: TaskCategory[] = [
+  {
+    name: "Contact Sharing",
+    tasks: [
+      "Share email address",
+      "Share Telegram ID"
+    ]
+  },
+  {
+    name: "User Acquisition / Engagement",
+    tasks: [
+      "Sign up for the sponsor's service",
+      "Complete specific actions on the sponsor's platform (e.g., log in, deposit, create a transaction)"
+    ]
+  },
+  {
+    name: "Distribution / Social Promotion",
+    tasks: [
+      "Like & repost the sponsor's tweet on X",
+      "Create UGC (user-generated content) about the sponsor on social media (TikTok, Instagram, X)"
+    ]
+  },
+  {
+    name: "Referral",
+    tasks: [
+      "Refer or share the sponsor's service with friends"
+    ]
+  },
+  {
+    name: "Survey / Feedback",
+    tasks: [
+      "Complete a survey"
+    ]
+  },
+  {
+    name: "Physical Task Completion",
+    tasks: [
+      "Mystery shopping",
+      "Local photo capture",
+      "Site inspection"
+    ]
+  }
 ];
 
 function App() {
@@ -157,6 +212,31 @@ function App() {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedKpi, setSelectedKpi] = useState("");
   const [showServiceDropdown, setShowServiceDropdown] = useState(false);
+
+  // サービスが選択されたときに、serviceConfigsを更新
+  useEffect(() => {
+    setForm((prev) => {
+      const currentServices = prev.serviceConfigs.map((config) => config.service);
+      const newServices = selectedServices.filter((s) => !currentServices.includes(s));
+      const removedServices = currentServices.filter((s) => !selectedServices.includes(s));
+      
+      let updatedConfigs = prev.serviceConfigs.filter((config) => !removedServices.includes(config.service));
+      
+      // 新しいサービスを追加
+      newServices.forEach((service) => {
+        updatedConfigs.push({
+          service,
+          tasks: [],
+          subsidy_per_call_cents: 5
+        });
+      });
+      
+      return {
+        ...prev,
+        serviceConfigs: updatedConfigs
+      };
+    });
+  }, [selectedServices]);
 
   async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
     // 環境変数からAPIのベースURLを取得（開発環境では /api、本番環境では環境変数から）
@@ -370,17 +450,39 @@ function App() {
       // Log new fields to console (not sent to API yet)
       console.log("Selected Services:", selectedServices);
       console.log("Selected KPI:", selectedKpi);
+      // バリデーション: 各サービスに少なくとも1つのタスクが必要
+      const invalidConfigs = form.serviceConfigs.filter((config) => config.tasks.length === 0);
+      if (invalidConfigs.length > 0) {
+        setError(`Please select at least one task for each service: ${invalidConfigs.map((c) => c.service).join(", ")}`);
+        setCreateLoading(false);
+        return;
+      }
+
+      // サービスごとの設定をフラット化（後方互換性のため）
+      // 最初のサービスの設定をデフォルトとして使用
+      const firstConfig = form.serviceConfigs[0] || { tasks: [], subsidy_per_call_cents: 5 };
+      const required_task = firstConfig.tasks.length > 0 ? firstConfig.tasks[0] : "";
+      const subsidy_per_call_cents = firstConfig.subsidy_per_call_cents;
+
       await fetchJson<Campaign>("/campaigns", {
         method: "POST",
         body: JSON.stringify({
-          ...form,
+          name: form.name,
+          sponsor: form.sponsor,
           target_roles: splitCsv(form.target_roles),
-          target_tools: splitCsv(form.target_tools)
+          target_tools: splitCsv(form.target_tools),
+          required_task: required_task,
+          subsidy_per_call_cents: subsidy_per_call_cents,
+          budget_cents: form.budget_cents,
+          require_human_verification: form.require_human_verification,
+          // 新しいフィールド（将来のAPI拡張用）
+          service_configs: form.serviceConfigs
         })
       });
       setForm(defaultCampaignForm);
       setSelectedServices([]);
       setSelectedKpi("");
+      // serviceConfigsもリセット（useEffectで自動更新されるが、明示的にリセット）
       // Go back to dashboard after successful creation
       setCurrentView("dashboard");
       // Reload dashboard data silently
@@ -607,7 +709,7 @@ function App() {
           <section className="lp-hero">
             <img src={logoImage} alt="SubsidyPayment" className="lp-hero-logo" />
             <h1 className="lp-hero-title">SubsidyPayment</h1>
-            <p className="lp-hero-subtitle">Sponsor API calls for developers. Track performance. Pay only for results.</p>
+            <p className="lp-hero-subtitle">Sponsor the daily-use services your target users rely on. Track performance. Pay only for results.</p>
             <div className="lp-hero-cta">
               <button className="primary-btn-large" onClick={() => setCurrentView("signup")}>Get Started</button>
               <button className="ghost-btn-large" onClick={() => setCurrentView("login")}>Sign In</button>
@@ -619,22 +721,22 @@ function App() {
               <div className="lp-feature-icon">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
               </div>
-              <h3>For Developers</h3>
-              <p>Access premium APIs at zero cost through sponsored campaigns. Focus on building, not billing.</p>
+              <h3>For Developers/Users/traders/designers</h3>
+              <p>Reduce the cost of the paid services you use daily (AI tools, APIs, data services) to zero through sponsored campaigns. Focus on usage, not billing.</p>
             </div>
             <div className="lp-feature-card">
               <div className="lp-feature-icon">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
               </div>
               <h3>For Sponsors</h3>
-              <p>Reach targeted developer segments with subsidized API access. Pay only for completed tasks.</p>
+              <p>Reach your target user segments by subsidizing access to the services they use daily. Pay only for completed tasks.</p>
             </div>
             <div className="lp-feature-card">
               <div className="lp-feature-icon">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
               </div>
               <h3>Seamless Payments</h3>
-              <p>Blockchain-powered payments with X402 protocol. Transparent, instant, and verifiable.</p>
+              <p>Super-seamless payments for AI and humans. Agent-native payments powered by the x402 protocol. Transparent, instant, and verifiable for both AI agents and humans.</p>
             </div>
           </section>
 
@@ -900,9 +1002,9 @@ function App() {
                     />
                   </div>
 
-                  {/* NEW: Sponsored Tools / Services multi-select */}
+                  {/* Sponsored Tools / Services multi-select */}
                   <div className="form-group">
-                    <label>Sponsored Tools / Services <span className="new-badge">NEW</span></label>
+                    <label>Sponsored Tools / Services</label>
                     {selectedServices.length > 0 && (
                       <div className="service-chips">
                         {selectedServices.map((service) => (
@@ -963,57 +1065,115 @@ function App() {
                       placeholder="scraping, search, etc."
                     />
                   </div>
+                  {/* KPI to Track & Compare */}
                   <div className="form-group">
-                    <label>Required Task</label>
-                    <input
-                      required
-                      value={form.required_task}
-                      onChange={(e) => setForm((prev) => ({ ...prev, required_task: e.target.value }))}
-                      placeholder="signup_sponsor"
-                    />
-                  </div>
-
-                  {/* NEW: KPI to Track & Compare */}
-                  <div className="form-group">
-                    <label>KPI to Track & Compare <span className="new-badge">NEW</span></label>
+                    <label>KPI to Track & Compare</label>
                     <select className="kpi-select" value={selectedKpi} onChange={(e) => setSelectedKpi(e.target.value)}>
                       <option value="">Select a KPI...</option>
                       {KPI_OPTIONS.map((kpi) => (<option key={kpi} value={kpi}>{kpi}</option>))}
                     </select>
                   </div>
 
-                  <div className="form-row">
+                  {/* Service-specific Task and Subsidy Configuration */}
+                  {form.serviceConfigs.length > 0 && (
                     <div className="form-group">
-                      <label>Subsidy / Call (cents)</label>
-                      <input
-                        required
-                        type="number"
-                        min={1}
-                        value={form.subsidy_per_call_cents}
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            subsidy_per_call_cents: Number(e.target.value)
-                          }))
-                        }
-                      />
+                      <label>Task & Subsidy Configuration (per service)</label>
+                      <div className="service-configs">
+                        {form.serviceConfigs.map((config, index) => (
+                          <div key={config.service} className="service-config-card">
+                            <div className="service-config-header">
+                              <h4>{config.service}</h4>
+                            </div>
+                            <div className="form-group">
+                              <label>Required Tasks (multiple selection)</label>
+                              <div className="task-checkboxes">
+                                {TASK_CATEGORIES.map((category) => (
+                                  <div key={category.name} className="task-category-group">
+                                    <div className="task-category-label">{category.name}</div>
+                                    {category.tasks.map((task) => (
+                                      <label key={task} className="task-checkbox-label">
+                                        <input
+                                          type="checkbox"
+                                          checked={config.tasks.includes(task)}
+                                          onChange={(e) => {
+                                            setForm((prev) => {
+                                              const updatedConfigs = [...prev.serviceConfigs];
+                                              if (e.target.checked) {
+                                                updatedConfigs[index].tasks = [...config.tasks, task];
+                                              } else {
+                                                updatedConfigs[index].tasks = config.tasks.filter((t) => t !== task);
+                                              }
+                                              return {
+                                                ...prev,
+                                                serviceConfigs: updatedConfigs
+                                              };
+                                            });
+                                          }}
+                                        />
+                                        <span>{task}</span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="form-group">
+                              <label>Subsidy / Call (cents)</label>
+                              <input
+                                required
+                                type="number"
+                                min={1}
+                                value={config.subsidy_per_call_cents}
+                                onChange={(e) => {
+                                  setForm((prev) => {
+                                    const updatedConfigs = [...prev.serviceConfigs];
+                                    updatedConfigs[index].subsidy_per_call_cents = Number(e.target.value);
+                                    return {
+                                      ...prev,
+                                      serviceConfigs: updatedConfigs
+                                    };
+                                  });
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="form-group">
-                      <label>Budget (cents)</label>
-                      <input
-                        required
-                        type="number"
-                        min={1}
-                        value={form.budget_cents}
-                        onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            budget_cents: Number(e.target.value)
-                          }))
-                        }
-                      />
-                    </div>
+                  )}
+
+                  <div className="form-group">
+                    <label>Total Budget (cents)</label>
+                    <input
+                      required
+                      type="number"
+                      min={1}
+                      value={form.budget_cents}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          budget_cents: Number(e.target.value)
+                        }))
+                      }
+                    />
                   </div>
+
+                  <div className="form-group">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={form.require_human_verification}
+                        onChange={(e) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            require_human_verification: e.target.checked
+                          }))
+                        }
+                      />
+                      <span>Require human verification for subsidy recipients?</span>
+                    </label>
+                  </div>
+
                   <button type="submit" className="submit-btn" disabled={createLoading}>
                     {createLoading ? "Creating..." : "Create Campaign"}
                   </button>
@@ -1297,14 +1457,14 @@ function App() {
 
           {/* F. User Base Ranking */}
           <div className="card full-width">
-            <div className="card-header"><div className="card-title"><h3>User Base Ranking</h3></div></div>
+            <div className="card-header"><div className="card-title"><h3>What services are your target users actively using right now?</h3></div></div>
             <div className="card-content">
               {[
-                { rank: 1, name: "Uniswap", pct: 78.4 },
-                { rank: 2, name: "Aave", pct: 62.1 },
-                { rank: 3, name: "OpenSea", pct: 45.6 },
-                { rank: 4, name: "Lido Finance", pct: 33.2 },
-                { rank: 5, name: "Compound", pct: 24.8 }
+                { rank: 1, name: "CoinGecko", pct: 78.4 },
+                { rank: 2, name: "Claude", pct: 62.1 },
+                { rank: 3, name: "Midjourney API", pct: 45.6 },
+                { rank: 4, name: "Supabase", pct: 33.2 },
+                { rank: 5, name: "Vercel", pct: 24.8 }
               ].map((item) => (
                 <div key={item.rank} className="ranking-item">
                   <span className="ranking-number">{item.rank}</span>
