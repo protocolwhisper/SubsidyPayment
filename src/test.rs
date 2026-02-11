@@ -156,6 +156,75 @@ async fn testnet_payment_signature_unlocks_tool() {
     assert_eq!(json["service"], "design");
 }
 
+#[test]
+fn migration_0007_consents_has_expected_schema() {
+    let sql = include_str!("../migrations/0007_consents.sql");
+    let lower = sql.to_lowercase();
+
+    // Table creation
+    assert!(lower.contains("create table if not exists consents"), "should create consents table");
+
+    // Required columns
+    assert!(lower.contains("id uuid primary key"), "should have id uuid primary key");
+    assert!(lower.contains("user_id uuid not null references users(id) on delete cascade"), "should have user_id FK to users");
+    assert!(lower.contains("campaign_id uuid not null references campaigns(id) on delete cascade"), "should have campaign_id FK to campaigns");
+    assert!(lower.contains("consent_type text not null"), "should have consent_type column");
+    assert!(lower.contains("granted boolean not null"), "should have granted column");
+    assert!(lower.contains("purpose text"), "should have purpose column");
+    assert!(lower.contains("retention_days integer"), "should have retention_days column");
+    assert!(lower.contains("created_at timestamptz not null default now()"), "should have created_at column");
+
+    // CHECK constraint on consent_type
+    assert!(lower.contains("data_sharing"), "consent_type should include data_sharing");
+    assert!(lower.contains("contact"), "consent_type should include contact");
+    assert!(lower.contains("retention"), "consent_type should include retention");
+
+    // Indexes
+    assert!(lower.contains("consents_user_campaign_idx"), "should have user_campaign composite index");
+    assert!(lower.contains("on consents(user_id, campaign_id)"), "composite index should be on (user_id, campaign_id)");
+    assert!(lower.contains("consents_user_id_idx"), "should have user_id index");
+}
+
+#[test]
+fn migration_0008_add_user_source_has_expected_schema() {
+    let sql = include_str!("../migrations/0008_add_user_source.sql");
+    let lower = sql.to_lowercase();
+
+    // ALTER TABLE to add source column
+    assert!(lower.contains("alter table"), "should use ALTER TABLE");
+    assert!(lower.contains("users"), "should target users table");
+    assert!(lower.contains("add column"), "should add a column");
+    assert!(lower.contains("source"), "should add source column");
+    assert!(lower.contains("text"), "source should be TEXT type");
+    assert!(lower.contains("default 'web'"), "source should default to 'web'");
+
+    // Safety: IF NOT EXISTS for idempotent migration
+    assert!(lower.contains("if not exists"), "should use IF NOT EXISTS for safety");
+}
+
+#[test]
+fn migration_0009_gpt_sessions_has_expected_schema() {
+    let sql = include_str!("../migrations/0009_gpt_sessions.sql");
+    let lower = sql.to_lowercase();
+
+    // Table creation
+    assert!(lower.contains("create table if not exists gpt_sessions"), "should create gpt_sessions table");
+
+    // Required columns
+    assert!(lower.contains("token uuid primary key"), "should have token uuid primary key");
+    assert!(lower.contains("gen_random_uuid()"), "token should default to gen_random_uuid()");
+    assert!(lower.contains("user_id uuid not null references users(id) on delete cascade"), "should have user_id FK to users");
+    assert!(lower.contains("created_at timestamptz not null default now()"), "should have created_at column");
+    assert!(lower.contains("expires_at timestamptz not null"), "should have expires_at column");
+    assert!(lower.contains("interval '30 days'"), "expires_at should default to NOW() + 30 days");
+
+    // Indexes
+    assert!(lower.contains("gpt_sessions_user_id_idx"), "should have user_id index");
+    assert!(lower.contains("on gpt_sessions(user_id)"), "user_id index should target correct column");
+    assert!(lower.contains("gpt_sessions_expires_at_idx"), "should have expires_at index");
+    assert!(lower.contains("on gpt_sessions(expires_at)"), "expires_at index should target correct column");
+}
+
 #[tokio::test]
 async fn testnet_payment_signature_service_mismatch_is_rejected() {
     let (app, state) = test_app();

@@ -6,10 +6,10 @@
 
 ### 要件カバレッジ: 3.2, 3.3, 3.4, 4.2, 6.1, 6.2, 6.3, 6.4
 
-- [ ] 1.1: `consents` テーブルのマイグレーションを作成する (P)
+- [x] 1.1: `consents` テーブルのマイグレーションを作成する (P)
   `migrations/0007_consents.sql` を作成し、`consents` テーブル（id, user_id, campaign_id, consent_type, granted, purpose, retention_days, created_at）とインデックスを定義する。設計書コンポーネント8のDDLに従う。
 
-- [ ] 1.2: `users.source` カラムのマイグレーションを作成する (P)
+- [x] 1.2: `users.source` カラムのマイグレーションを作成する (P)
   `migrations/0008_add_user_source.sql` を作成し、`users` テーブルに `source TEXT DEFAULT 'web'` カラムを追加する。
 
 - [ ] 1.3: `gpt_sessions` テーブルのマイグレーションを作成する (P)
