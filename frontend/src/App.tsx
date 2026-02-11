@@ -109,7 +109,13 @@ const defaultCampaignForm: CampaignForm = {
   budget_cents: 500
 };
 
-const AVAILABLE_SERVICES = ["Uniswap", "Aave", "OpenSea", "Lido Finance", "Compound", "Chainlink"];
+type ServiceCategory = { name: string; services: string[] };
+const SERVICE_CATEGORIES: ServiceCategory[] = [
+  { name: "DeFi / Web3", services: ["Uniswap", "Aave", "OpenSea", "Lido Finance", "Compound", "Chainlink"] },
+  { name: "AI Services", services: ["Claude (Anthropic)", "OpenAI API", "Hugging Face", "Replicate", "Midjourney API"] },
+  { name: "API / Data", services: ["CoinGecko", "Alchemy", "The Graph", "Moralis", "Infura"] },
+  { name: "Developer Tools", services: ["GitHub Copilot", "Vercel", "Supabase", "Neon (Postgres)", "Render", "Railway"] }
+];
 const KPI_OPTIONS = [
   "CPA (Cost per Acquisition)",
   "CPI (Cost per Install)",
@@ -133,8 +139,9 @@ function App() {
   });
   const [isLoggedIn, setIsLoggedIn] = useState(false); // Start logged out (public dashboard)
   const [showProfile, setShowProfile] = useState(false);
-  const [currentView, setCurrentView] = useState<"dashboard" | "create-campaign" | "login" | "caller">("dashboard");
+  const [currentView, setCurrentView] = useState<"landing" | "signup" | "dashboard" | "create-campaign" | "login" | "caller">("landing");
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
+  const [signupForm, setSignupForm] = useState({ email: "", company: "", password: "", confirmPassword: "" });
   const [sponsoredApis, setSponsoredApis] = useState<SponsoredApi[]>([]);
   const [callerLoading, setCallerLoading] = useState(false);
   const [callerResult, setCallerResult] = useState<any>(null);
@@ -249,7 +256,7 @@ function App() {
     setIsLoggedIn(false);
     localStorage.setItem("isLoggedIn", "false");
     setShowProfile(false);
-    setCurrentView("login"); // Show login page after logout
+    setCurrentView("landing"); // Show landing page after logout
   };
 
   const handleWalletConnect = async () => {
@@ -277,7 +284,7 @@ function App() {
       console.log("Connected wallet:", address);
 
       // Create a message to sign for authentication
-      const message = `Sign in to PayloadExchange\n\nWallet: ${address}\nTimestamp: ${Date.now()}`;
+      const message = `Sign in to SubsidyPayment\n\nWallet: ${address}\nTimestamp: ${Date.now()}`;
       
       // Convert message to hex (browser-compatible)
       const messageHex = "0x" + Array.from(new TextEncoder().encode(message))
@@ -326,8 +333,7 @@ function App() {
   };
 
   const handleBack = () => {
-    // Go back to dashboard (public view, no login required)
-    setCurrentView("dashboard");
+    setCurrentView("landing");
   };
 
   const totals = useMemo(() => {
@@ -518,10 +524,17 @@ function App() {
     <div className="dashboard">
       <header className="header">
         <div className="header-left">
-          <div className="logo" onClick={() => setCurrentView("dashboard")} style={{ cursor: "pointer" }}>
-            <img src={logoImage} alt="PayloadExchange" className="logo-icon" />
-            <span className="logo-text">PayloadExchange</span>
+          <div className="logo" onClick={() => setCurrentView(isLoggedIn ? "dashboard" : "landing")} style={{ cursor: "pointer" }}>
+            <img src={logoImage} alt="SubsidyPayment" className="logo-icon" />
+            <span className="logo-text">SubsidyPayment</span>
           </div>
+          {!["landing", "login", "signup"].includes(currentView) && (
+            <nav className="header-nav-tabs">
+              <button className={`nav-tab ${currentView === "dashboard" ? "active" : ""}`} onClick={() => setCurrentView("dashboard")}>Dashboard</button>
+              <button className={`nav-tab ${currentView === "create-campaign" ? "active" : ""}`} onClick={() => { if (isLoggedIn) setCurrentView("create-campaign"); else setCurrentView("login"); }}>Create Campaign</button>
+              <button className={`nav-tab ${currentView === "caller" ? "active" : ""}`} onClick={() => setCurrentView("caller")}>API Caller</button>
+            </nav>
+          )}
         </div>
         <div className="header-right">
           <button className="icon-btn">
@@ -588,7 +601,169 @@ function App() {
         </div>
       </header>
 
-      {currentView === "login" ? (
+      {currentView === "landing" ? (
+        /* Landing Page */
+        <main className="landing-page">
+          <section className="lp-hero">
+            <img src={logoImage} alt="SubsidyPayment" className="lp-hero-logo" />
+            <h1 className="lp-hero-title">SubsidyPayment</h1>
+            <p className="lp-hero-subtitle">Sponsor API calls for developers. Track performance. Pay only for results.</p>
+            <div className="lp-hero-cta">
+              <button className="primary-btn-large" onClick={() => setCurrentView("signup")}>Get Started</button>
+              <button className="ghost-btn-large" onClick={() => setCurrentView("login")}>Sign In</button>
+            </div>
+          </section>
+
+          <section className="lp-features">
+            <div className="lp-feature-card">
+              <div className="lp-feature-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
+              </div>
+              <h3>For Developers</h3>
+              <p>Access premium APIs at zero cost through sponsored campaigns. Focus on building, not billing.</p>
+            </div>
+            <div className="lp-feature-card">
+              <div className="lp-feature-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+              </div>
+              <h3>For Sponsors</h3>
+              <p>Reach targeted developer segments with subsidized API access. Pay only for completed tasks.</p>
+            </div>
+            <div className="lp-feature-card">
+              <div className="lp-feature-icon">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              </div>
+              <h3>Seamless Payments</h3>
+              <p>Blockchain-powered payments with X402 protocol. Transparent, instant, and verifiable.</p>
+            </div>
+          </section>
+
+          <section className="lp-stats">
+            <div className="lp-stat">
+              <span className="lp-stat-value">$12,450</span>
+              <span className="lp-stat-label">Active Subsidies</span>
+            </div>
+            <div className="lp-stat">
+              <span className="lp-stat-value">1,247</span>
+              <span className="lp-stat-label">Developers</span>
+            </div>
+            <div className="lp-stat">
+              <span className="lp-stat-value">96.2%</span>
+              <span className="lp-stat-label">Completion Rate</span>
+            </div>
+          </section>
+
+          <section className="lp-final-cta">
+            <h2>Ready to get started?</h2>
+            <p>Create your free account and launch your first campaign in minutes.</p>
+            <button className="primary-btn-large" onClick={() => setCurrentView("signup")}>Create Free Account</button>
+          </section>
+        </main>
+      ) : currentView === "signup" ? (
+        /* Signup Page */
+        <div className="login-page">
+          <button
+            className="back-button"
+            onClick={() => setCurrentView("landing")}
+            title="Go back"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 12H5"></path>
+              <path d="M12 19l-7-7 7-7"></path>
+            </svg>
+            Back
+          </button>
+          <div className="login-container">
+            <div className="login-card">
+              <div className="login-header">
+                <div className="login-logo" onClick={() => setCurrentView("landing")}>
+                  <img src={logoImage} alt="SubsidyPayment" className="logo-icon-large" />
+                  <h1>SubsidyPayment</h1>
+                </div>
+                <p className="login-subtitle">Create your account</p>
+              </div>
+
+              <form className="login-form" onSubmit={(e) => {
+                e.preventDefault();
+                if (signupForm.password !== signupForm.confirmPassword) {
+                  setError("Passwords do not match");
+                  return;
+                }
+                setError(null);
+                setIsLoggedIn(true);
+                localStorage.setItem("isLoggedIn", "true");
+                setSignupForm({ email: "", company: "", password: "", confirmPassword: "" });
+                setCurrentView("create-campaign");
+              }}>
+                <div className="form-group">
+                  <label>Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    value={signupForm.email}
+                    onChange={(e) => setSignupForm((prev) => ({ ...prev, email: e.target.value }))}
+                    placeholder="you@example.com"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Company Name <span style={{ color: "var(--text-tertiary)", fontWeight: 400 }}>(optional)</span></label>
+                  <input
+                    type="text"
+                    value={signupForm.company}
+                    onChange={(e) => setSignupForm((prev) => ({ ...prev, company: e.target.value }))}
+                    placeholder="Your company"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={signupForm.password}
+                    onChange={(e) => setSignupForm((prev) => ({ ...prev, password: e.target.value }))}
+                    placeholder="Create a password"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Confirm Password</label>
+                  <input
+                    type="password"
+                    required
+                    value={signupForm.confirmPassword}
+                    onChange={(e) => setSignupForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                    placeholder="Confirm your password"
+                  />
+                </div>
+
+                {error && <div className="error-message">{error}</div>}
+
+                <button type="submit" className="login-submit-btn">
+                  Create Account
+                </button>
+
+                <div className="login-divider">
+                  <span>or</span>
+                </div>
+
+                <button type="button" className="wallet-login-btn" onClick={handleWalletConnect}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                    <line x1="1" y1="10" x2="23" y2="10"></line>
+                  </svg>
+                  Connect Wallet
+                </button>
+
+                <p className="login-footer">
+                  Already have an account? <a href="#" onClick={(e) => { e.preventDefault(); setCurrentView("login"); }}>Sign in</a>
+                </p>
+              </form>
+            </div>
+          </div>
+        </div>
+      ) : currentView === "login" ? (
         /* Login Page */
         <div className="login-page">
           <button 
@@ -605,9 +780,9 @@ function App() {
           <div className="login-container">
             <div className="login-card">
               <div className="login-header">
-                <div className="login-logo" onClick={() => setCurrentView("dashboard")}>
-                  <img src={logoImage} alt="PayloadExchange" className="logo-icon-large" />
-                  <h1>PayloadExchange</h1>
+                <div className="login-logo" onClick={() => setCurrentView("landing")}>
+                  <img src={logoImage} alt="SubsidyPayment" className="logo-icon-large" />
+                  <h1>SubsidyPayment</h1>
                 </div>
                 <p className="login-subtitle">Sign in to manage your campaigns</p>
               </div>
@@ -660,7 +835,7 @@ function App() {
                 </button>
                 
                 <p className="login-footer">
-                  Don't have an account? <a href="#">Sign up</a>
+                  Don't have an account? <a href="#" onClick={(e) => { e.preventDefault(); setCurrentView("signup"); }}>Sign up</a>
                 </p>
               </form>
             </div>
@@ -745,14 +920,30 @@ function App() {
                       </button>
                       {showServiceDropdown && (
                         <div className="service-dropdown">
-                          {AVAILABLE_SERVICES.map((service) => (
-                            <label key={service} className="service-option">
-                              <input type="checkbox" checked={selectedServices.includes(service)} onChange={(e) => { if (e.target.checked) { setSelectedServices((prev) => [...prev, service]); } else { setSelectedServices((prev) => prev.filter((s) => s !== service)); } }} />
-                              <span>{service}</span>
-                            </label>
+                          {SERVICE_CATEGORIES.map((category) => (
+                            <div key={category.name} className="service-category">
+                              <div className="service-category-header">{category.name}</div>
+                              {category.services.map((service) => (
+                                <label key={service} className="service-option">
+                                  <input type="checkbox" checked={selectedServices.includes(service)} onChange={(e) => { if (e.target.checked) { setSelectedServices((prev) => [...prev, service]); } else { setSelectedServices((prev) => prev.filter((s) => s !== service)); } }} />
+                                  <span>{service}</span>
+                                </label>
+                              ))}
+                            </div>
                           ))}
                         </div>
                       )}
+                    </div>
+                  </div>
+
+                  {/* AI Suggestion Box */}
+                  <div className="ai-suggestion-box">
+                    <div className="ai-suggestion-content">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2a4 4 0 0 1 4 4c0 1.95-1.4 3.58-3.25 3.93L12 22"/><path d="M12 2a4 4 0 0 0-4 4c0 1.95 1.4 3.58 3.25 3.93"/><path d="M8.56 13.68C5.2 14.42 3 16.33 3 18.5 3 21 7.03 23 12 23s9-2 9-4.5c0-2.17-2.2-4.08-5.56-4.82"/></svg>
+                      <div>
+                        <p className="ai-suggestion-text">Not sure which services align with your campaign target? Ask AI to help you identify the best options.</p>
+                        <button type="button" className="ai-suggestion-btn" onClick={() => alert("Coming soon! AI-powered service recommendations will be available in the next update.")}>Ask AI</button>
+                      </div>
                     </div>
                   </div>
 
