@@ -1567,3 +1567,529 @@ td {
     gap: 16px;
   }
 }
+
+
+/* ===== New Dashboard Metrics Styles ===== */
+
+/* Metrics Row - horizontal flex for top metric cards */
+.metrics-row {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 0;
+}
+
+.metrics-row-inner {
+  margin-bottom: 0;
+}
+
+.metric-card {
+  flex: 1;
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border);
+}
+
+.metric-card-compact {
+  box-shadow: none;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+}
+
+.metric-card-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+  line-height: 1.2;
+}
+
+.metric-card-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.metric-card-sub {
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.metric-card-sub.positive {
+  color: #10B981;
+}
+
+/* Two column row */
+.two-col-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+/* Inner box - stat boxes within cards */
+.inner-box-row {
+  display: flex;
+  gap: 16px;
+}
+
+.inner-box {
+  flex: 1;
+  background: var(--bg-primary);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  border: 1px solid var(--border);
+}
+
+.inner-box-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 8px;
+}
+
+.inner-box-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.inner-box-detail {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+/* Progress bar */
+.progress-bar-container {
+  width: 100%;
+  height: 12px;
+  background: var(--bg-primary);
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--blue-primary), var(--green-primary));
+  border-radius: 6px;
+  transition: width 0.5s ease;
+}
+
+.progress-bar-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-top: 8px;
+  font-weight: 500;
+}
+
+/* CPA Efficiency rows */
+.cpa-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-light);
+  gap: 12px;
+}
+
+.cpa-row:last-child {
+  border-bottom: none;
+}
+
+.cpa-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.cpa-values {
+  font-size: 13px;
+  color: var(--text-secondary);
+  flex: 1;
+  text-align: center;
+}
+
+.cpa-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  background: var(--green-light);
+  color: #059669;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Task Breakdown */
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.task-item-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.task-item-label {
+  flex: 1;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.task-item-pct {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.task-bar-stack {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+.task-bar-segment {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+/* Comparison Table */
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.trend-positive {
+  color: #10B981;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.trend-negative {
+  color: #EF4444;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* Ranking Items */
+.ranking-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.ranking-item:last-child {
+  border-bottom: none;
+}
+
+.ranking-number {
+  width: 28px;
+  height: 28px;
+  background: var(--blue-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.ranking-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  min-width: 110px;
+}
+
+.ranking-bar-bg {
+  flex: 1;
+  height: 10px;
+  background: var(--bg-primary);
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.ranking-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--blue-primary), var(--green-primary));
+  border-radius: 5px;
+  transition: width 0.5s ease;
+}
+
+.ranking-pct {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  min-width: 50px;
+  text-align: right;
+}
+
+/* Service Dropdown (multi-select) */
+.service-dropdown-wrapper {
+  position: relative;
+}
+
+.service-dropdown-toggle {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+}
+
+.service-dropdown-toggle:hover {
+  border-color: var(--blue-primary);
+}
+
+.service-dropdown-toggle svg {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+}
+
+.service-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  z-index: 50;
+  margin-top: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.service-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--text-primary);
+  transition: background 0.15s;
+}
+
+.service-option:hover {
+  background: var(--bg-primary);
+}
+
+.service-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--blue-primary);
+  cursor: pointer;
+}
+
+.service-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.service-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: var(--blue-light);
+  color: var(--blue-primary);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.service-chip button {
+  background: none;
+  border: none;
+  color: var(--blue-primary);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+.service-chip button:hover {
+  color: var(--text-primary);
+}
+
+/* NEW Badge */
+.new-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background: linear-gradient(135deg, var(--blue-primary), var(--green-primary));
+  color: white;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+/* KPI Select Dropdown */
+.kpi-select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+  appearance: auto;
+}
+
+.kpi-select:focus {
+  outline: none;
+  border-color: var(--blue-primary);
+  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.1);
+}
+
+/* Dark mode overrides for new components */
+[data-theme="dark"] .metric-card {
+  background: var(--bg-card);
+  border-color: var(--border);
+}
+
+[data-theme="dark"] .metric-card-compact {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="dark"] .inner-box {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border);
+}
+
+[data-theme="dark"] .progress-bar-container {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border);
+}
+
+[data-theme="dark"] .ranking-bar-bg {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border);
+}
+
+[data-theme="dark"] .cpa-badge {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34D399;
+}
+
+[data-theme="dark"] .service-dropdown {
+  background: var(--bg-card);
+  border-color: var(--border);
+}
+
+[data-theme="dark"] .service-option:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="dark"] .service-chip {
+  background: rgba(74, 158, 255, 0.15);
+}
+
+[data-theme="dark"] .service-dropdown-toggle {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border);
+  color: var(--text-secondary);
+}
+
+[data-theme="dark"] .kpi-select {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] select {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] textarea {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+/* Responsive for new components */
+@media (max-width: 1024px) {
+  .metrics-row {
+    flex-wrap: wrap;
+  }
+  
+  .metric-card {
+    flex: 1 1 calc(50% - 10px);
+    min-width: 200px;
+  }
+  
+  .two-col-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .metrics-row {
+    flex-direction: column;
+  }
+  
+  .metric-card {
+    flex: 1 1 100%;
+  }
+  
+  .inner-box-row {
+    flex-direction: column;
+  }
+  
+  .cpa-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .cpa-values {
+    text-align: left;
+  }
+  
+  .ranking-name {
+    min-width: 80px;
+  }
+}

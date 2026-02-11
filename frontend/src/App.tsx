@@ -109,6 +109,15 @@ const defaultCampaignForm: CampaignForm = {
   budget_cents: 500
 };
 
+const AVAILABLE_SERVICES = ["Uniswap", "Aave", "OpenSea", "Lido Finance", "Compound", "Chainlink"];
+const KPI_OPTIONS = [
+  "CPA (Cost per Acquisition)",
+  "CPI (Cost per Install)",
+  "Cost per Signup",
+  "Incremental Conversions",
+  "Cost per Qualified Lead"
+];
+
 function App() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
@@ -138,6 +147,9 @@ function App() {
     userId: ""
   });
   const [paymentRequired, setPaymentRequired] = useState<PaymentRequired | null>(null);
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [selectedKpi, setSelectedKpi] = useState("");
+  const [showServiceDropdown, setShowServiceDropdown] = useState(false);
 
   async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
     // 環境変数からAPIのベースURLを取得（開発環境では /api、本番環境では環境変数から）
@@ -349,6 +361,9 @@ function App() {
     setError(null);
 
     try {
+      // Log new fields to console (not sent to API yet)
+      console.log("Selected Services:", selectedServices);
+      console.log("Selected KPI:", selectedKpi);
       await fetchJson<Campaign>("/campaigns", {
         method: "POST",
         body: JSON.stringify({
@@ -358,6 +373,8 @@ function App() {
         })
       });
       setForm(defaultCampaignForm);
+      setSelectedServices([]);
+      setSelectedKpi("");
       // Go back to dashboard after successful creation
       setCurrentView("dashboard");
       // Reload dashboard data silently
@@ -494,16 +511,8 @@ function App() {
     }
   }
 
-  // Generate mock chart data
-  const chartData = [65, 72, 68, 85, 78, 82, 90];
-  const barData = [
-    { label: "Prospects", value: 45, color: "#4A9EFF" },
-    { label: "Total Sales", value: 78, color: "#79F8C6" },
-    { label: "Prospects", value: 52, color: "#4A9EFF" },
-    { label: "Total Sales", value: 85, color: "#79F8C6" },
-    { label: "Prospects", value: 38, color: "#4A9EFF" },
-    { label: "Total Sales", value: 92, color: "#79F8C6" }
-  ];
+  // Task breakdown colors for stacked bar
+  const taskBreakdownColors = ["#4A9EFF", "#79F8C6", "#F59E0B", "#EF4444", "#8B5CF6"];
 
   return (
     <div className="dashboard">
@@ -715,6 +724,38 @@ function App() {
                       placeholder="Enter sponsor name"
                     />
                   </div>
+
+                  {/* NEW: Sponsored Tools / Services multi-select */}
+                  <div className="form-group">
+                    <label>Sponsored Tools / Services <span className="new-badge">NEW</span></label>
+                    {selectedServices.length > 0 && (
+                      <div className="service-chips">
+                        {selectedServices.map((service) => (
+                          <span key={service} className="service-chip">
+                            {service}
+                            <button type="button" onClick={() => setSelectedServices((prev) => prev.filter((s) => s !== service))}>&times;</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div className="service-dropdown-wrapper">
+                      <button type="button" className="service-dropdown-toggle" onClick={() => setShowServiceDropdown(!showServiceDropdown)}>
+                        {selectedServices.length === 0 ? "Select services..." : `${selectedServices.length} selected`}
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                      </button>
+                      {showServiceDropdown && (
+                        <div className="service-dropdown">
+                          {AVAILABLE_SERVICES.map((service) => (
+                            <label key={service} className="service-option">
+                              <input type="checkbox" checked={selectedServices.includes(service)} onChange={(e) => { if (e.target.checked) { setSelectedServices((prev) => [...prev, service]); } else { setSelectedServices((prev) => prev.filter((s) => s !== service)); } }} />
+                              <span>{service}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="form-group">
                     <label>Target Roles (comma-separated)</label>
                     <input
@@ -740,6 +781,16 @@ function App() {
                       placeholder="signup_sponsor"
                     />
                   </div>
+
+                  {/* NEW: KPI to Track & Compare */}
+                  <div className="form-group">
+                    <label>KPI to Track & Compare <span className="new-badge">NEW</span></label>
+                    <select className="kpi-select" value={selectedKpi} onChange={(e) => setSelectedKpi(e.target.value)}>
+                      <option value="">Select a KPI...</option>
+                      {KPI_OPTIONS.map((kpi) => (<option key={kpi} value={kpi}>{kpi}</option>))}
+                    </select>
+                  </div>
+
                   <div className="form-row">
                     <div className="form-group">
                       <label>Subsidy / Call (cents)</label>
@@ -923,428 +974,158 @@ function App() {
             </div>
           </div>
         </main>
-      ) : currentView === "caller" ? (
-        /* Caller Page */
-        <main className="main-content">
-          <div className="create-campaign-page">
-            <div className="page-header">
-              <button 
-                className="back-button-inline"
-                onClick={() => setCurrentView("dashboard")}
-                title="Back to dashboard"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M19 12H5"></path>
-                  <path d="M12 19l-7-7 7-7"></path>
-                </svg>
-                Back to Dashboard
-              </button>
-              <h2>API Caller</h2>
-              <p>Call APIs and handle payments automatically</p>
-            </div>
-
-            <div className="card create-campaign-card">
-              <div className="card-content">
-                <form className="campaign-form" onSubmit={(e) => { e.preventDefault(); void handleApiCall(); }}>
-                  <div className="form-group">
-                    <label>Call Type</label>
-                    <select
-                      value={callerForm.callType}
-                      onChange={(e) => setCallerForm((prev) => ({ ...prev, callType: e.target.value as any }))}
-                    >
-                      <option value="proxy">Proxy Service</option>
-                      <option value="tool">Direct Tool</option>
-                      <option value="sponsored-api">Sponsored API</option>
-                    </select>
-                  </div>
-
-                  {callerForm.callType === "sponsored-api" ? (
-                    <div className="form-group">
-                      <label>Sponsored API</label>
-                      <select
-                        value={callerForm.apiId}
-                        onChange={(e) => setCallerForm((prev) => ({ ...prev, apiId: e.target.value }))}
-                      >
-                        <option value="">Select an API</option>
-                        {sponsoredApis.map((api) => (
-                          <option key={api.id} value={api.id}>
-                            {api.name} - ${(api.price_cents / 100).toFixed(2)} per call
-                            {api.active && api.budget_remaining_cents > 0 ? " (Sponsored)" : " (Paid)"}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : (
-                    <div className="form-group">
-                      <label>Service Name</label>
-                      <input
-                        required
-                        value={callerForm.service}
-                        onChange={(e) => setCallerForm((prev) => ({ ...prev, service: e.target.value }))}
-                        placeholder="e.g., scraping, design, storage"
-                      />
-                    </div>
-                  )}
-
-                  <div className="form-group">
-                    <label>User ID (optional, defaults to wallet address)</label>
-                    <input
-                      value={callerForm.userId}
-                      onChange={(e) => setCallerForm((prev) => ({ ...prev, userId: e.target.value }))}
-                      placeholder="Leave empty to use wallet address"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Input {callerForm.callType === "sponsored-api" ? "(JSON)" : "(text)"}</label>
-                    <textarea
-                      rows={6}
-                      value={callerForm.input}
-                      onChange={(e) => setCallerForm((prev) => ({ ...prev, input: e.target.value }))}
-                      placeholder={callerForm.callType === "sponsored-api" ? '{"key": "value"}' : "Enter input text"}
-                    />
-                  </div>
-
-                  {paymentRequired && (
-                    <div className="payment-required-box">
-                      <div className="payment-header">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <circle cx="12" cy="12" r="10"></circle>
-                          <line x1="12" y1="8" x2="12" y2="12"></line>
-                          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                        </svg>
-                        <h4>Payment Required</h4>
-                      </div>
-                      <div className="payment-details">
-                        <p><strong>Service:</strong> {paymentRequired.service}</p>
-                        <p><strong>Amount:</strong> ${(paymentRequired.amount_cents / 100).toFixed(2)}</p>
-                        <p><strong>Message:</strong> {paymentRequired.message}</p>
-                        <p><strong>Next Step:</strong> {paymentRequired.next_step}</p>
-                      </div>
-                      <button
-                        type="button"
-                        className="wallet-login-btn"
-                        onClick={handlePayment}
-                        disabled={callerLoading}
-                      >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
-                          <line x1="1" y1="10" x2="23" y2="10"></line>
-                        </svg>
-                        Pay with Wallet
-                      </button>
-                    </div>
-                  )}
-
-                  {callerError && <div className="error-message">{callerError}</div>}
-
-                  <button type="submit" className="submit-btn" disabled={callerLoading}>
-                    {callerLoading ? "Calling..." : "Call API"}
-                  </button>
-                </form>
-
-                {callerResult && (
-                  <div className="caller-result">
-                    <h4>Result</h4>
-                    <div className="result-box">
-                      <pre>{JSON.stringify(callerResult, null, 2)}</pre>
-                    </div>
-                    {callerResult.payment_mode && (
-                      <div className="payment-info">
-                        <p><strong>Payment Mode:</strong> {callerResult.payment_mode}</p>
-                        {callerResult.sponsored_by && (
-                          <p><strong>Sponsored By:</strong> {callerResult.sponsored_by}</p>
-                        )}
-                        {callerResult.tx_hash && (
-                          <p><strong>Transaction Hash:</strong> {callerResult.tx_hash}</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </main>
       ) : (
         /* Dashboard */
         <main className="main-content">
-          <div className="dashboard-grid">
-          {/* Sales Ratings Card */}
-          <div className="card">
-            <div className="card-header">
-              <div className="card-title">
-                <span className="card-icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                  </svg>
-                </span>
-                <h3>Campaign Performance</h3>
-              </div>
-              <div className="tabs">
-                {["All", "Active", "Paused"].map((tab) => (
-                  <button
-                    key={tab}
-                    className={selectedTab === tab ? "tab active" : "tab"}
-                    onClick={() => setSelectedTab(tab)}
-                  >
-                    {tab}
-                  </button>
-                ))}
+          {/* A. Top Metrics Row */}
+          <div className="metrics-row">
+            <div className="metric-card">
+              <div className="metric-card-label">Remaining Budget</div>
+              <div className="metric-card-value">$12,450.00</div>
+              <div className="metric-card-sub">75.3% of $16,540 total</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-card-label">Total Subsidized Amount</div>
+              <div className="metric-card-value">$4,090.00</div>
+              <div className="metric-card-sub positive">+18.2% vs last week</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-card-label">Users Subsidized</div>
+              <div className="metric-card-value">1,247</div>
+              <div className="metric-card-sub positive">+89 new this week</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-card-label">Burn Rate</div>
+              <div className="metric-card-value">$127.50/day</div>
+              <div className="metric-card-sub">~98 days until depletion, Apr 19 2026</div>
+            </div>
+          </div>
+
+          {/* B. Second Row */}
+          <div className="two-col-row">
+            <div className="card">
+              <div className="card-header"><div className="card-title"><h3>Subsidy Consumption per User</h3></div></div>
+              <div className="card-content">
+                <div className="inner-box-row">
+                  <div className="inner-box">
+                    <div className="inner-box-label">Frequency</div>
+                    <div className="inner-box-value">4.7 calls</div>
+                    <div className="inner-box-detail">Median 3.2 &middot; P90 11.4</div>
+                  </div>
+                  <div className="inner-box">
+                    <div className="inner-box-label">Intensity</div>
+                    <div className="inner-box-value">$0.69/call</div>
+                    <div className="inner-box-detail">Range $0.05 - $2.40</div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="card-content">
-              <div className="metric-highlight">
-                <span className="metric-value">34%</span>
-                <span className="metric-text">rating increases every week</span>
+            <div className="card">
+              <div className="card-header"><div className="card-title"><h3>Budget Pacing & Depletion Forecast</h3></div></div>
+              <div className="card-content">
+                <div className="progress-bar-container">
+                  <div className="progress-bar-fill" style={{ width: "24.7%" }}></div>
+                </div>
+                <div className="progress-bar-label">24.7% spent</div>
+                <div className="inner-box-row" style={{ marginTop: "16px" }}>
+                  <div className="inner-box">
+                    <div className="inner-box-label">Daily Burn</div>
+                    <div className="inner-box-value">$127.50/day</div>
+                  </div>
+                  <div className="inner-box">
+                    <div className="inner-box-label">Forecast Depletion</div>
+                    <div className="inner-box-value">Apr 19 2026</div>
+                    <div className="inner-box-detail">~98 days</div>
+                  </div>
+                </div>
               </div>
-              <div className="bar-chart">
-                {barData.map((bar, i) => (
-                  <div key={i} className="bar-group">
-                    <div
-                      className="bar"
-                      style={{
-                        height: `${bar.value}%`,
-                        backgroundColor: bar.color
-                      }}
-                    ></div>
+            </div>
+          </div>
+
+          {/* C. Third Row */}
+          <div className="two-col-row">
+            <div className="card">
+              <div className="card-header"><div className="card-title"><h3>CPA Efficiency vs Sponsor Target</h3></div></div>
+              <div className="card-content">
+                <div className="cpa-row"><span className="cpa-label">Cost per Signup</span><span className="cpa-values">$5.20 vs $8.50 target</span><span className="cpa-badge">-38.8%</span></div>
+                <div className="cpa-row"><span className="cpa-label">Cost per Activated User</span><span className="cpa-values">$9.80 vs $12.00</span><span className="cpa-badge">-18.3%</span></div>
+                <div className="cpa-row"><span className="cpa-label">Cost per Qualified Lead</span><span className="cpa-values">$18.50 vs $22.00</span><span className="cpa-badge">-15.9%</span></div>
+              </div>
+            </div>
+            <div className="card">
+              <div className="card-header"><div className="card-title"><h3>Subsidized Task Breakdown</h3></div></div>
+              <div className="card-content">
+                {[
+                  { label: "Signup to sponsor services", pct: 34.2 },
+                  { label: "Survey responses", pct: 27.8 },
+                  { label: "Email sharing", pct: 21.5 },
+                  { label: "Ad views", pct: 11.3 },
+                  { label: "Social media sharing", pct: 5.2 }
+                ].map((task, i) => (
+                  <div key={task.label} className="task-item">
+                    <span className="task-item-dot" style={{ background: taskBreakdownColors[i] }}></span>
+                    <span className="task-item-label">{task.label}</span>
+                    <span className="task-item-pct">{task.pct}%</span>
                   </div>
                 ))}
-              </div>
-              <div className="chart-legend">
-                <span className="legend-item">
-                  <span className="legend-dot" style={{ backgroundColor: "#79F8C6" }}></span>
-                  Total Sales
-                </span>
-                <span className="legend-item">
-                  <span className="legend-dot" style={{ backgroundColor: "#4A9EFF" }}></span>
-                  Prospects
-                </span>
-              </div>
-              <div className="stat-box">
-                <div className="stat-value">${totals.totalPayouts}</div>
-                <div className="stat-label">7 Days</div>
-                <div className="stat-change positive">+72.9%</div>
-                <div className="stat-note">better than last week</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Analytics Card */}
-          <div className="card">
-            <div className="card-header">
-              <div className="card-title">
-                <span className="card-icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="22 6 13.5 15.5 8.5 10.5 2 18"></polyline>
-                    <polyline points="16 6 22 6 22 12"></polyline>
-                  </svg>
-                </span>
-                <h3>Analytics</h3>
-              </div>
-              <div className="card-actions">
-                <button className="filter-btn active">Weekly</button>
-                <button className="filter-btn">Orders ▼</button>
-                <button className="icon-btn-small">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="1"></circle>
-                  <circle cx="19" cy="12" r="1"></circle>
-                  <circle cx="5" cy="12" r="1"></circle>
-                </svg>
-              </button>
-              </div>
-            </div>
-            <div className="card-content">
-              <div className="analytics-metrics">
-                <div className="metric-item">
-                  <span className="metric-label">Rate</span>
-                  <span className="metric-number positive">0.75%</span>
-                  <span className="metric-change positive">↑ 13%</span>
-                </div>
-                <div className="metric-item">
-                  <span className="metric-label">Sales</span>
-                  <span className="metric-number negative">-$2,480</span>
-                  <span className="metric-change negative">↓ 0.4%</span>
-                </div>
-              </div>
-              <div className="line-chart">
-                <div className="chart-area">
-                  {chartData.map((value, i) => (
-                    <div key={i} className="chart-point" style={{ bottom: `${value}%` }}>
-                      <div className="point-dot"></div>
-                      {i === 2 && <div className="point-label">+34%</div>}
-                    </div>
-                  ))}
-                  <svg className="chart-line" viewBox="0 0 200 100" preserveAspectRatio="none">
-                    <polyline
-                      points="0,35 33,28 66,32 100,15 133,22 166,18 200,10"
-                      fill="none"
-                      stroke="#4A9EFF"
-                      strokeWidth="2"
-                    />
-                    <polygon
-                      points="0,35 33,28 66,32 100,15 133,22 166,18 200,10 200,100 0,100"
-                      fill="url(#gradient)"
-                      opacity="0.2"
-                    />
-                    <defs>
-                      <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#4A9EFF" />
-                        <stop offset="100%" stopColor="#4A9EFF" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                </div>
-                <div className="chart-labels">
-                  {["Jan", "Feb", "Mar", "Apr", "May", "Jun"].map((month) => (
-                    <span key={month}>{month}</span>
+                <div className="task-bar-stack">
+                  {[34.2, 27.8, 21.5, 11.3, 5.2].map((pct, i) => (
+                    <div key={i} className="task-bar-segment" style={{ width: `${pct}%`, background: taskBreakdownColors[i] }}></div>
                   ))}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Profit Card */}
-          <div className="card">
-            <div className="card-header">
-              <div className="card-title">
-                <h3>Profit</h3>
-              </div>
-              <button className="icon-btn-small">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="1"></circle>
-                  <circle cx="19" cy="12" r="1"></circle>
-                  <circle cx="5" cy="12" r="1"></circle>
-                </svg>
-              </button>
-            </div>
+          {/* D. Task Completion Metrics */}
+          <div className="card full-width">
+            <div className="card-header"><div className="card-title"><h3>Task Completion Metrics</h3></div></div>
             <div className="card-content">
-              <div className="donut-chart">
-                <div className="donut-center">
-                  <span className="donut-value">24%</span>
-                  <span className="donut-label">from yesterday</span>
-                </div>
-                <svg className="donut-svg" viewBox="0 0 120 120">
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="50"
-                    fill="none"
-                    stroke="#E5E7EB"
-                    strokeWidth="12"
-                  />
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="50"
-                    fill="none"
-                    stroke="#79F8C6"
-                    strokeWidth="12"
-                    strokeDasharray={`${24 * 3.14} ${100 * 3.14}`}
-                    strokeDashoffset="0"
-                    transform="rotate(-90 60 60)"
-                  />
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="50"
-                    fill="none"
-                    stroke="#4A9EFF"
-                    strokeWidth="12"
-                    strokeDasharray={`${36 * 3.14} ${100 * 3.14}`}
-                    strokeDashoffset={`-${24 * 3.14}`}
-                    transform="rotate(-90 60 60)"
-                  />
-                </svg>
-              </div>
-              <div className="profit-text">
-                Profit is 36% More than last week
-              </div>
-              <div className="profit-legend">
-                <div className="legend-row">
-                  <span className="legend-dot" style={{ backgroundColor: "#79F8C6" }}></span>
-                  <span>Total Profit per day</span>
-                </div>
-                <div className="legend-row">
-                  <span className="legend-dot" style={{ backgroundColor: "#4A9EFF" }}></span>
-                  <span>For Week</span>
-                </div>
+              <div className="metrics-row metrics-row-inner">
+                <div className="metric-card metric-card-compact"><div className="metric-card-label">Avg Time-to-Complete</div><div className="metric-card-value">2m 34s</div><div className="metric-card-sub positive">-12% faster</div></div>
+                <div className="metric-card metric-card-compact"><div className="metric-card-label">Avg Delay</div><div className="metric-card-value">18.3s</div><div className="metric-card-sub positive">under 30s SLA</div></div>
+                <div className="metric-card metric-card-compact"><div className="metric-card-label">Completion Rate</div><div className="metric-card-value">94.7%</div><div className="metric-card-sub positive">+2.1%</div></div>
               </div>
             </div>
           </div>
 
-          {/* Promotional Banner */}
-          <div className="card promotional-banner">
-            <div className="banner-content">
-              <div className="banner-text">
-                <div className="banner-vertical">UNLOCK YOUR GROWTH</div>
-                <h2>Power Your Business with Sponsored Compute Insights!</h2>
-                <img src={logoImage} alt="PayloadExchange" className="banner-logo" />
-              </div>
+          {/* E. Comparative Performance Table */}
+          <div className="card full-width">
+            <div className="card-header"><div className="card-title"><h3>Comparative Performance</h3></div></div>
+            <div className="table-container">
+              <table className="comparison-table">
+                <thead><tr><th>Service</th><th>Users</th><th>Total Subsidy</th><th>CPA</th><th>Completion</th><th>Trend</th></tr></thead>
+                <tbody>
+                  <tr><td>Uniswap</td><td>482</td><td>$1,580</td><td>$3.28</td><td>96.2%</td><td><span className="trend-positive">+12%</span></td></tr>
+                  <tr><td>Aave</td><td>351</td><td>$1,240</td><td>$3.53</td><td>93.8%</td><td><span className="trend-positive">+8%</span></td></tr>
+                  <tr><td>OpenSea</td><td>289</td><td>$890</td><td>$3.08</td><td>91.4%</td><td><span className="trend-negative">-3%</span></td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
-          {/* Stock Product / Campaigns Card */}
-          <div className="card">
-            <div className="card-header">
-              <div className="card-title">
-                <span className="card-icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="9" y1="3" x2="9" y2="21"></line>
-                    <line x1="3" y1="9" x2="21" y2="9"></line>
-                  </svg>
-                </span>
-                <h3>Active Campaigns</h3>
-              </div>
-              <div className="card-actions">
-                <button className="filter-btn">Weekly ▼</button>
-                <button className="icon-btn-small">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="1"></circle>
-                  <circle cx="19" cy="12" r="1"></circle>
-                  <circle cx="5" cy="12" r="1"></circle>
-                </svg>
-              </button>
-              </div>
-            </div>
+          {/* F. User Base Ranking */}
+          <div className="card full-width">
+            <div className="card-header"><div className="card-title"><h3>User Base Ranking</h3></div></div>
             <div className="card-content">
-              <div className="campaigns-grid">
-                {loading ? (
-                  <div className="loading">Loading campaigns...</div>
-                ) : campaigns.length === 0 ? (
-                  <div className="empty-state">No campaigns yet</div>
-                ) : (
-                  campaigns.slice(0, 4).map((campaign, i) => (
-                    <div key={campaign.id} className="campaign-item">
-                      <div className="campaign-name">{campaign.name}</div>
-                      <div className="campaign-bars">
-                        {[1, 2, 3, 4, 5].map((bar) => (
-                          <div
-                            key={bar}
-                            className="campaign-bar"
-                            style={{
-                              backgroundColor: `rgba(74, 158, 255, ${0.3 + (i * 0.15)})`,
-                              height: `${20 + bar * 15}%`
-                            }}
-                          ></div>
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-              <div className="campaign-legend">
-                <span>Budget Usage</span>
-                <div className="legend-scale">
-                  <span>Low</span>
-                  <span>Medium</span>
-                  <span>High</span>
+              {[
+                { rank: 1, name: "Uniswap", pct: 78.4 },
+                { rank: 2, name: "Aave", pct: 62.1 },
+                { rank: 3, name: "OpenSea", pct: 45.6 },
+                { rank: 4, name: "Lido Finance", pct: 33.2 },
+                { rank: 5, name: "Compound", pct: 24.8 }
+              ].map((item) => (
+                <div key={item.rank} className="ranking-item">
+                  <span className="ranking-number">{item.rank}</span>
+                  <span className="ranking-name">{item.name}</span>
+                  <div className="ranking-bar-bg">
+                    <div className="ranking-bar-fill" style={{ width: `${item.pct}%` }}></div>
+                  </div>
+                  <span className="ranking-pct">{item.pct}%</span>
                 </div>
-              </div>
+              ))}
             </div>
           </div>
-        </div>
 
         {/* Campaigns Table Card */}
         <div className="card full-width">
