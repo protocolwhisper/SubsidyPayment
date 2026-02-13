@@ -542,6 +542,14 @@ pub async fn gpt_run_service(
     let mut match_with_task: Option<Campaign> = None;
 
     for campaign in campaigns {
+        if !campaign
+            .target_tools
+            .iter()
+            .any(|tool| tool == &service)
+        {
+            continue;
+        }
+
         if !crate::utils::user_matches_campaign(&user, &campaign) {
             continue;
         }
@@ -562,18 +570,25 @@ pub async fn gpt_run_service(
 
     // Sponsored match found: deduct budget and record payment
     if let Some(campaign) = match_with_task {
-        let new_remaining = campaign.budget_remaining_cents.saturating_sub(price);
-        let still_active = new_remaining >= price && new_remaining > 0;
-
-        sqlx::query(
-            "UPDATE campaigns SET budget_remaining_cents = $1, active = $2 WHERE id = $3"
+        let updated = sqlx::query(
+            "UPDATE campaigns
+             SET budget_remaining_cents = budget_remaining_cents - $1,
+                 active = (budget_remaining_cents - $1) >= $1 AND (budget_remaining_cents - $1) > 0
+             WHERE id = $2
+               AND active = true
+               AND budget_remaining_cents >= $1"
         )
-        .bind(new_remaining as i64)
-        .bind(still_active)
+        .bind(price as i64)
         .bind(campaign.id)
         .execute(&db)
         .await
         .map_err(|e| ApiError::internal(format!("budget update failed: {e}")))?;
+
+        if updated.rows_affected() == 0 {
+            return Err(ApiError::precondition(
+                "Sponsor budget is no longer sufficient for this service call.",
+            ));
+        }
 
         let tx_hash = format!("sponsor-{}", Uuid::new_v4());
 
@@ -696,9 +711,9 @@ pub async fn gpt_user_status(
             continue;
         }
 
-        let task_done = crate::utils::has_completed_task(
-            &db, campaign.id, user_id, &campaign.required_task
-        ).await.unwrap_or(false);
+        let task_done =
+            crate::utils::has_completed_task(&db, campaign.id, user_id, &campaign.required_task)
+                .await?;
 
         for tool in &campaign.target_tools {
             available_services.push(GptAvailableService {
