@@ -407,7 +407,7 @@ pub fn calculate_score(
     // budget_score: max_budget未指定→0.5, 指定あり→1.0 - (cost/budget).min(1.0)
     let budget_score = match max_budget_cents {
         None => 0.5,
-        Some(budget) if budget == 0 => 0.0,
+        Some(0) => 0.0,
         Some(budget) => 1.0 - (service.subsidy_amount_cents as f64 / budget as f64).min(1.0),
     };
 

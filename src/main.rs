@@ -164,7 +164,7 @@ fn cors_layer_from_env() -> CorsLayer {
 
     let origins: Vec<HeaderValue> = configured
         .split(',')
-        .filter_map(|origin| normalize_origin(origin))
+        .filter_map(normalize_origin)
         .filter_map(|origin| HeaderValue::from_str(&origin).ok())
         .collect();
 
@@ -662,17 +662,17 @@ async fn agent_discovery_services(
             capabilities.dedup();
 
             for capability in capabilities {
-                if let Some(capability_filter) = capability_filter.as_ref() {
-                    if capability != *capability_filter {
-                        continue;
-                    }
+                if let Some(capability_filter) = capability_filter.as_ref()
+                    && capability != *capability_filter
+                {
+                    continue;
                 }
 
                 let sponsor_lower = campaign.sponsor.to_lowercase();
-                if let Some(sponsor_filter) = sponsor_filter.as_ref() {
-                    if !sponsor_lower.contains(sponsor_filter) {
-                        continue;
-                    }
+                if let Some(sponsor_filter) = sponsor_filter.as_ref()
+                    && !sponsor_lower.contains(sponsor_filter)
+                {
+                    continue;
                 }
 
                 let required_task = Some(campaign.required_task.clone());
@@ -692,15 +692,15 @@ async fn agent_discovery_services(
                 }
 
                 let price_cents = inferred_service_price_cents(&capability);
-                if let Some(max_price) = max_price_cents {
-                    if price_cents > max_price {
-                        continue;
-                    }
+                if let Some(max_price) = max_price_cents
+                    && price_cents > max_price
+                {
+                    continue;
                 }
-                if let Some(min_budget_remaining) = min_budget_remaining_cents {
-                    if campaign.budget_remaining_cents < min_budget_remaining {
-                        continue;
-                    }
+                if let Some(min_budget_remaining) = min_budget_remaining_cents
+                    && campaign.budget_remaining_cents < min_budget_remaining
+                {
+                    continue;
                 }
 
                 let relevance_score = if q_filter.is_some() {
@@ -744,17 +744,17 @@ async fn agent_discovery_services(
 
         for api in sponsored_apis.into_iter().filter(|api| api.active) {
             let capability = canonical_capability(&api.service_key);
-            if let Some(capability_filter) = capability_filter.as_ref() {
-                if capability != *capability_filter {
-                    continue;
-                }
+            if let Some(capability_filter) = capability_filter.as_ref()
+                && capability != *capability_filter
+            {
+                continue;
             }
 
             let sponsor_lower = api.sponsor.to_lowercase();
-            if let Some(sponsor_filter) = sponsor_filter.as_ref() {
-                if !sponsor_lower.contains(sponsor_filter) {
-                    continue;
-                }
+            if let Some(sponsor_filter) = sponsor_filter.as_ref()
+                && !sponsor_lower.contains(sponsor_filter)
+            {
+                continue;
             }
 
             let query_match = if let Some(q_filter) = q_filter.as_ref() {
@@ -769,15 +769,15 @@ async fn agent_discovery_services(
                 continue;
             }
 
-            if let Some(max_price) = max_price_cents {
-                if api.price_cents > max_price {
-                    continue;
-                }
+            if let Some(max_price) = max_price_cents
+                && api.price_cents > max_price
+            {
+                continue;
             }
-            if let Some(min_budget_remaining) = min_budget_remaining_cents {
-                if api.budget_remaining_cents < min_budget_remaining {
-                    continue;
-                }
+            if let Some(min_budget_remaining) = min_budget_remaining_cents
+                && api.budget_remaining_cents < min_budget_remaining
+            {
+                continue;
             }
 
             let relevance_score = if q_filter.is_some() {
@@ -853,11 +853,7 @@ async fn agent_discovery_services(
 }
 
 fn canonical_capability(raw: &str) -> String {
-    let normalized = raw
-        .trim()
-        .to_lowercase()
-        .replace('_', "-")
-        .replace(' ', "-");
+    let normalized = raw.trim().to_lowercase().replace(['_', ' '], "-");
 
     match normalized.as_str() {
         "scrape" | "web-scrape" | "web-scraping" => "scraping".to_string(),
@@ -1712,13 +1708,13 @@ async fn run_sponsored_api(
             HeaderName::from_static(X402_VERSION_HEADER),
             HeaderValue::from_static("2"),
         );
-        if let Some(settlement_header) = payment_response_header {
-            if let Ok(header_value) = HeaderValue::from_str(&settlement_header) {
-                response.headers_mut().insert(
-                    HeaderName::from_static(PAYMENT_RESPONSE_HEADER),
-                    header_value,
-                );
-            }
+        if let Some(settlement_header) = payment_response_header
+            && let Ok(header_value) = HeaderValue::from_str(&settlement_header)
+        {
+            response.headers_mut().insert(
+                HeaderName::from_static(PAYMENT_RESPONSE_HEADER),
+                header_value,
+            );
         }
 
         Ok(response)

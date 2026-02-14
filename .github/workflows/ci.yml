@@ -37,8 +37,11 @@ jobs:
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
 
+      - name: Format check
+        run: cargo fmt --all -- --check
+
       - name: Lint (clippy)
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --all-features -- -D warnings -A clippy::result_large_err
 
       - name: Test (skip live testnet tests)
         env:

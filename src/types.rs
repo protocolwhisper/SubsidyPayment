@@ -795,6 +795,7 @@ pub struct GptAvailableService {
 // --- GPT Apps DB model types (Components 8, 1.5) ---
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[allow(dead_code)]
 pub struct Consent {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -807,6 +808,7 @@ pub struct Consent {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[allow(dead_code)]
 pub struct GptSession {
     pub token: Uuid,
     pub user_id: Uuid,
