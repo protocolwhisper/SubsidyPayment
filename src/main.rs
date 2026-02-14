@@ -50,15 +50,78 @@ fn build_gpt_router(state: SharedState) -> Router<SharedState> {
         ))
 }
 
-fn build_app(state: SharedState) -> Router {
+fn build_agent_discovery_router(
+    state: SharedState,
+    limiter: Arc<tokio::sync::Mutex<gpt::RateLimiter>>,
+) -> Router<SharedState> {
+    Router::new()
+        .route("/services", get(agent_discovery_services))
+        .layer(axum::middleware::from_fn_with_state(
+            state,
+            verify_agent_discovery_api_key,
+        ))
+        .layer(axum::middleware::from_fn_with_state(
+            limiter,
+            gpt::rate_limit_middleware,
+        ))
+}
+
+async fn verify_agent_discovery_api_key(
+    State(state): State<SharedState>,
+    headers: HeaderMap,
+    request: axum::extract::Request,
+    next: axum::middleware::Next,
+) -> Result<Response, ApiError> {
+    let expected_key = {
+        let s = state.inner.read().await;
+        s.config.agent_discovery_api_key.clone()
+    };
+
+    let expected_key = match expected_key {
+        Some(k) if !k.is_empty() => k,
+        _ => return Ok(next.run(request).await),
+    };
+
+    let auth_header = headers
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .ok_or_else(|| ApiError::unauthorized("API key required"))?;
+
+    let token = auth_header
+        .strip_prefix("Bearer ")
+        .ok_or_else(|| ApiError::unauthorized("Invalid authorization format"))?;
+
+    if token != expected_key {
+        return Err(ApiError::forbidden("Invalid API key"));
+    }
+
+    Ok(next.run(request).await)
+}
+
+fn build_app(state: SharedState, agent_discovery_limit_per_min: u32) -> Router {
+    let discovery_limiter = Arc::new(tokio::sync::Mutex::new(gpt::RateLimiter::new(
+        agent_discovery_limit_per_min,
+        Duration::from_secs(60),
+    )));
+
     Router::new()
         .route("/health", get(health))
         .route("/profiles", post(create_profile).get(list_profiles))
         .route("/register", post(register_user))
         .route("/campaigns", post(create_campaign).get(list_campaigns))
         .route("/campaigns/discovery", get(list_campaign_discovery))
-        .route("/agent/discovery/services", get(agent_discovery_services))
-        .route("/claude/discovery/services", get(agent_discovery_services))
+        .nest(
+            "/agent/discovery",
+            build_agent_discovery_router(state.clone(), discovery_limiter.clone()),
+        )
+        .nest(
+            "/claude/discovery",
+            build_agent_discovery_router(state.clone(), discovery_limiter.clone()),
+        )
+        .nest(
+            "/openclaw/discovery",
+            build_agent_discovery_router(state.clone(), discovery_limiter.clone()),
+        )
         .route("/campaigns/{campaign_id}", get(get_campaign))
         .route("/tasks/complete", post(complete_task))
         .route("/tool/{service}/run", post(run_tool))
@@ -160,7 +223,12 @@ async fn main() {
         }
     }
 
-    let app = build_app(state);
+    let agent_discovery_limit_per_min = {
+        let state_guard = state.inner.read().await;
+        state_guard.config.agent_discovery_rate_limit_per_min
+    };
+
+    let app = build_app(state, agent_discovery_limit_per_min);
 
     let port = std::env::var("PORT")
         .ok()
@@ -566,7 +634,10 @@ async fn agent_discovery_services(
         let sponsored_apis = load_sponsored_apis_from_db(&state).await?;
 
         let q_filter = params.q.as_ref().map(|q| q.to_lowercase());
-        let capability_filter = params.capability.as_ref().map(|c| c.to_lowercase());
+        let capability_filter = params
+            .capability
+            .as_ref()
+            .map(|c| canonical_capability(c));
         let sponsor_filter = params.sponsor.as_ref().map(|s| s.to_lowercase());
         let max_price_cents = params.max_price_cents;
         let min_budget_remaining_cents = params.min_budget_remaining_cents;
@@ -575,16 +646,21 @@ async fn agent_discovery_services(
         let mut services: Vec<AgentServiceMetadata> = Vec::new();
 
         for campaign in campaigns.into_iter().filter(|c| c.active) {
-            let capabilities = if campaign.target_tools.is_empty() {
+            let mut capabilities = if campaign.target_tools.is_empty() {
                 vec!["generic".to_string()]
             } else {
-                campaign.target_tools.clone()
+                campaign
+                    .target_tools
+                    .iter()
+                    .map(|tool| canonical_capability(tool))
+                    .collect::<Vec<_>>()
             };
+            capabilities.sort();
+            capabilities.dedup();
 
             for capability in capabilities {
-                let capability_lower = capability.to_lowercase();
                 if let Some(capability_filter) = capability_filter.as_ref() {
-                    if capability_lower != *capability_filter {
+                    if capability != *capability_filter {
                         continue;
                     }
                 }
@@ -603,7 +679,7 @@ async fn agent_discovery_services(
                         required_task.as_deref().unwrap_or_default().to_lowercase();
                     name_lower.contains(q_filter)
                         || sponsor_lower.contains(q_filter)
-                        || capability_lower.contains(q_filter)
+                        || capability.contains(q_filter)
                         || required_task_lower.contains(q_filter)
                 } else {
                     true
@@ -650,7 +726,7 @@ async fn agent_discovery_services(
                     price_cents,
                     subsidy_cents: campaign.subsidy_per_call_cents,
                     sla: AgentServiceSla {
-                        tier: "best_effort".to_string(),
+                        tier: AgentSlaTier::BestEffort,
                         target_latency_ms: 5000,
                         target_success_rate: 0.95,
                     },
@@ -664,9 +740,9 @@ async fn agent_discovery_services(
         }
 
         for api in sponsored_apis.into_iter().filter(|api| api.active) {
-            let capability_lower = api.service_key.to_lowercase();
+            let capability = canonical_capability(&api.service_key);
             if let Some(capability_filter) = capability_filter.as_ref() {
-                if capability_lower != *capability_filter {
+                if capability != *capability_filter {
                     continue;
                 }
             }
@@ -682,7 +758,7 @@ async fn agent_discovery_services(
                 let name_lower = api.name.to_lowercase();
                 name_lower.contains(q_filter)
                     || sponsor_lower.contains(q_filter)
-                    || capability_lower.contains(q_filter)
+                    || capability.contains(q_filter)
             } else {
                 true
             };
@@ -719,15 +795,15 @@ async fn agent_discovery_services(
             services.push(AgentServiceMetadata {
                 source: AgentServiceSource::SponsoredApi,
                 service_id: api.id,
-                service_key: api.service_key.clone(),
+                service_key: capability.clone(),
                 name: api.name.clone(),
                 sponsor: api.sponsor.clone(),
                 required_task: None,
-                capabilities: vec![api.service_key.clone()],
+                capabilities: vec![capability.clone()],
                 price_cents: api.price_cents,
                 subsidy_cents: api.price_cents,
                 sla: AgentServiceSla {
-                    tier: "best_effort".to_string(),
+                    tier: AgentSlaTier::Standard,
                     target_latency_ms: sponsored_api_timeout_secs.saturating_mul(1000),
                     target_success_rate: 0.95,
                 },
@@ -761,6 +837,7 @@ async fn agent_discovery_services(
         Ok((
             StatusCode::OK,
             Json(AgentDiscoveryResponse {
+                schema_version: AGENT_DISCOVERY_SCHEMA_VERSION.to_string(),
                 services,
                 total_count,
                 message,
@@ -770,6 +847,21 @@ async fn agent_discovery_services(
     .await;
 
     respond(&metrics, "/agent/discovery/services", result)
+}
+
+fn canonical_capability(raw: &str) -> String {
+    let normalized = raw
+        .trim()
+        .to_lowercase()
+        .replace('_', "-")
+        .replace(' ', "-");
+
+    match normalized.as_str() {
+        "scrape" | "web-scrape" | "web-scraping" => "scraping".to_string(),
+        "ui-design" | "designing" => "design".to_string(),
+        "data-tool" | "data-tools" => "data-tooling".to_string(),
+        other => other.to_string(),
+    }
 }
 
 fn build_agent_ranking(

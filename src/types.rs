@@ -22,6 +22,8 @@ pub const DEFAULT_X402_VERIFY_PATH: &str = "/verify";
 pub const DEFAULT_X402_SETTLE_PATH: &str = "/settle";
 pub const DEFAULT_X402_NETWORK: &str = "base-sepolia";
 pub const DEFAULT_PUBLIC_BASE_URL: &str = "http://localhost:3000";
+pub const DEFAULT_AGENT_DISCOVERY_RATE_LIMIT_PER_MIN: u64 = 120;
+pub const AGENT_DISCOVERY_SCHEMA_VERSION: &str = "2026-02-14";
 
 #[derive(Clone)]
 pub struct AppConfig {
@@ -36,6 +38,8 @@ pub struct AppConfig {
     pub x402_asset: Option<String>,
     pub public_base_url: String,
     pub gpt_actions_api_key: Option<String>,
+    pub agent_discovery_api_key: Option<String>,
+    pub agent_discovery_rate_limit_per_min: u32,
 }
 
 impl AppConfig {
@@ -63,6 +67,12 @@ impl AppConfig {
             public_base_url: std::env::var("PUBLIC_BASE_URL")
                 .unwrap_or_else(|_| DEFAULT_PUBLIC_BASE_URL.to_string()),
             gpt_actions_api_key: std::env::var("GPT_ACTIONS_API_KEY").ok(),
+            agent_discovery_api_key: std::env::var("AGENT_DISCOVERY_API_KEY").ok(),
+            agent_discovery_rate_limit_per_min: read_env_u64(
+                "AGENT_DISCOVERY_RATE_LIMIT_PER_MIN",
+                DEFAULT_AGENT_DISCOVERY_RATE_LIMIT_PER_MIN,
+            )
+            .clamp(1, u64::from(u32::MAX)) as u32,
         }
     }
 }
@@ -577,9 +587,16 @@ pub enum AgentServiceSource {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentServiceSla {
-    pub tier: String,
+    pub tier: AgentSlaTier,
     pub target_latency_ms: u64,
     pub target_success_rate: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AgentSlaTier {
+    BestEffort,
+    Standard,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -610,6 +627,7 @@ pub struct AgentServiceMetadata {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentDiscoveryResponse {
+    pub schema_version: String,
     pub services: Vec<AgentServiceMetadata>,
     pub total_count: usize,
     pub message: String,

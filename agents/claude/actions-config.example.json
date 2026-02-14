@@ -1,0 +1,12 @@
+{
+  "name": "SubsidyPayment Discovery",
+  "openapi_url": "https://YOUR_BACKEND/.well-known/openapi.yaml",
+  "auth": {
+    "type": "bearer",
+    "token_env": "AGENT_DISCOVERY_API_KEY"
+  },
+  "operation_allowlist": [
+    "discoverAgentServices",
+    "discoverClaudeServices"
+  ]
+}

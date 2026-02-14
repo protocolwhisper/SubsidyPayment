@@ -17,7 +17,9 @@ paths:
         Returns a unified discovery index across campaign-backed services and
         sponsored APIs with ranking signals. This endpoint is intended for
         agent routing and default service selection.
-      security: []
+      security:
+        - ApiKeyAuth: []
+        - {}
       parameters:
         - name: q
           in: query
@@ -59,6 +61,112 @@ paths:
             minimum: 1
             maximum: 100
           description: Number of top-ranked rows to return (default 25)
+      responses:
+        "200":
+          description: Ranked service discovery response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentDiscoveryResponse"
+        "500":
+          description: Internal server error
+
+  /claude/discovery/services:
+    get:
+      operationId: discoverClaudeServices
+      summary: Claude alias for agent service discovery
+      description: Alias of `/agent/discovery/services`.
+      security:
+        - ApiKeyAuth: []
+        - {}
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: capability
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: sponsor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: max_price_cents
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+        - name: min_budget_remaining_cents
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Ranked service discovery response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentDiscoveryResponse"
+        "500":
+          description: Internal server error
+
+  /openclaw/discovery/services:
+    get:
+      operationId: discoverOpenclawServices
+      summary: Openclaw alias for agent service discovery
+      description: Alias of `/agent/discovery/services`.
+      security:
+        - ApiKeyAuth: []
+        - {}
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: capability
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: sponsor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: max_price_cents
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+        - name: min_budget_remaining_cents
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
       responses:
         "200":
           description: Ranked service discovery response
@@ -420,6 +528,8 @@ components:
     AgentDiscoveryResponse:
       type: object
       properties:
+        schema_version:
+          type: string
         services:
           type: array
           items:
@@ -471,6 +581,7 @@ components:
       properties:
         tier:
           type: string
+          enum: [best_effort, standard]
         target_latency_ms:
           type: integer
         target_success_rate:

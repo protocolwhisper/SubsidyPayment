@@ -1,0 +1,19 @@
+{
+  "connector": "subsidy-payment-discovery",
+  "base_url": "https://YOUR_BACKEND",
+  "discovery_path": "/openclaw/discovery/services",
+  "auth_header": "Authorization",
+  "auth_scheme": "Bearer",
+  "token_env": "AGENT_DISCOVERY_API_KEY",
+  "default_query": {
+    "limit": 10
+  },
+  "field_map": {
+    "id": "service_id",
+    "name": "name",
+    "capabilities": "capabilities",
+    "price": "price_cents",
+    "score": "ranking_score",
+    "run_url": "run_url"
+  }
+}
