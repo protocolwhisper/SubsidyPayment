@@ -17,6 +17,10 @@
         "serena",
         "start-mcp-server"
       ]
+    },
+    "drawio": {
+      "command": "cmd",
+      "args": ["/c", "npx", "@drawio/mcp@latest"]
     }
   }
 }
