@@ -1,8 +1,8 @@
 use axum::{
+    Json,
     extract::{Path, Query, State},
     http::HeaderMap,
     response::Response,
-    Json,
 };
 use sqlx::PgPool;
 use std::sync::Arc;
@@ -15,12 +15,11 @@ use chrono::Utc;
 use crate::error::{ApiError, ApiResult};
 use crate::types::{
     AppliedFilters, Campaign, CampaignRow as FullCampaignRow, GptAuthRequest, GptAuthResponse,
-    GptAvailableService, GptCompleteTaskRequest, GptCompleteTaskResponse,
-    GptCompletedTaskSummary, GptPreferencesParams, GptPreferencesResponse,
-    GptRunServiceRequest, GptRunServiceResponse, GptSearchParams, GptSearchResponse,
-    GptServiceItem, GptSetPreferencesRequest, GptSetPreferencesResponse, GptTaskInputFormat,
-    GptTaskParams, GptTaskResponse, GptUserStatusParams, GptUserStatusResponse, SharedState,
-    TaskPreference, UserProfile,
+    GptAvailableService, GptCompleteTaskRequest, GptCompleteTaskResponse, GptCompletedTaskSummary,
+    GptPreferencesParams, GptPreferencesResponse, GptRunServiceRequest, GptRunServiceResponse,
+    GptSearchParams, GptSearchResponse, GptServiceItem, GptSetPreferencesRequest,
+    GptSetPreferencesResponse, GptTaskInputFormat, GptTaskParams, GptTaskResponse,
+    GptUserStatusParams, GptUserStatusResponse, SharedState, TaskPreference, UserProfile,
 };
 use crate::utils::respond;
 
@@ -118,12 +117,9 @@ pub async fn verify_gpt_api_key(
     Ok(next.run(request).await)
 }
 
-pub async fn resolve_session(
-    db: &PgPool,
-    session_token: Uuid,
-) -> ApiResult<Uuid> {
+pub async fn resolve_session(db: &PgPool, session_token: Uuid) -> ApiResult<Uuid> {
     let row = sqlx::query_scalar::<_, Uuid>(
-        "SELECT user_id FROM gpt_sessions WHERE token = $1 AND expires_at > NOW()"
+        "SELECT user_id FROM gpt_sessions WHERE token = $1 AND expires_at > NOW()",
     )
     .bind(session_token)
     .fetch_optional(db)
@@ -429,14 +425,20 @@ pub fn calculate_score(
 
                 // name field
                 total += 1;
-                if keywords.iter().any(|kw| service.name.to_lowercase().contains(&kw.to_lowercase())) {
+                if keywords
+                    .iter()
+                    .any(|kw| service.name.to_lowercase().contains(&kw.to_lowercase()))
+                {
                     matched += 1;
                 }
 
                 // required_task field
                 if let Some(ref rt) = service.required_task {
                     total += 1;
-                    if keywords.iter().any(|kw| rt.to_lowercase().contains(&kw.to_lowercase())) {
+                    if keywords
+                        .iter()
+                        .any(|kw| rt.to_lowercase().contains(&kw.to_lowercase()))
+                    {
                         matched += 1;
                     }
                 }
@@ -445,7 +447,10 @@ pub fn calculate_score(
                 if !service.category.is_empty() {
                     total += 1;
                     if keywords.iter().any(|kw| {
-                        service.category.iter().any(|c| c.to_lowercase().contains(&kw.to_lowercase()))
+                        service
+                            .category
+                            .iter()
+                            .any(|c| c.to_lowercase().contains(&kw.to_lowercase()))
                     }) {
                         matched += 1;
                     }
@@ -455,13 +460,20 @@ pub fn calculate_score(
                 if !service.tags.is_empty() {
                     total += 1;
                     if keywords.iter().any(|kw| {
-                        service.tags.iter().any(|t| t.to_lowercase().contains(&kw.to_lowercase()))
+                        service
+                            .tags
+                            .iter()
+                            .any(|t| t.to_lowercase().contains(&kw.to_lowercase()))
                     }) {
                         matched += 1;
                     }
                 }
 
-                if total == 0 { 0.5 } else { matched as f64 / total as f64 }
+                if total == 0 {
+                    0.5
+                } else {
+                    matched as f64 / total as f64
+                }
             }
         }
     };
@@ -586,77 +598,87 @@ pub async fn gpt_get_tasks(
 ) -> Response {
     let metrics = { state.inner.read().await.metrics.clone() };
     let result: ApiResult<Json<GptTaskResponse>> = async {
-    let db = {
-        let s = state.inner.read().await;
-        s.db.clone().ok_or_else(|| ApiError::internal("database not configured"))?
-    };
+        let db = {
+            let s = state.inner.read().await;
+            s.db.clone()
+                .ok_or_else(|| ApiError::internal("database not configured"))?
+        };
 
-    let user_id = resolve_session(&db, params.session_token).await?;
+        let user_id = resolve_session(&db, params.session_token).await?;
 
-    let campaign = sqlx::query_as::<_, CampaignDetailRow>(
-        "SELECT id, name, sponsor, required_task, subsidy_per_call_cents, task_schema \
-         FROM campaigns WHERE id = $1"
-    )
-    .bind(campaign_id)
-    .fetch_optional(&db)
-    .await
-    .map_err(|e| ApiError::internal(format!("campaign query failed: {e}")))?
-    .ok_or_else(|| ApiError::not_found("campaign not found"))?;
+        let campaign = sqlx::query_as::<_, CampaignDetailRow>(
+            "SELECT id, name, sponsor, required_task, subsidy_per_call_cents, task_schema \
+         FROM campaigns WHERE id = $1",
+        )
+        .bind(campaign_id)
+        .fetch_optional(&db)
+        .await
+        .map_err(|e| ApiError::internal(format!("campaign query failed: {e}")))?
+        .ok_or_else(|| ApiError::not_found("campaign not found"))?;
 
-    let already_completed = crate::utils::has_completed_task(
-        &db, campaign_id, user_id, &campaign.required_task
-    ).await?;
+        let already_completed =
+            crate::utils::has_completed_task(&db, campaign_id, user_id, &campaign.required_task)
+                .await?;
 
-    let task_input_format = match campaign.task_schema {
-        Some(schema) => {
-            let task_type = schema.get("task_type")
-                .and_then(|v| v.as_str())
-                .unwrap_or("survey")
-                .to_string();
-            let required_fields = schema.get("required_fields")
-                .and_then(|v| v.as_array())
-                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
-                .unwrap_or_else(|| vec!["email".to_string(), "region".to_string()]);
-            let instructions = schema.get("instructions")
-                .and_then(|v| v.as_str())
-                .unwrap_or("Please provide the required information.")
-                .to_string();
-            GptTaskInputFormat {
-                task_type,
-                required_fields,
-                instructions,
+        let task_input_format = match campaign.task_schema {
+            Some(schema) => {
+                let task_type = schema
+                    .get("task_type")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("survey")
+                    .to_string();
+                let required_fields = schema
+                    .get("required_fields")
+                    .and_then(|v| v.as_array())
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|v| v.as_str().map(String::from))
+                            .collect()
+                    })
+                    .unwrap_or_else(|| vec!["email".to_string(), "region".to_string()]);
+                let instructions = schema
+                    .get("instructions")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Please provide the required information.")
+                    .to_string();
+                GptTaskInputFormat {
+                    task_type,
+                    required_fields,
+                    instructions,
+                }
             }
-        }
-        None => GptTaskInputFormat {
-            task_type: "survey".to_string(),
-            required_fields: vec!["email".to_string(), "region".to_string()],
-            instructions: "Please provide the required information to complete this task.".to_string(),
-        },
-    };
+            None => GptTaskInputFormat {
+                task_type: "survey".to_string(),
+                required_fields: vec!["email".to_string(), "region".to_string()],
+                instructions: "Please provide the required information to complete this task."
+                    .to_string(),
+            },
+        };
 
-    let message = if already_completed {
-        format!(
-            "You have already completed the task '{}'. You can proceed to use the service.",
-            campaign.required_task
-        )
-    } else {
-        format!(
-            "Please complete the task '{}' to unlock the sponsored service.",
-            campaign.required_task
-        )
-    };
+        let message = if already_completed {
+            format!(
+                "You have already completed the task '{}'. You can proceed to use the service.",
+                campaign.required_task
+            )
+        } else {
+            format!(
+                "Please complete the task '{}' to unlock the sponsored service.",
+                campaign.required_task
+            )
+        };
 
-    Ok(Json(GptTaskResponse {
-        campaign_id,
-        campaign_name: campaign.name,
-        sponsor: campaign.sponsor,
-        required_task: campaign.required_task,
-        task_description: "Complete the required task to access the sponsored service.".to_string(),
-        task_input_format,
-        already_completed,
-        subsidy_amount_cents: campaign.subsidy_per_call_cents as u64,
-        message,
-    }))
+        Ok(Json(GptTaskResponse {
+            campaign_id,
+            campaign_name: campaign.name,
+            sponsor: campaign.sponsor,
+            required_task: campaign.required_task,
+            task_description: "Complete the required task to access the sponsored service."
+                .to_string(),
+            task_input_format,
+            already_completed,
+            subsidy_amount_cents: campaign.subsidy_per_call_cents as u64,
+            message,
+        }))
     }
     .await;
     respond(&metrics, "gpt_get_tasks", result)
@@ -888,99 +910,105 @@ pub async fn gpt_user_status(
 ) -> Response {
     let metrics = { state.inner.read().await.metrics.clone() };
     let result: ApiResult<Json<GptUserStatusResponse>> = async {
-    let db = {
-        let s = state.inner.read().await;
-        s.db.clone().ok_or_else(|| ApiError::internal("database not configured"))?
-    };
+        let db = {
+            let s = state.inner.read().await;
+            s.db.clone()
+                .ok_or_else(|| ApiError::internal("database not configured"))?
+        };
 
-    let user_id = resolve_session(&db, params.session_token).await?;
+        let user_id = resolve_session(&db, params.session_token).await?;
 
-    // Load user profile
-    let user = sqlx::query_as::<_, UserProfile>(
-        "SELECT id, email, region, roles, tools_used, attributes, created_at, source \
-         FROM users WHERE id = $1"
-    )
-    .bind(user_id)
-    .fetch_optional(&db)
-    .await
-    .map_err(|e| ApiError::internal(format!("user lookup failed: {e}")))?
-    .ok_or_else(|| ApiError::not_found("user not found"))?;
+        // Load user profile
+        let user = sqlx::query_as::<_, UserProfile>(
+            "SELECT id, email, region, roles, tools_used, attributes, created_at, source \
+         FROM users WHERE id = $1",
+        )
+        .bind(user_id)
+        .fetch_optional(&db)
+        .await
+        .map_err(|e| ApiError::internal(format!("user lookup failed: {e}")))?
+        .ok_or_else(|| ApiError::not_found("user not found"))?;
 
-    // Load completed tasks with campaign names
-    let completed_tasks = sqlx::query_as::<_, CompletedTaskRow>(
-        "SELECT tc.campaign_id, c.name AS campaign_name, tc.task_name, tc.created_at \
+        // Load completed tasks with campaign names
+        let completed_tasks = sqlx::query_as::<_, CompletedTaskRow>(
+            "SELECT tc.campaign_id, c.name AS campaign_name, tc.task_name, tc.created_at \
          FROM task_completions tc \
          JOIN campaigns c ON c.id = tc.campaign_id \
          WHERE tc.user_id = $1 \
-         ORDER BY tc.created_at DESC"
-    )
-    .bind(user_id)
-    .fetch_all(&db)
-    .await
-    .map_err(|e| ApiError::internal(format!("task completions query failed: {e}")))?;
+         ORDER BY tc.created_at DESC",
+        )
+        .bind(user_id)
+        .fetch_all(&db)
+        .await
+        .map_err(|e| ApiError::internal(format!("task completions query failed: {e}")))?;
 
-    let completed_task_summaries: Vec<GptCompletedTaskSummary> = completed_tasks
-        .into_iter()
-        .map(|row| GptCompletedTaskSummary {
-            campaign_id: row.campaign_id,
-            campaign_name: row.campaign_name,
-            task_name: row.task_name,
-            completed_at: row.created_at,
-        })
-        .collect();
+        let completed_task_summaries: Vec<GptCompletedTaskSummary> = completed_tasks
+            .into_iter()
+            .map(|row| GptCompletedTaskSummary {
+                campaign_id: row.campaign_id,
+                campaign_name: row.campaign_name,
+                task_name: row.task_name,
+                completed_at: row.created_at,
+            })
+            .collect();
 
-    // Load active campaigns and determine available services
-    let campaign_rows = sqlx::query_as::<_, FullCampaignRow>(
-        "SELECT id, name, sponsor, sponsor_wallet_address, target_roles, target_tools, \
+        // Load active campaigns and determine available services
+        let campaign_rows = sqlx::query_as::<_, FullCampaignRow>(
+            "SELECT id, name, sponsor, sponsor_wallet_address, target_roles, target_tools, \
          required_task, subsidy_per_call_cents, budget_total_cents, budget_remaining_cents, \
          query_urls, active, created_at \
          FROM campaigns WHERE active = true \
-         ORDER BY created_at DESC"
-    )
-    .fetch_all(&db)
-    .await
-    .map_err(|e| ApiError::internal(format!("campaign query failed: {e}")))?;
+         ORDER BY created_at DESC",
+        )
+        .fetch_all(&db)
+        .await
+        .map_err(|e| ApiError::internal(format!("campaign query failed: {e}")))?;
 
-    let campaigns: Vec<Campaign> = campaign_rows
-        .into_iter()
-        .filter_map(|row| Campaign::try_from(row).ok())
-        .collect();
+        let campaigns: Vec<Campaign> = campaign_rows
+            .into_iter()
+            .filter_map(|row| Campaign::try_from(row).ok())
+            .collect();
 
-    let mut available_services: Vec<GptAvailableService> = Vec::new();
-    for campaign in &campaigns {
-        if !crate::utils::user_matches_campaign(&user, campaign) {
-            continue;
+        let mut available_services: Vec<GptAvailableService> = Vec::new();
+        for campaign in &campaigns {
+            if !crate::utils::user_matches_campaign(&user, campaign) {
+                continue;
+            }
+
+            let task_done = crate::utils::has_completed_task(
+                &db,
+                campaign.id,
+                user_id,
+                &campaign.required_task,
+            )
+            .await
+            .unwrap_or(false);
+
+            for tool in &campaign.target_tools {
+                available_services.push(GptAvailableService {
+                    service: tool.clone(),
+                    sponsor: campaign.sponsor.clone(),
+                    ready: task_done,
+                });
+            }
         }
 
-        let task_done = crate::utils::has_completed_task(
-            &db, campaign.id, user_id, &campaign.required_task
-        ).await.unwrap_or(false);
+        let task_count = completed_task_summaries.len();
+        let service_count = available_services.len();
+        let ready_count = available_services.iter().filter(|s| s.ready).count();
 
-        for tool in &campaign.target_tools {
-            available_services.push(GptAvailableService {
-                service: tool.clone(),
-                sponsor: campaign.sponsor.clone(),
-                ready: task_done,
-            });
-        }
-    }
+        let message = format!(
+            "You have completed {} task(s). {} service(s) available ({} ready to use).",
+            task_count, service_count, ready_count
+        );
 
-    let task_count = completed_task_summaries.len();
-    let service_count = available_services.len();
-    let ready_count = available_services.iter().filter(|s| s.ready).count();
-
-    let message = format!(
-        "You have completed {} task(s). {} service(s) available ({} ready to use).",
-        task_count, service_count, ready_count
-    );
-
-    Ok(Json(GptUserStatusResponse {
-        user_id,
-        email: user.email,
-        completed_tasks: completed_task_summaries,
-        available_services,
-        message,
-    }))
+        Ok(Json(GptUserStatusResponse {
+            user_id,
+            email: user.email,
+            completed_tasks: completed_task_summaries,
+            available_services,
+            message,
+        }))
     }
     .await;
     respond(&metrics, "gpt_user_status", result)

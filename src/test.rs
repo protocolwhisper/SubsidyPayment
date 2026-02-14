@@ -176,27 +176,69 @@ fn migration_0007_consents_has_expected_schema() {
     let lower = sql.to_lowercase();
 
     // Table creation
-    assert!(lower.contains("create table if not exists consents"), "should create consents table");
+    assert!(
+        lower.contains("create table if not exists consents"),
+        "should create consents table"
+    );
 
     // Required columns
-    assert!(lower.contains("id uuid primary key"), "should have id uuid primary key");
-    assert!(lower.contains("user_id uuid not null references users(id) on delete cascade"), "should have user_id FK to users");
-    assert!(lower.contains("campaign_id uuid not null references campaigns(id) on delete cascade"), "should have campaign_id FK to campaigns");
-    assert!(lower.contains("consent_type text not null"), "should have consent_type column");
-    assert!(lower.contains("granted boolean not null"), "should have granted column");
+    assert!(
+        lower.contains("id uuid primary key"),
+        "should have id uuid primary key"
+    );
+    assert!(
+        lower.contains("user_id uuid not null references users(id) on delete cascade"),
+        "should have user_id FK to users"
+    );
+    assert!(
+        lower.contains("campaign_id uuid not null references campaigns(id) on delete cascade"),
+        "should have campaign_id FK to campaigns"
+    );
+    assert!(
+        lower.contains("consent_type text not null"),
+        "should have consent_type column"
+    );
+    assert!(
+        lower.contains("granted boolean not null"),
+        "should have granted column"
+    );
     assert!(lower.contains("purpose text"), "should have purpose column");
-    assert!(lower.contains("retention_days integer"), "should have retention_days column");
-    assert!(lower.contains("created_at timestamptz not null default now()"), "should have created_at column");
+    assert!(
+        lower.contains("retention_days integer"),
+        "should have retention_days column"
+    );
+    assert!(
+        lower.contains("created_at timestamptz not null default now()"),
+        "should have created_at column"
+    );
 
     // CHECK constraint on consent_type
-    assert!(lower.contains("data_sharing"), "consent_type should include data_sharing");
-    assert!(lower.contains("contact"), "consent_type should include contact");
-    assert!(lower.contains("retention"), "consent_type should include retention");
+    assert!(
+        lower.contains("data_sharing"),
+        "consent_type should include data_sharing"
+    );
+    assert!(
+        lower.contains("contact"),
+        "consent_type should include contact"
+    );
+    assert!(
+        lower.contains("retention"),
+        "consent_type should include retention"
+    );
 
     // Indexes
-    assert!(lower.contains("consents_user_campaign_idx"), "should have user_campaign composite index");
-    assert!(lower.contains("on consents(user_id, campaign_id)"), "composite index should be on (user_id, campaign_id)");
-    assert!(lower.contains("consents_user_id_idx"), "should have user_id index");
+    assert!(
+        lower.contains("consents_user_campaign_idx"),
+        "should have user_campaign composite index"
+    );
+    assert!(
+        lower.contains("on consents(user_id, campaign_id)"),
+        "composite index should be on (user_id, campaign_id)"
+    );
+    assert!(
+        lower.contains("consents_user_id_idx"),
+        "should have user_id index"
+    );
 }
 
 #[test]
@@ -210,10 +252,16 @@ fn migration_0008_add_user_source_has_expected_schema() {
     assert!(lower.contains("add column"), "should add a column");
     assert!(lower.contains("source"), "should add source column");
     assert!(lower.contains("text"), "source should be TEXT type");
-    assert!(lower.contains("default 'web'"), "source should default to 'web'");
+    assert!(
+        lower.contains("default 'web'"),
+        "source should default to 'web'"
+    );
 
     // Safety: IF NOT EXISTS for idempotent migration
-    assert!(lower.contains("if not exists"), "should use IF NOT EXISTS for safety");
+    assert!(
+        lower.contains("if not exists"),
+        "should use IF NOT EXISTS for safety"
+    );
 }
 
 #[test]
@@ -222,21 +270,54 @@ fn migration_0009_gpt_sessions_has_expected_schema() {
     let lower = sql.to_lowercase();
 
     // Table creation
-    assert!(lower.contains("create table if not exists gpt_sessions"), "should create gpt_sessions table");
+    assert!(
+        lower.contains("create table if not exists gpt_sessions"),
+        "should create gpt_sessions table"
+    );
 
     // Required columns
-    assert!(lower.contains("token uuid primary key"), "should have token uuid primary key");
-    assert!(lower.contains("gen_random_uuid()"), "token should default to gen_random_uuid()");
-    assert!(lower.contains("user_id uuid not null references users(id) on delete cascade"), "should have user_id FK to users");
-    assert!(lower.contains("created_at timestamptz not null default now()"), "should have created_at column");
-    assert!(lower.contains("expires_at timestamptz not null"), "should have expires_at column");
-    assert!(lower.contains("interval '30 days'"), "expires_at should default to NOW() + 30 days");
+    assert!(
+        lower.contains("token uuid primary key"),
+        "should have token uuid primary key"
+    );
+    assert!(
+        lower.contains("gen_random_uuid()"),
+        "token should default to gen_random_uuid()"
+    );
+    assert!(
+        lower.contains("user_id uuid not null references users(id) on delete cascade"),
+        "should have user_id FK to users"
+    );
+    assert!(
+        lower.contains("created_at timestamptz not null default now()"),
+        "should have created_at column"
+    );
+    assert!(
+        lower.contains("expires_at timestamptz not null"),
+        "should have expires_at column"
+    );
+    assert!(
+        lower.contains("interval '30 days'"),
+        "expires_at should default to NOW() + 30 days"
+    );
 
     // Indexes
-    assert!(lower.contains("gpt_sessions_user_id_idx"), "should have user_id index");
-    assert!(lower.contains("on gpt_sessions(user_id)"), "user_id index should target correct column");
-    assert!(lower.contains("gpt_sessions_expires_at_idx"), "should have expires_at index");
-    assert!(lower.contains("on gpt_sessions(expires_at)"), "expires_at index should target correct column");
+    assert!(
+        lower.contains("gpt_sessions_user_id_idx"),
+        "should have user_id index"
+    );
+    assert!(
+        lower.contains("on gpt_sessions(user_id)"),
+        "user_id index should target correct column"
+    );
+    assert!(
+        lower.contains("gpt_sessions_expires_at_idx"),
+        "should have expires_at index"
+    );
+    assert!(
+        lower.contains("on gpt_sessions(expires_at)"),
+        "expires_at index should target correct column"
+    );
 }
 
 #[test]
@@ -244,7 +325,13 @@ fn gpt_types_exist_and_are_constructible() {
     use chrono::Utc;
 
     // Component 2: Search
-    let _params = GptSearchParams { q: Some("test".into()), category: None, max_budget_cents: None, intent: None, session_token: None };
+    let _params = GptSearchParams {
+        q: Some("test".into()),
+        category: None,
+        max_budget_cents: None,
+        intent: None,
+        session_token: None,
+    };
     let _item = GptServiceItem {
         service_type: "campaign".into(),
         service_id: Uuid::new_v4(),
@@ -281,7 +368,9 @@ fn gpt_types_exist_and_are_constructible() {
     };
 
     // Component 4: Task details
-    let _task_params = GptTaskParams { session_token: Uuid::new_v4() };
+    let _task_params = GptTaskParams {
+        session_token: Uuid::new_v4(),
+    };
     let _task_fmt = GptTaskInputFormat {
         task_type: "survey".into(),
         required_fields: vec!["email".into()],
@@ -342,7 +431,9 @@ fn gpt_types_exist_and_are_constructible() {
     };
 
     // Component 7: User status
-    let _status_params = GptUserStatusParams { session_token: Uuid::new_v4() };
+    let _status_params = GptUserStatusParams {
+        session_token: Uuid::new_v4(),
+    };
     let _task_summary = GptCompletedTaskSummary {
         campaign_id: Uuid::new_v4(),
         campaign_name: "Campaign".into(),
@@ -400,17 +491,29 @@ fn consent_and_gpt_session_types_exist_and_are_constructible() {
 #[test]
 fn app_config_has_gpt_actions_api_key_field() {
     // Test with env var unset: should be None
-    unsafe { std::env::remove_var("GPT_ACTIONS_API_KEY"); }
+    unsafe {
+        std::env::remove_var("GPT_ACTIONS_API_KEY");
+    }
     let config = AppConfig::from_env();
-    assert!(config.gpt_actions_api_key.is_none(), "gpt_actions_api_key should be None when env var is unset");
+    assert!(
+        config.gpt_actions_api_key.is_none(),
+        "gpt_actions_api_key should be None when env var is unset"
+    );
 
     // Test with env var set: should be Some
-    unsafe { std::env::set_var("GPT_ACTIONS_API_KEY", "test-secret-key"); }
+    unsafe {
+        std::env::set_var("GPT_ACTIONS_API_KEY", "test-secret-key");
+    }
     let config = AppConfig::from_env();
-    assert_eq!(config.gpt_actions_api_key, Some("test-secret-key".to_string()));
+    assert_eq!(
+        config.gpt_actions_api_key,
+        Some("test-secret-key".to_string())
+    );
 
     // Cleanup
-    unsafe { std::env::remove_var("GPT_ACTIONS_API_KEY"); }
+    unsafe {
+        std::env::remove_var("GPT_ACTIONS_API_KEY");
+    }
 }
 
 #[test]
@@ -454,8 +557,12 @@ fn user_profile_has_source_field() {
         "attributes": {},
         "created_at": Utc::now()
     });
-    let deserialized: UserProfile = serde_json::from_value(json).expect("should deserialize without source field");
-    assert!(deserialized.source.is_none(), "source should default to None when missing from JSON");
+    let deserialized: UserProfile =
+        serde_json::from_value(json).expect("should deserialize without source field");
+    assert!(
+        deserialized.source.is_none(),
+        "source should default to None when missing from JSON"
+    );
 }
 
 #[test]
@@ -466,7 +573,10 @@ fn api_error_rate_limited_returns_429_with_retry_after_header() {
     let err = ApiError::rate_limited(60);
     let response = err.into_response();
     assert_eq!(response.status(), StatusCode::TOO_MANY_REQUESTS);
-    let retry_after = response.headers().get("retry-after").expect("should have Retry-After header");
+    let retry_after = response
+        .headers()
+        .get("retry-after")
+        .expect("should have Retry-After header");
     assert_eq!(retry_after.to_str().unwrap(), "60");
 }
 
@@ -483,7 +593,10 @@ async fn verify_gpt_api_key_rejects_missing_header() {
 
     let app = Router::new()
         .route("/gpt/test", axum::routing::get(|| async { "ok" }))
-        .layer(middleware::from_fn_with_state(state.clone(), gpt::verify_gpt_api_key))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            gpt::verify_gpt_api_key,
+        ))
         .with_state(state);
 
     let req = Request::builder()
@@ -507,7 +620,10 @@ async fn verify_gpt_api_key_rejects_wrong_key() {
 
     let app = Router::new()
         .route("/gpt/test", axum::routing::get(|| async { "ok" }))
-        .layer(middleware::from_fn_with_state(state.clone(), gpt::verify_gpt_api_key))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            gpt::verify_gpt_api_key,
+        ))
         .with_state(state);
 
     let req = Request::builder()
@@ -532,7 +648,10 @@ async fn verify_gpt_api_key_passes_with_valid_key() {
 
     let app = Router::new()
         .route("/gpt/test", axum::routing::get(|| async { "ok" }))
-        .layer(middleware::from_fn_with_state(state.clone(), gpt::verify_gpt_api_key))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            gpt::verify_gpt_api_key,
+        ))
         .with_state(state);
 
     let req = Request::builder()
@@ -547,8 +666,12 @@ async fn verify_gpt_api_key_passes_with_valid_key() {
 #[test]
 fn resolve_session_has_correct_signature() {
     use sqlx::PgPool;
-    let _fn_ref: fn(&PgPool, Uuid) -> std::pin::Pin<Box<dyn std::future::Future<Output = error::ApiResult<Uuid>> + Send + '_>> =
-        |pool, token| Box::pin(gpt::resolve_session(pool, token));
+    let _fn_ref: fn(
+        &PgPool,
+        Uuid,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = error::ApiResult<Uuid>> + Send + '_>,
+    > = |pool, token| Box::pin(gpt::resolve_session(pool, token));
 }
 
 #[tokio::test]
@@ -565,7 +688,10 @@ async fn verify_gpt_api_key_passes_when_key_not_configured() {
 
     let app = Router::new()
         .route("/gpt/test", axum::routing::get(|| async { "ok" }))
-        .layer(middleware::from_fn_with_state(state.clone(), gpt::verify_gpt_api_key))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            gpt::verify_gpt_api_key,
+        ))
         .with_state(state);
 
     let req = Request::builder()
@@ -589,7 +715,10 @@ async fn verify_gpt_api_key_rejects_invalid_bearer_format() {
 
     let app = Router::new()
         .route("/gpt/test", axum::routing::get(|| async { "ok" }))
-        .layer(middleware::from_fn_with_state(state.clone(), gpt::verify_gpt_api_key))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            gpt::verify_gpt_api_key,
+        ))
         .with_state(state);
 
     // Send "Basic" instead of "Bearer"
@@ -626,11 +755,7 @@ async fn resolve_session_returns_unauthorized_for_nonexistent_token() {
     // If DATABASE_URL is set, test against real DB
     if let Ok(url) = std::env::var("DATABASE_URL") {
         use sqlx::postgres::PgPoolOptions;
-        if let Ok(pool) = PgPoolOptions::new()
-            .max_connections(1)
-            .connect(&url)
-            .await
-        {
+        if let Ok(pool) = PgPoolOptions::new().max_connections(1).connect(&url).await {
             // Run migrations first
             sqlx::migrate!("./migrations").run(&pool).await.ok();
 
@@ -654,11 +779,17 @@ async fn rate_limiter_allows_requests_within_limit() {
     use std::sync::Arc;
     use tokio::sync::Mutex;
 
-    let limiter = Arc::new(Mutex::new(gpt::RateLimiter::new(60, std::time::Duration::from_secs(1))));
+    let limiter = Arc::new(Mutex::new(gpt::RateLimiter::new(
+        60,
+        std::time::Duration::from_secs(1),
+    )));
 
     let app = Router::new()
         .route("/gpt/test", axum::routing::get(|| async { "ok" }))
-        .layer(middleware::from_fn_with_state(limiter.clone(), gpt::rate_limit_middleware))
+        .layer(middleware::from_fn_with_state(
+            limiter.clone(),
+            gpt::rate_limit_middleware,
+        ))
         .with_state(limiter);
 
     let req = Request::builder()
@@ -677,11 +808,17 @@ async fn rate_limiter_returns_429_when_exhausted() {
     use tokio::sync::Mutex;
 
     // Start with 1 token so it exhausts after first request
-    let limiter = Arc::new(Mutex::new(gpt::RateLimiter::new(1, std::time::Duration::from_secs(1))));
+    let limiter = Arc::new(Mutex::new(gpt::RateLimiter::new(
+        1,
+        std::time::Duration::from_secs(1),
+    )));
 
     let app = Router::new()
         .route("/gpt/test", axum::routing::get(|| async { "ok" }))
-        .layer(middleware::from_fn_with_state(limiter.clone(), gpt::rate_limit_middleware))
+        .layer(middleware::from_fn_with_state(
+            limiter.clone(),
+            gpt::rate_limit_middleware,
+        ))
         .with_state(limiter.clone());
 
     // First request should succeed
@@ -699,7 +836,10 @@ async fn rate_limiter_returns_429_when_exhausted() {
         .unwrap();
     let resp = app.oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
-    assert!(resp.headers().get("retry-after").is_some(), "should have Retry-After header");
+    assert!(
+        resp.headers().get("retry-after").is_some(),
+        "should have Retry-After header"
+    );
 }
 
 #[test]
@@ -713,7 +853,10 @@ fn rate_limiter_refills_tokens() {
 
     // Wait for refill
     std::thread::sleep(Duration::from_millis(25));
-    assert!(limiter.try_acquire(), "should have refilled tokens after waiting");
+    assert!(
+        limiter.try_acquire(),
+        "should have refilled tokens after waiting"
+    );
 }
 
 #[test]
@@ -734,7 +877,10 @@ fn rate_limiter_does_not_exceed_max_tokens_after_long_wait() {
     assert!(limiter.try_acquire());
     assert!(limiter.try_acquire());
     assert!(limiter.try_acquire());
-    assert!(!limiter.try_acquire(), "should not exceed max_tokens after long wait");
+    assert!(
+        !limiter.try_acquire(),
+        "should not exceed max_tokens after long wait"
+    );
 }
 
 #[tokio::test]
@@ -745,24 +891,43 @@ async fn rate_limiter_429_response_has_correct_retry_after_value() {
     use tokio::sync::Mutex;
 
     // 1 token, 1 second refill interval
-    let limiter = Arc::new(Mutex::new(gpt::RateLimiter::new(1, std::time::Duration::from_secs(1))));
+    let limiter = Arc::new(Mutex::new(gpt::RateLimiter::new(
+        1,
+        std::time::Duration::from_secs(1),
+    )));
 
     let app = Router::new()
         .route("/gpt/test", axum::routing::get(|| async { "ok" }))
-        .layer(middleware::from_fn_with_state(limiter.clone(), gpt::rate_limit_middleware))
+        .layer(middleware::from_fn_with_state(
+            limiter.clone(),
+            gpt::rate_limit_middleware,
+        ))
         .with_state(limiter.clone());
 
     // Exhaust the single token
-    let req = Request::builder().uri("/gpt/test").body(Body::empty()).unwrap();
+    let req = Request::builder()
+        .uri("/gpt/test")
+        .body(Body::empty())
+        .unwrap();
     let resp = app.clone().oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
 
     // Next request should get 429 with Retry-After: 1
-    let req = Request::builder().uri("/gpt/test").body(Body::empty()).unwrap();
+    let req = Request::builder()
+        .uri("/gpt/test")
+        .body(Body::empty())
+        .unwrap();
     let resp = app.oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
-    let retry_after = resp.headers().get("retry-after").expect("should have Retry-After header");
-    assert_eq!(retry_after.to_str().unwrap(), "1", "Retry-After should match refill interval");
+    let retry_after = resp
+        .headers()
+        .get("retry-after")
+        .expect("should have Retry-After header");
+    assert_eq!(
+        retry_after.to_str().unwrap(),
+        "1",
+        "Retry-After should match refill interval"
+    );
 }
 
 #[test]
@@ -773,8 +938,9 @@ fn gpt_auth_has_correct_handler_signature() {
     let _fn_ref: fn(
         axum::extract::State<crate::types::SharedState>,
         axum::Json<GptAuthRequest>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = axum::response::Response> + Send>> =
-        |state, payload| Box::pin(gpt::gpt_auth(state, payload));
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = axum::response::Response> + Send>,
+    > = |state, payload| Box::pin(gpt::gpt_auth(state, payload));
 }
 
 #[test]
@@ -785,8 +951,9 @@ fn gpt_search_services_has_correct_handler_signature() {
     let _fn_ref: fn(
         axum::extract::State<crate::types::SharedState>,
         axum::extract::Query<GptSearchParams>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = axum::response::Response> + Send>> =
-        |state, query| Box::pin(gpt::gpt_search_services(state, query));
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = axum::response::Response> + Send>,
+    > = |state, query| Box::pin(gpt::gpt_search_services(state, query));
 }
 
 #[tokio::test]
@@ -809,10 +976,9 @@ async fn gpt_search_services_returns_empty_when_no_active_services() {
                 intent: None,
                 session_token: None,
             };
-            let result = gpt::gpt_search_services(
-                axum::extract::State(state),
-                axum::extract::Query(params),
-            ).await;
+            let result =
+                gpt::gpt_search_services(axum::extract::State(state), axum::extract::Query(params))
+                    .await;
 
             assert!(result.status().is_success());
             let resp: types::GptSearchResponse = read_typed(result).await;
@@ -842,10 +1008,9 @@ async fn gpt_search_services_filters_by_category() {
                 intent: None,
                 session_token: None,
             };
-            let result = gpt::gpt_search_services(
-                axum::extract::State(state),
-                axum::extract::Query(params),
-            ).await;
+            let result =
+                gpt::gpt_search_services(axum::extract::State(state), axum::extract::Query(params))
+                    .await;
 
             assert!(result.status().is_success());
             let resp: types::GptSearchResponse = read_typed(result).await;
@@ -873,10 +1038,9 @@ async fn gpt_search_services_returns_results_without_filters() {
                 intent: None,
                 session_token: None,
             };
-            let result = gpt::gpt_search_services(
-                axum::extract::State(state),
-                axum::extract::Query(params),
-            ).await;
+            let result =
+                gpt::gpt_search_services(axum::extract::State(state), axum::extract::Query(params))
+                    .await;
 
             assert!(result.status().is_success());
             let resp: types::GptSearchResponse = read_typed(result).await;
@@ -910,31 +1074,41 @@ async fn gpt_auth_registers_new_user_and_issues_session() {
                 tools_used: vec!["cursor".to_string()],
             };
 
-            let result = gpt::gpt_auth(
-                axum::extract::State(state),
-                axum::Json(payload),
-            ).await;
+            let result = gpt::gpt_auth(axum::extract::State(state), axum::Json(payload)).await;
 
-            assert!(result.status().is_success(), "gpt_auth should succeed for new user");
+            assert!(
+                result.status().is_success(),
+                "gpt_auth should succeed for new user"
+            );
             let resp: types::GptAuthResponse = read_typed(result).await;
             assert!(resp.is_new_user, "should be a new user");
             assert_eq!(resp.email, unique_email);
-            assert!(!resp.session_token.is_nil(), "session token should not be nil");
+            assert!(
+                !resp.session_token.is_nil(),
+                "session token should not be nil"
+            );
             assert!(!resp.user_id.is_nil(), "user_id should not be nil");
 
             // Verify user was inserted with source = "gpt_apps"
-            let source: Option<String> = sqlx::query_scalar(
-                "SELECT source FROM users WHERE id = $1"
-            )
-            .bind(resp.user_id)
-            .fetch_optional(&pool)
-            .await
-            .unwrap();
+            let source: Option<String> =
+                sqlx::query_scalar("SELECT source FROM users WHERE id = $1")
+                    .bind(resp.user_id)
+                    .fetch_optional(&pool)
+                    .await
+                    .unwrap();
             assert_eq!(source.as_deref(), Some("gpt_apps"));
 
             // Cleanup
-            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1").bind(resp.user_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM users WHERE id = $1").bind(resp.user_id).execute(&pool).await.ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(resp.user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(resp.user_id)
+                .execute(&pool)
+                .await
+                .ok();
         }
     }
 }
@@ -951,7 +1125,7 @@ async fn gpt_auth_identifies_existing_user() {
             let email = format!("existing_gpt_{}@example.com", Uuid::new_v4());
             sqlx::query(
                 "INSERT INTO users (id, email, region, roles, tools_used, attributes, source) \
-                 VALUES ($1, $2, 'JP', '{}', '{}', '{}'::jsonb, 'web')"
+                 VALUES ($1, $2, 'JP', '{}', '{}', '{}'::jsonb, 'web')",
             )
             .bind(user_id)
             .bind(&email)
@@ -970,17 +1144,20 @@ async fn gpt_auth_identifies_existing_user() {
                 tools_used: vec![],
             };
 
-            let result = gpt::gpt_auth(
-                axum::extract::State(state),
-                axum::Json(payload),
-            ).await;
+            let result = gpt::gpt_auth(axum::extract::State(state), axum::Json(payload)).await;
 
-            assert!(result.status().is_success(), "gpt_auth should succeed for existing user");
+            assert!(
+                result.status().is_success(),
+                "gpt_auth should succeed for existing user"
+            );
             let resp: types::GptAuthResponse = read_typed(result).await;
             assert!(!resp.is_new_user, "should NOT be a new user");
             assert_eq!(resp.user_id, user_id);
             assert_eq!(resp.email, email);
-            assert!(!resp.session_token.is_nil(), "session token should be issued");
+            assert!(
+                !resp.session_token.is_nil(),
+                "session token should be issued"
+            );
 
             // Verify session token is valid via resolve_session
             let resolved = gpt::resolve_session(&pool, resp.session_token).await;
@@ -988,8 +1165,16 @@ async fn gpt_auth_identifies_existing_user() {
             assert_eq!(resolved.unwrap(), user_id);
 
             // Cleanup
-            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1").bind(user_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM users WHERE id = $1").bind(user_id).execute(&pool).await.ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
         }
     }
 }
@@ -1003,7 +1188,10 @@ fn rate_limiter_sequential_consumption_drains_tokens() {
         assert!(limiter.try_acquire(), "token {} should be available", i + 1);
     }
     assert!(!limiter.try_acquire(), "all 5 tokens should be exhausted");
-    assert!(!limiter.try_acquire(), "still exhausted on repeated attempt");
+    assert!(
+        !limiter.try_acquire(),
+        "still exhausted on repeated attempt"
+    );
 }
 
 #[test]
@@ -1013,8 +1201,9 @@ fn gpt_get_tasks_has_correct_handler_signature() {
         axum::extract::State<crate::types::SharedState>,
         axum::extract::Path<Uuid>,
         axum::extract::Query<GptTaskParams>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = axum::response::Response> + Send>> =
-        |state, path, query| Box::pin(gpt::gpt_get_tasks(state, path, query));
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = axum::response::Response> + Send>,
+    > = |state, path, query| Box::pin(gpt::gpt_get_tasks(state, path, query));
 }
 
 #[tokio::test]
@@ -1029,7 +1218,7 @@ async fn gpt_get_tasks_returns_task_details_for_valid_session() {
             let email = format!("gpt_tasks_test_{}@example.com", Uuid::new_v4());
             sqlx::query(
                 "INSERT INTO users (id, email, region, roles, tools_used, attributes, source) \
-                 VALUES ($1, $2, 'JP', '{}', '{}', '{}'::jsonb, 'gpt_apps')"
+                 VALUES ($1, $2, 'JP', '{}', '{}', '{}'::jsonb, 'gpt_apps')",
             )
             .bind(user_id)
             .bind(&email)
@@ -1039,7 +1228,7 @@ async fn gpt_get_tasks_returns_task_details_for_valid_session() {
 
             // Create a session token
             let session_token: Uuid = sqlx::query_scalar(
-                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token"
+                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token",
             )
             .bind(user_id)
             .fetch_one(&pool)
@@ -1068,7 +1257,8 @@ async fn gpt_get_tasks_returns_task_details_for_valid_session() {
                 axum::extract::State(state),
                 axum::extract::Path(campaign_id),
                 axum::extract::Query(params),
-            ).await;
+            )
+            .await;
 
             assert!(result.status().is_success(), "gpt_get_tasks should succeed");
             let resp: types::GptTaskResponse = read_typed(result).await;
@@ -1083,9 +1273,21 @@ async fn gpt_get_tasks_returns_task_details_for_valid_session() {
             assert!(!resp.task_input_format.required_fields.is_empty());
 
             // Cleanup
-            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1").bind(user_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM campaigns WHERE id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM users WHERE id = $1").bind(user_id).execute(&pool).await.ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM campaigns WHERE id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
         }
     }
 }
@@ -1102,7 +1304,7 @@ async fn gpt_get_tasks_shows_already_completed_when_task_done() {
             let email = format!("gpt_tasks_completed_{}@example.com", Uuid::new_v4());
             sqlx::query(
                 "INSERT INTO users (id, email, region, roles, tools_used, attributes, source) \
-                 VALUES ($1, $2, 'JP', '{}', '{}', '{}'::jsonb, 'gpt_apps')"
+                 VALUES ($1, $2, 'JP', '{}', '{}', '{}'::jsonb, 'gpt_apps')",
             )
             .bind(user_id)
             .bind(&email)
@@ -1111,7 +1313,7 @@ async fn gpt_get_tasks_shows_already_completed_when_task_done() {
             .unwrap();
 
             let session_token: Uuid = sqlx::query_scalar(
-                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token"
+                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token",
             )
             .bind(user_id)
             .fetch_one(&pool)
@@ -1133,7 +1335,7 @@ async fn gpt_get_tasks_shows_already_completed_when_task_done() {
             // Mark task as completed
             sqlx::query(
                 "INSERT INTO task_completions (id, campaign_id, user_id, task_name, created_at) \
-                 VALUES ($1, $2, $3, 'fill_form', NOW())"
+                 VALUES ($1, $2, $3, 'fill_form', NOW())",
             )
             .bind(Uuid::new_v4())
             .bind(campaign_id)
@@ -1151,7 +1353,8 @@ async fn gpt_get_tasks_shows_already_completed_when_task_done() {
                 axum::extract::State(state),
                 axum::extract::Path(campaign_id),
                 axum::extract::Query(params),
-            ).await;
+            )
+            .await;
 
             assert!(result.status().is_success());
             let resp: types::GptTaskResponse = read_typed(result).await;
@@ -1159,10 +1362,26 @@ async fn gpt_get_tasks_shows_already_completed_when_task_done() {
             assert!(resp.message.contains("already completed"));
 
             // Cleanup
-            sqlx::query("DELETE FROM task_completions WHERE campaign_id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1").bind(user_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM campaigns WHERE id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM users WHERE id = $1").bind(user_id).execute(&pool).await.ok();
+            sqlx::query("DELETE FROM task_completions WHERE campaign_id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM campaigns WHERE id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
         }
     }
 }
@@ -1179,7 +1398,7 @@ async fn gpt_get_tasks_returns_not_found_for_missing_campaign() {
             let email = format!("gpt_tasks_notfound_{}@example.com", Uuid::new_v4());
             sqlx::query(
                 "INSERT INTO users (id, email, region, roles, tools_used, attributes, source) \
-                 VALUES ($1, $2, 'JP', '{}', '{}', '{}'::jsonb, 'gpt_apps')"
+                 VALUES ($1, $2, 'JP', '{}', '{}', '{}'::jsonb, 'gpt_apps')",
             )
             .bind(user_id)
             .bind(&email)
@@ -1188,7 +1407,7 @@ async fn gpt_get_tasks_returns_not_found_for_missing_campaign() {
             .unwrap();
 
             let session_token: Uuid = sqlx::query_scalar(
-                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token"
+                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token",
             )
             .bind(user_id)
             .fetch_one(&pool)
@@ -1204,15 +1423,31 @@ async fn gpt_get_tasks_returns_not_found_for_missing_campaign() {
                 axum::extract::State(state),
                 axum::extract::Path(Uuid::new_v4()), // non-existent campaign
                 axum::extract::Query(params),
-            ).await;
+            )
+            .await;
 
-            assert!(!result.status().is_success(), "should fail for non-existent campaign");
+            assert!(
+                !result.status().is_success(),
+                "should fail for non-existent campaign"
+            );
             let err_str = read_body_string(result).await;
-            assert!(err_str.contains("not found"), "error should mention not found, got: {}", err_str);
+            assert!(
+                err_str.contains("not found"),
+                "error should mention not found, got: {}",
+                err_str
+            );
 
             // Cleanup
-            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1").bind(user_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM users WHERE id = $1").bind(user_id).execute(&pool).await.ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
         }
     }
 }
@@ -1229,7 +1464,7 @@ async fn gpt_get_tasks_returns_custom_format_from_task_schema() {
             let email = format!("gpt_tasks_schema_{}@example.com", Uuid::new_v4());
             sqlx::query(
                 "INSERT INTO users (id, email, region, roles, tools_used, attributes, source) \
-                 VALUES ($1, $2, 'JP', '{}', '{}', '{}'::jsonb, 'gpt_apps')"
+                 VALUES ($1, $2, 'JP', '{}', '{}', '{}'::jsonb, 'gpt_apps')",
             )
             .bind(user_id)
             .bind(&email)
@@ -1238,7 +1473,7 @@ async fn gpt_get_tasks_returns_custom_format_from_task_schema() {
             .unwrap();
 
             let session_token: Uuid = sqlx::query_scalar(
-                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token"
+                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token",
             )
             .bind(user_id)
             .fetch_one(&pool)
@@ -1273,18 +1508,41 @@ async fn gpt_get_tasks_returns_custom_format_from_task_schema() {
                 axum::extract::State(state),
                 axum::extract::Path(campaign_id),
                 axum::extract::Query(params),
-            ).await;
+            )
+            .await;
 
-            assert!(result.status().is_success(), "gpt_get_tasks should succeed with task_schema");
+            assert!(
+                result.status().is_success(),
+                "gpt_get_tasks should succeed with task_schema"
+            );
             let resp: types::GptTaskResponse = read_typed(result).await;
             assert_eq!(resp.task_input_format.task_type, "data_provision");
-            assert_eq!(resp.task_input_format.required_fields, vec!["company_name", "website_url", "contact_email"]);
-            assert!(resp.task_input_format.instructions.contains("company details"));
+            assert_eq!(
+                resp.task_input_format.required_fields,
+                vec!["company_name", "website_url", "contact_email"]
+            );
+            assert!(
+                resp.task_input_format
+                    .instructions
+                    .contains("company details")
+            );
 
             // Cleanup
-            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1").bind(user_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM campaigns WHERE id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM users WHERE id = $1").bind(user_id).execute(&pool).await.ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM campaigns WHERE id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
         }
     }
 }
@@ -1296,8 +1554,9 @@ fn gpt_complete_task_has_correct_handler_signature() {
         axum::extract::State<crate::types::SharedState>,
         axum::extract::Path<Uuid>,
         axum::Json<GptCompleteTaskRequest>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = axum::response::Response> + Send>> =
-        |state, path, payload| Box::pin(gpt::gpt_complete_task(state, path, payload));
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = axum::response::Response> + Send>,
+    > = |state, path, payload| Box::pin(gpt::gpt_complete_task(state, path, payload));
 }
 
 #[tokio::test]
@@ -1312,7 +1571,7 @@ async fn gpt_complete_task_records_consent_and_completion() {
             let email = format!("gpt_complete_{}@example.com", Uuid::new_v4());
             sqlx::query(
                 "INSERT INTO users (id, email, region, roles, tools_used, attributes, source) \
-                 VALUES ($1, $2, 'JP', '{}', '{}', '{}'::jsonb, 'gpt_apps')"
+                 VALUES ($1, $2, 'JP', '{}', '{}', '{}'::jsonb, 'gpt_apps')",
             )
             .bind(user_id)
             .bind(&email)
@@ -1321,7 +1580,7 @@ async fn gpt_complete_task_records_consent_and_completion() {
             .unwrap();
 
             let session_token: Uuid = sqlx::query_scalar(
-                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token"
+                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token",
             )
             .bind(user_id)
             .fetch_one(&pool)
@@ -1359,9 +1618,13 @@ async fn gpt_complete_task_records_consent_and_completion() {
                 axum::extract::State(state),
                 axum::extract::Path(campaign_id),
                 axum::Json(payload),
-            ).await;
+            )
+            .await;
 
-            assert!(result.status().is_success(), "gpt_complete_task should succeed");
+            assert!(
+                result.status().is_success(),
+                "gpt_complete_task should succeed"
+            );
             let resp: types::GptCompleteTaskResponse = read_typed(result).await;
             assert_eq!(resp.campaign_id, campaign_id);
             assert!(resp.consent_recorded);
@@ -1370,14 +1633,17 @@ async fn gpt_complete_task_records_consent_and_completion() {
 
             // Verify consent records were created in DB
             let consent_count: i64 = sqlx::query_scalar(
-                "SELECT count(*) FROM consents WHERE user_id = $1 AND campaign_id = $2"
+                "SELECT count(*) FROM consents WHERE user_id = $1 AND campaign_id = $2",
             )
             .bind(user_id)
             .bind(campaign_id)
             .fetch_one(&pool)
             .await
             .unwrap();
-            assert_eq!(consent_count, 3, "should have 3 consent records (data_sharing, contact, retention)");
+            assert_eq!(
+                consent_count, 3,
+                "should have 3 consent records (data_sharing, contact, retention)"
+            );
 
             // Verify task completion was recorded
             let task_exists: bool = sqlx::query_scalar(
@@ -1391,11 +1657,31 @@ async fn gpt_complete_task_records_consent_and_completion() {
             assert!(task_exists, "task completion should be recorded");
 
             // Cleanup
-            sqlx::query("DELETE FROM task_completions WHERE campaign_id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM consents WHERE campaign_id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1").bind(user_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM campaigns WHERE id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM users WHERE id = $1").bind(user_id).execute(&pool).await.ok();
+            sqlx::query("DELETE FROM task_completions WHERE campaign_id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM consents WHERE campaign_id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM campaigns WHERE id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
         }
     }
 }
@@ -1411,7 +1697,7 @@ async fn gpt_complete_task_handles_consent_refused() {
             let email = format!("gpt_complete_refuse_{}@example.com", Uuid::new_v4());
             sqlx::query(
                 "INSERT INTO users (id, email, region, roles, tools_used, attributes, source) \
-                 VALUES ($1, $2, 'JP', '{}', '{}', '{}'::jsonb, 'gpt_apps')"
+                 VALUES ($1, $2, 'JP', '{}', '{}', '{}'::jsonb, 'gpt_apps')",
             )
             .bind(user_id)
             .bind(&email)
@@ -1420,7 +1706,7 @@ async fn gpt_complete_task_handles_consent_refused() {
             .unwrap();
 
             let session_token: Uuid = sqlx::query_scalar(
-                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token"
+                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token",
             )
             .bind(user_id)
             .fetch_one(&pool)
@@ -1459,15 +1745,21 @@ async fn gpt_complete_task_handles_consent_refused() {
                 axum::extract::State(state),
                 axum::extract::Path(campaign_id),
                 axum::Json(payload),
-            ).await;
+            )
+            .await;
 
-            assert!(result.status().is_success(), "should still succeed even when consent refused");
+            assert!(
+                result.status().is_success(),
+                "should still succeed even when consent refused"
+            );
             let resp: types::GptCompleteTaskResponse = read_typed(result).await;
             assert!(resp.can_use_service, "service should still be usable");
             assert!(resp.consent_recorded);
             // Message should mention data transfer is blocked
             assert!(
-                resp.message.contains("data") || resp.message.contains("transfer") || resp.message.contains("shar"),
+                resp.message.contains("data")
+                    || resp.message.contains("transfer")
+                    || resp.message.contains("shar"),
                 "message should mention data sharing restriction, got: {}",
                 resp.message
             );
@@ -1481,7 +1773,10 @@ async fn gpt_complete_task_handles_consent_refused() {
             .fetch_one(&pool)
             .await
             .unwrap();
-            assert!(task_exists, "task completion should still be recorded even with consent refused");
+            assert!(
+                task_exists,
+                "task completion should still be recorded even with consent refused"
+            );
 
             // Consent records should reflect the refusal
             let data_sharing_granted: bool = sqlx::query_scalar(
@@ -1492,14 +1787,37 @@ async fn gpt_complete_task_handles_consent_refused() {
             .fetch_one(&pool)
             .await
             .unwrap();
-            assert!(!data_sharing_granted, "data_sharing consent should be false");
+            assert!(
+                !data_sharing_granted,
+                "data_sharing consent should be false"
+            );
 
             // Cleanup
-            sqlx::query("DELETE FROM task_completions WHERE campaign_id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM consents WHERE campaign_id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1").bind(user_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM campaigns WHERE id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM users WHERE id = $1").bind(user_id).execute(&pool).await.ok();
+            sqlx::query("DELETE FROM task_completions WHERE campaign_id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM consents WHERE campaign_id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM campaigns WHERE id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
         }
     }
 }
@@ -1515,7 +1833,7 @@ async fn gpt_complete_task_returns_not_found_for_missing_campaign() {
             let email = format!("gpt_complete_nf_{}@example.com", Uuid::new_v4());
             sqlx::query(
                 "INSERT INTO users (id, email, region, roles, tools_used, attributes, source) \
-                 VALUES ($1, $2, 'JP', '{}', '{}', '{}'::jsonb, 'gpt_apps')"
+                 VALUES ($1, $2, 'JP', '{}', '{}', '{}'::jsonb, 'gpt_apps')",
             )
             .bind(user_id)
             .bind(&email)
@@ -1524,7 +1842,7 @@ async fn gpt_complete_task_returns_not_found_for_missing_campaign() {
             .unwrap();
 
             let session_token: Uuid = sqlx::query_scalar(
-                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token"
+                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token",
             )
             .bind(user_id)
             .fetch_one(&pool)
@@ -1550,15 +1868,28 @@ async fn gpt_complete_task_returns_not_found_for_missing_campaign() {
                 axum::extract::State(state),
                 axum::extract::Path(Uuid::new_v4()),
                 axum::Json(payload),
-            ).await;
+            )
+            .await;
 
             assert!(!result.status().is_success());
             let err_str = read_body_string(result).await;
-            assert!(err_str.contains("not found"), "should return not found, got: {}", err_str);
+            assert!(
+                err_str.contains("not found"),
+                "should return not found, got: {}",
+                err_str
+            );
 
             // Cleanup
-            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1").bind(user_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM users WHERE id = $1").bind(user_id).execute(&pool).await.ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
         }
     }
 }
@@ -1570,8 +1901,9 @@ fn gpt_run_service_has_correct_handler_signature() {
         axum::extract::State<crate::types::SharedState>,
         axum::extract::Path<String>,
         axum::Json<GptRunServiceRequest>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = axum::response::Response> + Send>> =
-        |state, path, payload| Box::pin(gpt::gpt_run_service(state, path, payload));
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = axum::response::Response> + Send>,
+    > = |state, path, payload| Box::pin(gpt::gpt_run_service(state, path, payload));
 }
 
 #[tokio::test]
@@ -1586,7 +1918,7 @@ async fn gpt_run_service_sponsored_flow_success() {
             let email = format!("gpt_run_svc_{}@example.com", Uuid::new_v4());
             sqlx::query(
                 "INSERT INTO users (id, email, region, roles, tools_used, attributes, source) \
-                 VALUES ($1, $2, 'JP', '{developer}', '{design}', '{}'::jsonb, 'gpt_apps')"
+                 VALUES ($1, $2, 'JP', '{developer}', '{design}', '{}'::jsonb, 'gpt_apps')",
             )
             .bind(user_id)
             .bind(&email)
@@ -1595,7 +1927,7 @@ async fn gpt_run_service_sponsored_flow_success() {
             .unwrap();
 
             let session_token: Uuid = sqlx::query_scalar(
-                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token"
+                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token",
             )
             .bind(user_id)
             .fetch_one(&pool)
@@ -1618,7 +1950,7 @@ async fn gpt_run_service_sponsored_flow_success() {
             // Complete the required task
             sqlx::query(
                 "INSERT INTO task_completions (id, campaign_id, user_id, task_name, created_at) \
-                 VALUES ($1, $2, $3, 'do_survey', NOW())"
+                 VALUES ($1, $2, $3, 'do_survey', NOW())",
             )
             .bind(Uuid::new_v4())
             .bind(campaign_id)
@@ -1640,9 +1972,13 @@ async fn gpt_run_service_sponsored_flow_success() {
                 axum::extract::State(state),
                 axum::extract::Path("design".to_string()),
                 axum::Json(payload),
-            ).await;
+            )
+            .await;
 
-            assert!(result.status().is_success(), "gpt_run_service should succeed for sponsored flow");
+            assert!(
+                result.status().is_success(),
+                "gpt_run_service should succeed for sponsored flow"
+            );
             let resp: types::GptRunServiceResponse = read_typed(result).await;
             assert_eq!(resp.service, "design");
             assert_eq!(resp.payment_mode, "sponsored");
@@ -1652,13 +1988,12 @@ async fn gpt_run_service_sponsored_flow_success() {
             assert!(!resp.message.is_empty());
 
             // Verify budget was deducted
-            let remaining: i64 = sqlx::query_scalar(
-                "SELECT budget_remaining_cents FROM campaigns WHERE id = $1"
-            )
-            .bind(campaign_id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+            let remaining: i64 =
+                sqlx::query_scalar("SELECT budget_remaining_cents FROM campaigns WHERE id = $1")
+                    .bind(campaign_id)
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap();
             assert!(remaining < 50000, "budget should have been deducted");
 
             // Verify payment was recorded
@@ -1672,11 +2007,31 @@ async fn gpt_run_service_sponsored_flow_success() {
             assert!(payment_exists, "payment should be recorded");
 
             // Cleanup
-            sqlx::query("DELETE FROM payments WHERE campaign_id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM task_completions WHERE campaign_id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1").bind(user_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM campaigns WHERE id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM users WHERE id = $1").bind(user_id).execute(&pool).await.ok();
+            sqlx::query("DELETE FROM payments WHERE campaign_id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM task_completions WHERE campaign_id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM campaigns WHERE id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
         }
     }
 }
@@ -1692,7 +2047,7 @@ async fn gpt_run_service_fails_when_task_not_completed() {
             let email = format!("gpt_run_notask_{}@example.com", Uuid::new_v4());
             sqlx::query(
                 "INSERT INTO users (id, email, region, roles, tools_used, attributes, source) \
-                 VALUES ($1, $2, 'JP', '{developer}', '{design}', '{}'::jsonb, 'gpt_apps')"
+                 VALUES ($1, $2, 'JP', '{developer}', '{design}', '{}'::jsonb, 'gpt_apps')",
             )
             .bind(user_id)
             .bind(&email)
@@ -1701,7 +2056,7 @@ async fn gpt_run_service_fails_when_task_not_completed() {
             .unwrap();
 
             let session_token: Uuid = sqlx::query_scalar(
-                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token"
+                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token",
             )
             .bind(user_id)
             .fetch_one(&pool)
@@ -1734,9 +2089,13 @@ async fn gpt_run_service_fails_when_task_not_completed() {
                 axum::extract::State(state),
                 axum::extract::Path("design".to_string()),
                 axum::Json(payload),
-            ).await;
+            )
+            .await;
 
-            assert!(!result.status().is_success(), "should fail when task not completed");
+            assert!(
+                !result.status().is_success(),
+                "should fail when task not completed"
+            );
             let err_str = read_body_string(result).await;
             assert!(
                 err_str.contains("pending_task") || err_str.contains("complete"),
@@ -1745,9 +2104,21 @@ async fn gpt_run_service_fails_when_task_not_completed() {
             );
 
             // Cleanup
-            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1").bind(user_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM campaigns WHERE id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM users WHERE id = $1").bind(user_id).execute(&pool).await.ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM campaigns WHERE id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
         }
     }
 }
@@ -1763,7 +2134,7 @@ async fn gpt_run_service_fails_when_no_matching_campaign() {
             let email = format!("gpt_run_nomatch_{}@example.com", Uuid::new_v4());
             sqlx::query(
                 "INSERT INTO users (id, email, region, roles, tools_used, attributes, source) \
-                 VALUES ($1, $2, 'JP', '{analyst}', '{excel}', '{}'::jsonb, 'gpt_apps')"
+                 VALUES ($1, $2, 'JP', '{analyst}', '{excel}', '{}'::jsonb, 'gpt_apps')",
             )
             .bind(user_id)
             .bind(&email)
@@ -1772,7 +2143,7 @@ async fn gpt_run_service_fails_when_no_matching_campaign() {
             .unwrap();
 
             let session_token: Uuid = sqlx::query_scalar(
-                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token"
+                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token",
             )
             .bind(user_id)
             .fetch_one(&pool)
@@ -1805,20 +2176,38 @@ async fn gpt_run_service_fails_when_no_matching_campaign() {
                 axum::extract::State(state),
                 axum::extract::Path("design".to_string()),
                 axum::Json(payload),
-            ).await;
+            )
+            .await;
 
-            assert!(!result.status().is_success(), "should fail when no matching campaign");
+            assert!(
+                !result.status().is_success(),
+                "should fail when no matching campaign"
+            );
             let err_str = read_body_string(result).await;
             assert!(
-                err_str.contains("No sponsored") || err_str.contains("campaign") || err_str.contains("direct"),
+                err_str.contains("No sponsored")
+                    || err_str.contains("campaign")
+                    || err_str.contains("direct"),
                 "error should mention no sponsor found, got: {}",
                 err_str
             );
 
             // Cleanup
-            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1").bind(user_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM campaigns WHERE id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM users WHERE id = $1").bind(user_id).execute(&pool).await.ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM campaigns WHERE id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
         }
     }
 }
@@ -1832,11 +2221,17 @@ fn migration_0010_add_task_schema_has_expected_schema() {
     assert!(lower.contains("alter table"), "should use ALTER TABLE");
     assert!(lower.contains("campaigns"), "should target campaigns table");
     assert!(lower.contains("add column"), "should add a column");
-    assert!(lower.contains("task_schema"), "should add task_schema column");
+    assert!(
+        lower.contains("task_schema"),
+        "should add task_schema column"
+    );
     assert!(lower.contains("jsonb"), "task_schema should be JSONB type");
 
     // Safety: IF NOT EXISTS for idempotent migration
-    assert!(lower.contains("if not exists"), "should use IF NOT EXISTS for safety");
+    assert!(
+        lower.contains("if not exists"),
+        "should use IF NOT EXISTS for safety"
+    );
 }
 
 #[test]
@@ -1845,8 +2240,9 @@ fn gpt_user_status_has_correct_handler_signature() {
     let _fn_ref: fn(
         axum::extract::State<crate::types::SharedState>,
         axum::extract::Query<GptUserStatusParams>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = axum::response::Response> + Send>> =
-        |state, params| Box::pin(gpt::gpt_user_status(state, params));
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = axum::response::Response> + Send>,
+    > = |state, params| Box::pin(gpt::gpt_user_status(state, params));
 }
 
 #[tokio::test]
@@ -1861,7 +2257,7 @@ async fn gpt_user_status_returns_completed_tasks_and_services() {
             let email = format!("gpt_status_{}@example.com", Uuid::new_v4());
             sqlx::query(
                 "INSERT INTO users (id, email, region, roles, tools_used, attributes, source) \
-                 VALUES ($1, $2, 'JP', '{developer}', '{design}', '{}'::jsonb, 'gpt_apps')"
+                 VALUES ($1, $2, 'JP', '{developer}', '{design}', '{}'::jsonb, 'gpt_apps')",
             )
             .bind(user_id)
             .bind(&email)
@@ -1870,7 +2266,7 @@ async fn gpt_user_status_returns_completed_tasks_and_services() {
             .unwrap();
 
             let session_token: Uuid = sqlx::query_scalar(
-                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token"
+                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token",
             )
             .bind(user_id)
             .fetch_one(&pool)
@@ -1893,7 +2289,7 @@ async fn gpt_user_status_returns_completed_tasks_and_services() {
             // Complete the required task
             sqlx::query(
                 "INSERT INTO task_completions (id, campaign_id, user_id, task_name, created_at) \
-                 VALUES ($1, $2, $3, 'status_survey', NOW())"
+                 VALUES ($1, $2, $3, 'status_survey', NOW())",
             )
             .bind(Uuid::new_v4())
             .bind(campaign_id)
@@ -1908,30 +2304,63 @@ async fn gpt_user_status_returns_completed_tasks_and_services() {
 
             let params = types::GptUserStatusParams { session_token };
 
-            let result = gpt::gpt_user_status(
-                axum::extract::State(state),
-                axum::extract::Query(params),
-            ).await;
+            let result =
+                gpt::gpt_user_status(axum::extract::State(state), axum::extract::Query(params))
+                    .await;
 
-            assert!(result.status().is_success(), "gpt_user_status should succeed");
+            assert!(
+                result.status().is_success(),
+                "gpt_user_status should succeed"
+            );
             let resp: types::GptUserStatusResponse = read_typed(result).await;
             assert_eq!(resp.user_id, user_id);
             assert_eq!(resp.email, email);
-            assert!(!resp.completed_tasks.is_empty(), "should have completed tasks");
+            assert!(
+                !resp.completed_tasks.is_empty(),
+                "should have completed tasks"
+            );
             assert_eq!(resp.completed_tasks[0].campaign_name, "Status Campaign");
             assert_eq!(resp.completed_tasks[0].task_name, "status_survey");
-            assert!(!resp.available_services.is_empty(), "should have available services");
+            assert!(
+                !resp.available_services.is_empty(),
+                "should have available services"
+            );
             // The service should be ready since task is completed
-            let ready_service = resp.available_services.iter().find(|s| s.sponsor == "StatusSponsor");
-            assert!(ready_service.is_some(), "should find service from matching campaign");
-            assert!(ready_service.unwrap().ready, "service should be ready since task completed");
+            let ready_service = resp
+                .available_services
+                .iter()
+                .find(|s| s.sponsor == "StatusSponsor");
+            assert!(
+                ready_service.is_some(),
+                "should find service from matching campaign"
+            );
+            assert!(
+                ready_service.unwrap().ready,
+                "service should be ready since task completed"
+            );
             assert!(!resp.message.is_empty());
 
             // Cleanup
-            sqlx::query("DELETE FROM task_completions WHERE campaign_id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1").bind(user_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM campaigns WHERE id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM users WHERE id = $1").bind(user_id).execute(&pool).await.ok();
+            sqlx::query("DELETE FROM task_completions WHERE campaign_id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM campaigns WHERE id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
         }
     }
 }
@@ -1948,7 +2377,7 @@ async fn gpt_user_status_new_user_no_tasks() {
             let email = format!("gpt_newuser_{}@example.com", Uuid::new_v4());
             sqlx::query(
                 "INSERT INTO users (id, email, region, roles, tools_used, attributes, source) \
-                 VALUES ($1, $2, 'US', '{analyst}', '{excel}', '{}'::jsonb, 'gpt_apps')"
+                 VALUES ($1, $2, 'US', '{analyst}', '{excel}', '{}'::jsonb, 'gpt_apps')",
             )
             .bind(user_id)
             .bind(&email)
@@ -1957,7 +2386,7 @@ async fn gpt_user_status_new_user_no_tasks() {
             .unwrap();
 
             let session_token: Uuid = sqlx::query_scalar(
-                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token"
+                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token",
             )
             .bind(user_id)
             .fetch_one(&pool)
@@ -1970,21 +2399,34 @@ async fn gpt_user_status_new_user_no_tasks() {
 
             let params = types::GptUserStatusParams { session_token };
 
-            let result = gpt::gpt_user_status(
-                axum::extract::State(state),
-                axum::extract::Query(params),
-            ).await;
+            let result =
+                gpt::gpt_user_status(axum::extract::State(state), axum::extract::Query(params))
+                    .await;
 
-            assert!(result.status().is_success(), "gpt_user_status should succeed for new user");
+            assert!(
+                result.status().is_success(),
+                "gpt_user_status should succeed for new user"
+            );
             let resp: types::GptUserStatusResponse = read_typed(result).await;
             assert_eq!(resp.user_id, user_id);
             assert_eq!(resp.email, email);
-            assert!(resp.completed_tasks.is_empty(), "new user should have no completed tasks");
+            assert!(
+                resp.completed_tasks.is_empty(),
+                "new user should have no completed tasks"
+            );
             assert!(!resp.message.is_empty());
 
             // Cleanup
-            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1").bind(user_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM users WHERE id = $1").bind(user_id).execute(&pool).await.ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
         }
     }
 }
@@ -2002,7 +2444,7 @@ async fn gpt_run_service_skips_campaign_with_insufficient_budget() {
             let email = format!("gpt_budget_{}@example.com", Uuid::new_v4());
             sqlx::query(
                 "INSERT INTO users (id, email, region, roles, tools_used, attributes, source) \
-                 VALUES ($1, $2, 'JP', '{developer}', '{design}', '{}'::jsonb, 'gpt_apps')"
+                 VALUES ($1, $2, 'JP', '{developer}', '{design}', '{}'::jsonb, 'gpt_apps')",
             )
             .bind(user_id)
             .bind(&email)
@@ -2011,7 +2453,7 @@ async fn gpt_run_service_skips_campaign_with_insufficient_budget() {
             .unwrap();
 
             let session_token: Uuid = sqlx::query_scalar(
-                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token"
+                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token",
             )
             .bind(user_id)
             .fetch_one(&pool)
@@ -2034,7 +2476,7 @@ async fn gpt_run_service_skips_campaign_with_insufficient_budget() {
             // Complete the task (so the only blocker is budget)
             sqlx::query(
                 "INSERT INTO task_completions (id, campaign_id, user_id, task_name, created_at) \
-                 VALUES ($1, $2, $3, 'survey', NOW())"
+                 VALUES ($1, $2, $3, 'survey', NOW())",
             )
             .bind(Uuid::new_v4())
             .bind(campaign_id)
@@ -2056,16 +2498,36 @@ async fn gpt_run_service_skips_campaign_with_insufficient_budget() {
                 axum::extract::State(state),
                 axum::extract::Path("design".to_string()),
                 axum::Json(payload),
-            ).await;
+            )
+            .await;
 
             // Should fail because budget_remaining_cents (1) < price (8)
-            assert!(!result.status().is_success(), "should fail when campaign budget is insufficient");
+            assert!(
+                !result.status().is_success(),
+                "should fail when campaign budget is insufficient"
+            );
 
             // Cleanup
-            sqlx::query("DELETE FROM task_completions WHERE campaign_id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1").bind(user_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM campaigns WHERE id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM users WHERE id = $1").bind(user_id).execute(&pool).await.ok();
+            sqlx::query("DELETE FROM task_completions WHERE campaign_id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM campaigns WHERE id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
         }
     }
 }
@@ -2081,7 +2543,7 @@ async fn gpt_user_status_shows_not_ready_for_pending_task() {
             let email = format!("gpt_notready_{}@example.com", Uuid::new_v4());
             sqlx::query(
                 "INSERT INTO users (id, email, region, roles, tools_used, attributes, source) \
-                 VALUES ($1, $2, 'JP', '{developer}', '{design}', '{}'::jsonb, 'gpt_apps')"
+                 VALUES ($1, $2, 'JP', '{developer}', '{design}', '{}'::jsonb, 'gpt_apps')",
             )
             .bind(user_id)
             .bind(&email)
@@ -2090,7 +2552,7 @@ async fn gpt_user_status_shows_not_ready_for_pending_task() {
             .unwrap();
 
             let session_token: Uuid = sqlx::query_scalar(
-                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token"
+                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token",
             )
             .bind(user_id)
             .fetch_one(&pool)
@@ -2116,24 +2578,50 @@ async fn gpt_user_status_shows_not_ready_for_pending_task() {
 
             let params = types::GptUserStatusParams { session_token };
 
-            let result = gpt::gpt_user_status(
-                axum::extract::State(state),
-                axum::extract::Query(params),
-            ).await;
+            let result =
+                gpt::gpt_user_status(axum::extract::State(state), axum::extract::Query(params))
+                    .await;
 
-            assert!(result.status().is_success(), "gpt_user_status should succeed");
+            assert!(
+                result.status().is_success(),
+                "gpt_user_status should succeed"
+            );
             let resp: types::GptUserStatusResponse = read_typed(result).await;
-            assert!(resp.completed_tasks.is_empty(), "should have no completed tasks");
-            assert!(!resp.available_services.is_empty(), "should list available service from matching campaign");
+            assert!(
+                resp.completed_tasks.is_empty(),
+                "should have no completed tasks"
+            );
+            assert!(
+                !resp.available_services.is_empty(),
+                "should list available service from matching campaign"
+            );
             let svc = &resp.available_services[0];
             assert_eq!(svc.sponsor, "PendingSponsor");
-            assert!(!svc.ready, "service should NOT be ready since task is pending");
-            assert!(resp.message.contains("0 ready"), "message should indicate 0 ready services");
+            assert!(
+                !svc.ready,
+                "service should NOT be ready since task is pending"
+            );
+            assert!(
+                resp.message.contains("0 ready"),
+                "message should indicate 0 ready services"
+            );
 
             // Cleanup
-            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1").bind(user_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM campaigns WHERE id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM users WHERE id = $1").bind(user_id).execute(&pool).await.ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM campaigns WHERE id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
         }
     }
 }
@@ -2156,12 +2644,23 @@ async fn gpt_handlers_reject_invalid_session_token() {
             let result = gpt::gpt_get_tasks(
                 axum::extract::State(state.clone()),
                 axum::extract::Path(fake_campaign),
-                axum::extract::Query(types::GptTaskParams { session_token: fake_token }),
-            ).await;
-            assert!(!result.status().is_success(), "gpt_get_tasks should reject invalid session");
+                axum::extract::Query(types::GptTaskParams {
+                    session_token: fake_token,
+                }),
+            )
+            .await;
+            assert!(
+                !result.status().is_success(),
+                "gpt_get_tasks should reject invalid session"
+            );
             let err_str = read_body_string(result).await;
-            assert!(err_str.contains("invalid") || err_str.contains("expired") || err_str.contains("session"),
-                "error should mention session, got: {}", err_str);
+            assert!(
+                err_str.contains("invalid")
+                    || err_str.contains("expired")
+                    || err_str.contains("session"),
+                "error should mention session, got: {}",
+                err_str
+            );
 
             // gpt_run_service with invalid session
             let result = gpt::gpt_run_service(
@@ -2171,15 +2670,25 @@ async fn gpt_handlers_reject_invalid_session_token() {
                     session_token: fake_token,
                     input: "test".to_string(),
                 }),
-            ).await;
-            assert!(!result.status().is_success(), "gpt_run_service should reject invalid session");
+            )
+            .await;
+            assert!(
+                !result.status().is_success(),
+                "gpt_run_service should reject invalid session"
+            );
 
             // gpt_user_status with invalid session
             let result = gpt::gpt_user_status(
                 axum::extract::State(state.clone()),
-                axum::extract::Query(types::GptUserStatusParams { session_token: fake_token }),
-            ).await;
-            assert!(!result.status().is_success(), "gpt_user_status should reject invalid session");
+                axum::extract::Query(types::GptUserStatusParams {
+                    session_token: fake_token,
+                }),
+            )
+            .await;
+            assert!(
+                !result.status().is_success(),
+                "gpt_user_status should reject invalid session"
+            );
         }
     }
 }
@@ -2195,7 +2704,7 @@ async fn gpt_complete_task_duplicate_completion_records_second_entry() {
             let email = format!("gpt_dup_{}@example.com", Uuid::new_v4());
             sqlx::query(
                 "INSERT INTO users (id, email, region, roles, tools_used, attributes, source) \
-                 VALUES ($1, $2, 'JP', '{developer}', '{design}', '{}'::jsonb, 'gpt_apps')"
+                 VALUES ($1, $2, 'JP', '{developer}', '{design}', '{}'::jsonb, 'gpt_apps')",
             )
             .bind(user_id)
             .bind(&email)
@@ -2204,7 +2713,7 @@ async fn gpt_complete_task_duplicate_completion_records_second_entry() {
             .unwrap();
 
             let session_token: Uuid = sqlx::query_scalar(
-                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token"
+                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token",
             )
             .bind(user_id)
             .fetch_one(&pool)
@@ -2243,20 +2752,28 @@ async fn gpt_complete_task_duplicate_completion_records_second_entry() {
                 axum::extract::State(state.clone()),
                 axum::extract::Path(campaign_id),
                 axum::Json(make_payload()),
-            ).await;
-            assert!(result.status().is_success(), "first completion should succeed");
+            )
+            .await;
+            assert!(
+                result.status().is_success(),
+                "first completion should succeed"
+            );
 
             // Second (duplicate) completion should also succeed (records another entry)
             let result = gpt::gpt_complete_task(
                 axum::extract::State(state.clone()),
                 axum::extract::Path(campaign_id),
                 axum::Json(make_payload()),
-            ).await;
-            assert!(result.status().is_success(), "duplicate completion should succeed (no unique constraint on task_completions)");
+            )
+            .await;
+            assert!(
+                result.status().is_success(),
+                "duplicate completion should succeed (no unique constraint on task_completions)"
+            );
 
             // Verify two records exist
             let count: i64 = sqlx::query_scalar(
-                "SELECT count(*) FROM task_completions WHERE campaign_id = $1 AND user_id = $2"
+                "SELECT count(*) FROM task_completions WHERE campaign_id = $1 AND user_id = $2",
             )
             .bind(campaign_id)
             .bind(user_id)
@@ -2266,11 +2783,31 @@ async fn gpt_complete_task_duplicate_completion_records_second_entry() {
             assert_eq!(count, 2, "should have two task completion records");
 
             // Cleanup
-            sqlx::query("DELETE FROM consents WHERE campaign_id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM task_completions WHERE campaign_id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1").bind(user_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM campaigns WHERE id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM users WHERE id = $1").bind(user_id).execute(&pool).await.ok();
+            sqlx::query("DELETE FROM consents WHERE campaign_id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM task_completions WHERE campaign_id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM campaigns WHERE id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
         }
     }
 }
@@ -2291,7 +2828,11 @@ async fn gpt_subrouter_search_services_is_reachable() {
         .await
         .unwrap();
     // Should not be 404 (route exists); may be 500 if no DB, but route is reachable
-    assert_ne!(response.status().as_u16(), 404, "GET /gpt/services should be routed");
+    assert_ne!(
+        response.status().as_u16(),
+        404,
+        "GET /gpt/services should be routed"
+    );
 }
 
 #[tokio::test]
@@ -2305,8 +2846,13 @@ async fn gpt_subrouter_auth_is_reachable() {
             "region": "JP"
         }),
         None,
-    ).await;
-    assert_ne!(response.status().as_u16(), 404, "POST /gpt/auth should be routed");
+    )
+    .await;
+    assert_ne!(
+        response.status().as_u16(),
+        404,
+        "POST /gpt/auth should be routed"
+    );
 }
 
 #[tokio::test]
@@ -2323,7 +2869,11 @@ async fn gpt_subrouter_user_status_is_reachable() {
         )
         .await
         .unwrap();
-    assert_ne!(response.status().as_u16(), 404, "GET /gpt/user/status should be routed");
+    assert_ne!(
+        response.status().as_u16(),
+        404,
+        "GET /gpt/user/status should be routed"
+    );
 }
 
 #[tokio::test]
@@ -2339,7 +2889,11 @@ async fn gpt_subrouter_does_not_break_existing_routes() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status().as_u16(), 200, "existing /health route should still work");
+    assert_eq!(
+        response.status().as_u16(),
+        200,
+        "existing /health route should still work"
+    );
 }
 
 // --- Task 7.2: OpenAPI schema tests ---
@@ -2359,36 +2913,81 @@ async fn well_known_openapi_yaml_returns_yaml_content() {
         .unwrap();
 
     assert_eq!(response.status().as_u16(), 200, "should return 200");
-    let content_type = response.headers().get("content-type")
+    let content_type = response
+        .headers()
+        .get("content-type")
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
     assert!(
         content_type.contains("yaml") || content_type.contains("text/plain"),
-        "content-type should indicate YAML, got: {}", content_type
+        "content-type should indicate YAML, got: {}",
+        content_type
     );
 
     let body = to_bytes(response.into_body(), 1_000_000).await.unwrap();
     let body_str = String::from_utf8_lossy(&body);
-    assert!(body_str.contains("openapi:"), "body should contain openapi version");
-    assert!(body_str.contains("searchServices"), "should contain searchServices operationId");
-    assert!(body_str.contains("authenticateUser"), "should contain authenticateUser operationId");
-    assert!(body_str.contains("getTaskDetails"), "should contain getTaskDetails operationId");
-    assert!(body_str.contains("completeTask"), "should contain completeTask operationId");
-    assert!(body_str.contains("runService"), "should contain runService operationId");
-    assert!(body_str.contains("getUserStatus"), "should contain getUserStatus operationId");
+    assert!(
+        body_str.contains("openapi:"),
+        "body should contain openapi version"
+    );
+    assert!(
+        body_str.contains("searchServices"),
+        "should contain searchServices operationId"
+    );
+    assert!(
+        body_str.contains("authenticateUser"),
+        "should contain authenticateUser operationId"
+    );
+    assert!(
+        body_str.contains("getTaskDetails"),
+        "should contain getTaskDetails operationId"
+    );
+    assert!(
+        body_str.contains("completeTask"),
+        "should contain completeTask operationId"
+    );
+    assert!(
+        body_str.contains("runService"),
+        "should contain runService operationId"
+    );
+    assert!(
+        body_str.contains("getUserStatus"),
+        "should contain getUserStatus operationId"
+    );
 }
 
 #[test]
 fn openapi_yaml_file_exists_and_is_valid() {
     let yaml_content = include_str!("../openapi.yaml");
-    assert!(yaml_content.contains("openapi:"), "should contain openapi version field");
+    assert!(
+        yaml_content.contains("openapi:"),
+        "should contain openapi version field"
+    );
     assert!(yaml_content.contains("3.1.0"), "should be OpenAPI 3.1.0");
-    assert!(yaml_content.contains("/gpt/services"), "should define /gpt/services path");
-    assert!(yaml_content.contains("/gpt/auth"), "should define /gpt/auth path");
-    assert!(yaml_content.contains("/gpt/tasks/{campaign_id}"), "should define tasks path");
-    assert!(yaml_content.contains("/gpt/services/{service}/run"), "should define run path");
-    assert!(yaml_content.contains("/gpt/user/status"), "should define user status path");
-    assert!(yaml_content.contains("ApiKeyAuth"), "should define ApiKeyAuth security scheme");
+    assert!(
+        yaml_content.contains("/gpt/services"),
+        "should define /gpt/services path"
+    );
+    assert!(
+        yaml_content.contains("/gpt/auth"),
+        "should define /gpt/auth path"
+    );
+    assert!(
+        yaml_content.contains("/gpt/tasks/{campaign_id}"),
+        "should define tasks path"
+    );
+    assert!(
+        yaml_content.contains("/gpt/services/{service}/run"),
+        "should define run path"
+    );
+    assert!(
+        yaml_content.contains("/gpt/user/status"),
+        "should define user status path"
+    );
+    assert!(
+        yaml_content.contains("ApiKeyAuth"),
+        "should define ApiKeyAuth security scheme"
+    );
 }
 
 // --- Task 8.4: Comprehensive OpenAPI schema validation ---
@@ -2399,8 +2998,8 @@ fn openapi_yaml_file_exists_and_is_valid() {
 #[test]
 fn openapi_schema_matches_implementation() {
     let yaml_content = include_str!("../openapi.yaml");
-    let doc: serde_yaml::Value = serde_yaml::from_str(yaml_content)
-        .expect("openapi.yaml should be valid YAML");
+    let doc: serde_yaml::Value =
+        serde_yaml::from_str(yaml_content).expect("openapi.yaml should be valid YAML");
 
     // --- 1. OpenAPI version ---
     assert_eq!(
@@ -2410,170 +3009,304 @@ fn openapi_schema_matches_implementation() {
     );
 
     // --- 2. Info section ---
-    assert!(doc["info"]["title"].as_str().is_some(), "info.title is required");
-    assert!(doc["info"]["version"].as_str().is_some(), "info.version is required");
-    assert!(doc["info"]["description"].as_str().is_some(), "info.description is required");
+    assert!(
+        doc["info"]["title"].as_str().is_some(),
+        "info.title is required"
+    );
+    assert!(
+        doc["info"]["version"].as_str().is_some(),
+        "info.version is required"
+    );
+    assert!(
+        doc["info"]["description"].as_str().is_some(),
+        "info.description is required"
+    );
 
     // --- 3. Paths: all 6 GPT endpoints exist with correct methods ---
-    let paths = doc["paths"].as_mapping().expect("paths should be a mapping");
+    let paths = doc["paths"]
+        .as_mapping()
+        .expect("paths should be a mapping");
 
     let expected_endpoints: Vec<(&str, &str, &str)> = vec![
-        ("/gpt/services",                       "get",  "searchServices"),
-        ("/gpt/auth",                            "post", "authenticateUser"),
-        ("/gpt/tasks/{campaign_id}",             "get",  "getTaskDetails"),
-        ("/gpt/tasks/{campaign_id}/complete",    "post", "completeTask"),
-        ("/gpt/services/{service}/run",          "post", "runService"),
-        ("/gpt/user/status",                     "get",  "getUserStatus"),
+        ("/gpt/services", "get", "searchServices"),
+        ("/gpt/auth", "post", "authenticateUser"),
+        ("/gpt/tasks/{campaign_id}", "get", "getTaskDetails"),
+        ("/gpt/tasks/{campaign_id}/complete", "post", "completeTask"),
+        ("/gpt/services/{service}/run", "post", "runService"),
+        ("/gpt/user/status", "get", "getUserStatus"),
     ];
 
     for (path, method, operation_id) in &expected_endpoints {
         let path_val = &doc["paths"][*path];
         assert!(
             !path_val.is_null(),
-            "Path '{}' should exist in openapi.yaml", path
+            "Path '{}' should exist in openapi.yaml",
+            path
         );
         let method_val = &path_val[*method];
         assert!(
             !method_val.is_null(),
-            "Path '{}' should have method '{}'", path, method
+            "Path '{}' should have method '{}'",
+            path,
+            method
         );
         assert_eq!(
             method_val["operationId"].as_str().unwrap(),
             *operation_id,
-            "operationId mismatch for {} {}", method, path
+            "operationId mismatch for {} {}",
+            method,
+            path
         );
         assert!(
             method_val["summary"].as_str().is_some(),
-            "{} {} should have a summary", method, path
+            "{} {} should have a summary",
+            method,
+            path
         );
         assert!(
             method_val["description"].as_str().is_some(),
-            "{} {} should have a description", method, path
+            "{} {} should have a description",
+            method,
+            path
         );
     }
 
     // --- 4. Endpoint count ≤ 30 (requirement 1.5) ---
-    assert!(paths.len() <= 30, "Endpoint count ({}) must be ≤ 30", paths.len());
+    assert!(
+        paths.len() <= 30,
+        "Endpoint count ({}) must be ≤ 30",
+        paths.len()
+    );
 
     // --- 5. GET /gpt/services parameters ---
     let search_params = doc["paths"]["/gpt/services"]["get"]["parameters"]
-        .as_sequence().expect("/gpt/services should have parameters");
-    let search_param_names: Vec<&str> = search_params.iter()
+        .as_sequence()
+        .expect("/gpt/services should have parameters");
+    let search_param_names: Vec<&str> = search_params
+        .iter()
         .filter_map(|p| p["name"].as_str())
         .collect();
-    assert!(search_param_names.contains(&"q"), "/gpt/services should have 'q' param");
-    assert!(search_param_names.contains(&"category"), "/gpt/services should have 'category' param");
+    assert!(
+        search_param_names.contains(&"q"),
+        "/gpt/services should have 'q' param"
+    );
+    assert!(
+        search_param_names.contains(&"category"),
+        "/gpt/services should have 'category' param"
+    );
     // Both should be optional (matching GptSearchParams where q and category are Option<String>)
     for param in search_params {
         let required = param["required"].as_bool().unwrap_or(false);
-        assert!(!required, "/gpt/services param '{}' should be optional", param["name"].as_str().unwrap_or("?"));
+        assert!(
+            !required,
+            "/gpt/services param '{}' should be optional",
+            param["name"].as_str().unwrap_or("?")
+        );
     }
 
     // --- 6. POST /gpt/auth request body ---
-    let auth_props = &doc["paths"]["/gpt/auth"]["post"]["requestBody"]["content"]
-        ["application/json"]["schema"]["properties"];
+    let auth_props = &doc["paths"]["/gpt/auth"]["post"]["requestBody"]["content"]["application/json"]
+        ["schema"]["properties"];
     for field in &["email", "region"] {
-        assert!(!auth_props[*field].is_null(), "/gpt/auth request should have '{}' field", field);
+        assert!(
+            !auth_props[*field].is_null(),
+            "/gpt/auth request should have '{}' field",
+            field
+        );
     }
     let auth_required = doc["paths"]["/gpt/auth"]["post"]["requestBody"]["content"]
         ["application/json"]["schema"]["required"]
         .as_sequence().expect("/gpt/auth should have required fields");
-    let auth_required_names: Vec<&str> = auth_required.iter()
-        .filter_map(|v| v.as_str()).collect();
-    assert!(auth_required_names.contains(&"email"), "email should be required in /gpt/auth");
-    assert!(auth_required_names.contains(&"region"), "region should be required in /gpt/auth");
+    let auth_required_names: Vec<&str> = auth_required.iter().filter_map(|v| v.as_str()).collect();
+    assert!(
+        auth_required_names.contains(&"email"),
+        "email should be required in /gpt/auth"
+    );
+    assert!(
+        auth_required_names.contains(&"region"),
+        "region should be required in /gpt/auth"
+    );
 
     // --- 7. POST /gpt/auth response properties match GptAuthResponse ---
-    let auth_resp_props = &doc["paths"]["/gpt/auth"]["post"]["responses"]["200"]["content"]
-        ["application/json"]["schema"]["properties"];
-    for field in &["session_token", "user_id", "email", "is_new_user", "message"] {
-        assert!(!auth_resp_props[*field].is_null(), "/gpt/auth response should have '{}' field", field);
+    let auth_resp_props = &doc["paths"]["/gpt/auth"]["post"]["responses"]["200"]["content"]["application/json"]
+        ["schema"]["properties"];
+    for field in &[
+        "session_token",
+        "user_id",
+        "email",
+        "is_new_user",
+        "message",
+    ] {
+        assert!(
+            !auth_resp_props[*field].is_null(),
+            "/gpt/auth response should have '{}' field",
+            field
+        );
     }
 
     // --- 8. GET /gpt/tasks/{campaign_id} parameters ---
     let task_params = doc["paths"]["/gpt/tasks/{campaign_id}"]["get"]["parameters"]
-        .as_sequence().expect("/gpt/tasks should have parameters");
-    let task_param_names: Vec<&str> = task_params.iter()
+        .as_sequence()
+        .expect("/gpt/tasks should have parameters");
+    let task_param_names: Vec<&str> = task_params
+        .iter()
         .filter_map(|p| p["name"].as_str())
         .collect();
-    assert!(task_param_names.contains(&"campaign_id"), "/gpt/tasks should have 'campaign_id' path param");
-    assert!(task_param_names.contains(&"session_token"), "/gpt/tasks should have 'session_token' query param");
+    assert!(
+        task_param_names.contains(&"campaign_id"),
+        "/gpt/tasks should have 'campaign_id' path param"
+    );
+    assert!(
+        task_param_names.contains(&"session_token"),
+        "/gpt/tasks should have 'session_token' query param"
+    );
 
     // --- 9. GET /gpt/tasks response properties match GptTaskResponse ---
     let task_resp_props = &doc["paths"]["/gpt/tasks/{campaign_id}"]["get"]["responses"]["200"]["content"]
         ["application/json"]["schema"]["properties"];
-    for field in &["campaign_id", "campaign_name", "sponsor", "required_task",
-                   "task_description", "task_input_format", "already_completed",
-                   "subsidy_amount_cents", "message"] {
-        assert!(!task_resp_props[*field].is_null(),
-            "/gpt/tasks response should have '{}' field", field);
+    for field in &[
+        "campaign_id",
+        "campaign_name",
+        "sponsor",
+        "required_task",
+        "task_description",
+        "task_input_format",
+        "already_completed",
+        "subsidy_amount_cents",
+        "message",
+    ] {
+        assert!(
+            !task_resp_props[*field].is_null(),
+            "/gpt/tasks response should have '{}' field",
+            field
+        );
     }
 
     // --- 10. POST /gpt/tasks/{campaign_id}/complete request body ---
-    let complete_props = &doc["paths"]["/gpt/tasks/{campaign_id}/complete"]["post"]["requestBody"]["content"]
-        ["application/json"]["schema"]["properties"];
+    let complete_props = &doc["paths"]["/gpt/tasks/{campaign_id}/complete"]["post"]["requestBody"]
+        ["content"]["application/json"]["schema"]["properties"];
     for field in &["session_token", "task_name", "consent"] {
-        assert!(!complete_props[*field].is_null(),
-            "/gpt/tasks/complete request should have '{}' field", field);
+        assert!(
+            !complete_props[*field].is_null(),
+            "/gpt/tasks/complete request should have '{}' field",
+            field
+        );
     }
     // Consent sub-object
     let consent_props = &complete_props["consent"]["properties"];
-    for field in &["data_sharing_agreed", "purpose_acknowledged", "contact_permission"] {
-        assert!(!consent_props[*field].is_null(),
-            "consent object should have '{}' field", field);
+    for field in &[
+        "data_sharing_agreed",
+        "purpose_acknowledged",
+        "contact_permission",
+    ] {
+        assert!(
+            !consent_props[*field].is_null(),
+            "consent object should have '{}' field",
+            field
+        );
     }
 
     // --- 11. POST /gpt/tasks/{campaign_id}/complete response match GptCompleteTaskResponse ---
-    let complete_resp_props = &doc["paths"]["/gpt/tasks/{campaign_id}/complete"]["post"]["responses"]["200"]["content"]
-        ["application/json"]["schema"]["properties"];
-    for field in &["task_completion_id", "campaign_id", "consent_recorded", "can_use_service", "message"] {
-        assert!(!complete_resp_props[*field].is_null(),
-            "/gpt/tasks/complete response should have '{}' field", field);
+    let complete_resp_props = &doc["paths"]["/gpt/tasks/{campaign_id}/complete"]["post"]["responses"]
+        ["200"]["content"]["application/json"]["schema"]["properties"];
+    for field in &[
+        "task_completion_id",
+        "campaign_id",
+        "consent_recorded",
+        "can_use_service",
+        "message",
+    ] {
+        assert!(
+            !complete_resp_props[*field].is_null(),
+            "/gpt/tasks/complete response should have '{}' field",
+            field
+        );
     }
 
     // --- 12. POST /gpt/services/{service}/run request body ---
     let run_props = &doc["paths"]["/gpt/services/{service}/run"]["post"]["requestBody"]["content"]
         ["application/json"]["schema"]["properties"];
     for field in &["session_token", "input"] {
-        assert!(!run_props[*field].is_null(),
-            "/gpt/services/run request should have '{}' field", field);
+        assert!(
+            !run_props[*field].is_null(),
+            "/gpt/services/run request should have '{}' field",
+            field
+        );
     }
 
     // --- 13. POST /gpt/services/{service}/run response match GptRunServiceResponse ---
     let run_resp_props = &doc["paths"]["/gpt/services/{service}/run"]["post"]["responses"]["200"]["content"]
         ["application/json"]["schema"]["properties"];
-    for field in &["service", "output", "payment_mode", "sponsored_by", "tx_hash", "message"] {
-        assert!(!run_resp_props[*field].is_null(),
-            "/gpt/services/run response should have '{}' field", field);
+    for field in &[
+        "service",
+        "output",
+        "payment_mode",
+        "sponsored_by",
+        "tx_hash",
+        "message",
+    ] {
+        assert!(
+            !run_resp_props[*field].is_null(),
+            "/gpt/services/run response should have '{}' field",
+            field
+        );
     }
 
     // --- 14. GET /gpt/user/status parameters ---
     let status_params = doc["paths"]["/gpt/user/status"]["get"]["parameters"]
-        .as_sequence().expect("/gpt/user/status should have parameters");
-    let status_param_names: Vec<&str> = status_params.iter()
+        .as_sequence()
+        .expect("/gpt/user/status should have parameters");
+    let status_param_names: Vec<&str> = status_params
+        .iter()
         .filter_map(|p| p["name"].as_str())
         .collect();
-    assert!(status_param_names.contains(&"session_token"), "/gpt/user/status should have 'session_token' param");
+    assert!(
+        status_param_names.contains(&"session_token"),
+        "/gpt/user/status should have 'session_token' param"
+    );
 
     // --- 15. GET /gpt/user/status response match GptUserStatusResponse ---
     let status_resp_props = &doc["paths"]["/gpt/user/status"]["get"]["responses"]["200"]["content"]
         ["application/json"]["schema"]["properties"];
-    for field in &["user_id", "email", "completed_tasks", "available_services", "message"] {
-        assert!(!status_resp_props[*field].is_null(),
-            "/gpt/user/status response should have '{}' field", field);
+    for field in &[
+        "user_id",
+        "email",
+        "completed_tasks",
+        "available_services",
+        "message",
+    ] {
+        assert!(
+            !status_resp_props[*field].is_null(),
+            "/gpt/user/status response should have '{}' field",
+            field
+        );
     }
 
     // --- 16. GptServiceItem component schema ---
     let svc_item_props = &doc["components"]["schemas"]["GptServiceItem"]["properties"];
-    for field in &["service_type", "service_id", "name", "sponsor", "required_task",
-                   "subsidy_amount_cents", "category", "active"] {
-        assert!(!svc_item_props[*field].is_null(),
-            "GptServiceItem schema should have '{}' field", field);
+    for field in &[
+        "service_type",
+        "service_id",
+        "name",
+        "sponsor",
+        "required_task",
+        "subsidy_amount_cents",
+        "category",
+        "active",
+    ] {
+        assert!(
+            !svc_item_props[*field].is_null(),
+            "GptServiceItem schema should have '{}' field",
+            field
+        );
     }
 
     // --- 17. Security scheme ---
     let security_schemes = &doc["components"]["securitySchemes"];
-    assert!(!security_schemes["ApiKeyAuth"].is_null(), "ApiKeyAuth security scheme should be defined");
+    assert!(
+        !security_schemes["ApiKeyAuth"].is_null(),
+        "ApiKeyAuth security scheme should be defined"
+    );
     assert_eq!(
         security_schemes["ApiKeyAuth"]["scheme"].as_str().unwrap(),
         "bearer",
@@ -2581,7 +3314,9 @@ fn openapi_schema_matches_implementation() {
     );
 
     // --- 18. Global security ---
-    let security = doc["security"].as_sequence().expect("global security should be defined");
+    let security = doc["security"]
+        .as_sequence()
+        .expect("global security should be defined");
     assert!(!security.is_empty(), "global security should not be empty");
 }
 
@@ -2610,26 +3345,47 @@ async fn gpt_builder_preflight_all_prerequisites_met() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status().as_u16(), 200, "openapi.yaml endpoint must return 200");
-    let ct = response.headers().get("content-type")
-        .and_then(|v| v.to_str().ok()).unwrap_or("");
-    assert!(ct.contains("yaml"), "content-type must indicate YAML, got: {}", ct);
+    assert_eq!(
+        response.status().as_u16(),
+        200,
+        "openapi.yaml endpoint must return 200"
+    );
+    let ct = response
+        .headers()
+        .get("content-type")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("");
+    assert!(
+        ct.contains("yaml"),
+        "content-type must indicate YAML, got: {}",
+        ct
+    );
 
     let body = to_bytes(response.into_body(), 1_000_000).await.unwrap();
     let schema_str = String::from_utf8_lossy(&body);
 
     // GPT Builder requires all operationIds to create Actions
     let required_operations = [
-        "searchServices", "authenticateUser", "getTaskDetails",
-        "completeTask", "runService", "getUserStatus",
+        "searchServices",
+        "authenticateUser",
+        "getTaskDetails",
+        "completeTask",
+        "runService",
+        "getUserStatus",
     ];
     for op in &required_operations {
-        assert!(schema_str.contains(op),
-            "OpenAPI schema must contain operationId '{}' for GPT Builder Action import", op);
+        assert!(
+            schema_str.contains(op),
+            "OpenAPI schema must contain operationId '{}' for GPT Builder Action import",
+            op
+        );
     }
 
     // GPT Builder requires servers URL
-    assert!(schema_str.contains("servers:"), "OpenAPI schema must define servers for GPT Builder");
+    assert!(
+        schema_str.contains("servers:"),
+        "OpenAPI schema must define servers for GPT Builder"
+    );
 
     // 2. Privacy page endpoint (required for GPT Builder publication)
     let response = app
@@ -2643,36 +3399,57 @@ async fn gpt_builder_preflight_all_prerequisites_met() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status().as_u16(), 200, "privacy page must return 200 for GPT Builder");
+    assert_eq!(
+        response.status().as_u16(),
+        200,
+        "privacy page must return 200 for GPT Builder"
+    );
 
     // 3. gpt-config.md exists with required sections for GPT Builder setup
     let config_content = include_str!("../.kiro/specs/gpt-apps-integration/gpt-config.md");
-    assert!(config_content.contains("システムプロンプト"),
-        "gpt-config.md must contain system prompt section");
-    assert!(config_content.contains("Conversation Starters"),
-        "gpt-config.md must contain Conversation Starters section");
-    assert!(config_content.contains("GPT Builder 設定手順"),
-        "gpt-config.md must contain GPT Builder setup instructions");
-    assert!(config_content.contains("Actions の設定"),
-        "gpt-config.md must contain Actions setup section");
-    assert!(config_content.contains("プライバシーポリシー"),
-        "gpt-config.md must contain privacy policy section");
+    assert!(
+        config_content.contains("システムプロンプト"),
+        "gpt-config.md must contain system prompt section"
+    );
+    assert!(
+        config_content.contains("Conversation Starters"),
+        "gpt-config.md must contain Conversation Starters section"
+    );
+    assert!(
+        config_content.contains("GPT Builder 設定手順"),
+        "gpt-config.md must contain GPT Builder setup instructions"
+    );
+    assert!(
+        config_content.contains("Actions の設定"),
+        "gpt-config.md must contain Actions setup section"
+    );
+    assert!(
+        config_content.contains("プライバシーポリシー"),
+        "gpt-config.md must contain privacy policy section"
+    );
 
     // 4. Conversation Starters: at least 4 defined
     let starter_count = config_content.matches("Conversation Starter").count();
     // Header + table header + at least 4 starters
-    assert!(starter_count >= 2, "gpt-config.md must define Conversation Starters");
+    assert!(
+        starter_count >= 2,
+        "gpt-config.md must define Conversation Starters"
+    );
 
     // 5. Parse schema and verify Bearer auth scheme (GPT Builder requires this)
-    let doc: serde_yaml::Value = serde_yaml::from_str(&schema_str)
-        .expect("served openapi.yaml must be parseable YAML");
+    let doc: serde_yaml::Value =
+        serde_yaml::from_str(&schema_str).expect("served openapi.yaml must be parseable YAML");
     assert_eq!(
-        doc["components"]["securitySchemes"]["ApiKeyAuth"]["scheme"].as_str().unwrap(),
+        doc["components"]["securitySchemes"]["ApiKeyAuth"]["scheme"]
+            .as_str()
+            .unwrap(),
         "bearer",
         "GPT Builder requires Bearer authentication scheme"
     );
     assert_eq!(
-        doc["components"]["securitySchemes"]["ApiKeyAuth"]["type"].as_str().unwrap(),
+        doc["components"]["securitySchemes"]["ApiKeyAuth"]["type"]
+            .as_str()
+            .unwrap(),
         "http",
         "GPT Builder requires http type for API key auth"
     );
@@ -2700,7 +3477,8 @@ async fn gpt_builder_served_schema_matches_source_file() {
     let source = include_str!("../openapi.yaml");
 
     assert_eq!(
-        served.trim(), source.trim(),
+        served.trim(),
+        source.trim(),
         "Served OpenAPI schema must exactly match openapi.yaml source file"
     );
 }
@@ -2722,26 +3500,60 @@ async fn privacy_page_returns_html_with_required_content() {
         .unwrap();
 
     assert_eq!(response.status().as_u16(), 200, "should return 200");
-    let content_type = response.headers().get("content-type")
+    let content_type = response
+        .headers()
+        .get("content-type")
         .and_then(|v| v.to_str().ok())
         .unwrap_or("");
-    assert!(content_type.contains("text/html"), "content-type should be text/html, got: {}", content_type);
+    assert!(
+        content_type.contains("text/html"),
+        "content-type should be text/html, got: {}",
+        content_type
+    );
 
     let body = to_bytes(response.into_body(), 1_000_000).await.unwrap();
     let body_str = String::from_utf8_lossy(&body);
-    assert!(body_str.contains("Privacy"), "should contain Privacy heading");
-    assert!(body_str.contains("email"), "should mention collected data types");
-    assert!(body_str.contains("sponsor") || body_str.contains("Sponsor"), "should mention data sharing with sponsors");
-    assert!(body_str.contains("retention") || body_str.contains("Retention") || body_str.contains("retain"), "should mention data retention");
-    assert!(body_str.contains("consent") || body_str.contains("Consent") || body_str.contains("withdraw"), "should mention consent/withdrawal rights");
-    assert!(body_str.contains("contact") || body_str.contains("Contact"), "should mention contact information");
+    assert!(
+        body_str.contains("Privacy"),
+        "should contain Privacy heading"
+    );
+    assert!(
+        body_str.contains("email"),
+        "should mention collected data types"
+    );
+    assert!(
+        body_str.contains("sponsor") || body_str.contains("Sponsor"),
+        "should mention data sharing with sponsors"
+    );
+    assert!(
+        body_str.contains("retention")
+            || body_str.contains("Retention")
+            || body_str.contains("retain"),
+        "should mention data retention"
+    );
+    assert!(
+        body_str.contains("consent")
+            || body_str.contains("Consent")
+            || body_str.contains("withdraw"),
+        "should mention consent/withdrawal rights"
+    );
+    assert!(
+        body_str.contains("contact") || body_str.contains("Contact"),
+        "should mention contact information"
+    );
 }
 
 #[test]
 fn privacy_html_file_exists_and_has_structure() {
     let html = include_str!("../privacy.html");
-    assert!(html.contains("<!DOCTYPE html>") || html.contains("<html"), "should be valid HTML");
-    assert!(html.contains("Privacy Policy") || html.contains("privacy policy"), "should have privacy policy title");
+    assert!(
+        html.contains("<!DOCTYPE html>") || html.contains("<html"),
+        "should be valid HTML"
+    );
+    assert!(
+        html.contains("Privacy Policy") || html.contains("privacy policy"),
+        "should have privacy policy title"
+    );
 }
 
 // --- Task 7.4: .env.example test ---
@@ -2749,8 +3561,14 @@ fn privacy_html_file_exists_and_has_structure() {
 #[test]
 fn env_example_contains_gpt_actions_api_key() {
     let content = include_str!("../.env.example");
-    assert!(content.contains("GPT_ACTIONS_API_KEY"), ".env.example should contain GPT_ACTIONS_API_KEY");
-    assert!(content.contains("DATABASE_URL"), ".env.example should contain DATABASE_URL");
+    assert!(
+        content.contains("GPT_ACTIONS_API_KEY"),
+        ".env.example should contain GPT_ACTIONS_API_KEY"
+    );
+    assert!(
+        content.contains("DATABASE_URL"),
+        ".env.example should contain DATABASE_URL"
+    );
 }
 
 // --- Task 7.5: Router integration tests ---
@@ -2780,7 +3598,11 @@ async fn gpt_auth_middleware_rejects_without_api_key_when_configured() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status().as_u16(), 401, "should reject unauthenticated request to GPT route");
+    assert_eq!(
+        response.status().as_u16(),
+        401,
+        "should reject unauthenticated request to GPT route"
+    );
 }
 
 #[tokio::test]
@@ -2806,7 +3628,11 @@ async fn gpt_auth_middleware_rejects_invalid_api_key() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status().as_u16(), 403, "should reject invalid API key");
+    assert_eq!(
+        response.status().as_u16(),
+        403,
+        "should reject invalid API key"
+    );
 }
 
 #[tokio::test]
@@ -2834,7 +3660,11 @@ async fn gpt_auth_middleware_accepts_valid_api_key() {
         .unwrap();
     // Should not be 401/403 (auth passed); may be 500 if no DB, but auth is OK
     let status = response.status().as_u16();
-    assert!(status != 401 && status != 403, "valid API key should pass auth, got: {}", status);
+    assert!(
+        status != 401 && status != 403,
+        "valid API key should pass auth, got: {}",
+        status
+    );
 }
 
 #[tokio::test]
@@ -2845,7 +3675,10 @@ async fn gpt_auth_middleware_skips_when_no_key_configured() {
     // No API key configured (default)
     {
         let s = state.inner.read().await;
-        assert!(s.config.gpt_actions_api_key.is_none() || s.config.gpt_actions_api_key.as_deref() == Some(""));
+        assert!(
+            s.config.gpt_actions_api_key.is_none()
+                || s.config.gpt_actions_api_key.as_deref() == Some("")
+        );
     }
 
     let app = build_app(state);
@@ -2862,7 +3695,11 @@ async fn gpt_auth_middleware_skips_when_no_key_configured() {
         .unwrap();
     // Should not be 401/403 when no key is configured
     let status = response.status().as_u16();
-    assert!(status != 401 && status != 403, "should skip auth when no key configured, got: {}", status);
+    assert!(
+        status != 401 && status != 403,
+        "should skip auth when no key configured, got: {}",
+        status
+    );
 }
 
 #[tokio::test]
@@ -2889,7 +3726,11 @@ async fn static_endpoints_not_behind_gpt_auth() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status().as_u16(), 200, "openapi.yaml should not require auth");
+    assert_eq!(
+        response.status().as_u16(),
+        200,
+        "openapi.yaml should not require auth"
+    );
 
     // Privacy endpoint should NOT require API key
     let response = app
@@ -2903,7 +3744,11 @@ async fn static_endpoints_not_behind_gpt_auth() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status().as_u16(), 200, "privacy page should not require auth");
+    assert_eq!(
+        response.status().as_u16(),
+        200,
+        "privacy page should not require auth"
+    );
 
     // Health endpoint should NOT require API key
     let response = app
@@ -2916,7 +3761,11 @@ async fn static_endpoints_not_behind_gpt_auth() {
         )
         .await
         .unwrap();
-    assert_eq!(response.status().as_u16(), 200, "health should not require auth");
+    assert_eq!(
+        response.status().as_u16(),
+        200,
+        "health should not require auth"
+    );
 }
 
 #[tokio::test]
@@ -2975,10 +3824,19 @@ async fn gpt_all_endpoints_record_distinct_metrics() {
     let endpoints = vec![
         ("GET", "/gpt/services"),
         ("POST", "/gpt/auth"),
-        ("GET", "/gpt/tasks/00000000-0000-0000-0000-000000000001?session_token=00000000-0000-0000-0000-000000000001"),
-        ("POST", "/gpt/tasks/00000000-0000-0000-0000-000000000001/complete"),
+        (
+            "GET",
+            "/gpt/tasks/00000000-0000-0000-0000-000000000001?session_token=00000000-0000-0000-0000-000000000001",
+        ),
+        (
+            "POST",
+            "/gpt/tasks/00000000-0000-0000-0000-000000000001/complete",
+        ),
         ("POST", "/gpt/services/design/run"),
-        ("GET", "/gpt/user/status?session_token=00000000-0000-0000-0000-000000000001"),
+        (
+            "GET",
+            "/gpt/user/status?session_token=00000000-0000-0000-0000-000000000001",
+        ),
     ];
 
     for (method, uri) in &endpoints {
@@ -3064,14 +3922,33 @@ async fn gpt_e2e_flow_search_auth_task_complete_run_status() {
             // ========== Step 1: Search Services ==========
             let result = gpt::gpt_search_services(
                 axum::extract::State(state.clone()),
-                axum::extract::Query(types::GptSearchParams { q: None, category: None, max_budget_cents: None, intent: None, session_token: None }),
-            ).await;
-            assert!(result.status().is_success(), "Step 1: search services should succeed");
+                axum::extract::Query(types::GptSearchParams {
+                    q: None,
+                    category: None,
+                    max_budget_cents: None,
+                    intent: None,
+                    session_token: None,
+                }),
+            )
+            .await;
+            assert!(
+                result.status().is_success(),
+                "Step 1: search services should succeed"
+            );
             let search_resp: types::GptSearchResponse = read_typed(result).await;
-            assert!(search_resp.total_count > 0, "Step 1: should find at least one service");
+            assert!(
+                search_resp.total_count > 0,
+                "Step 1: should find at least one service"
+            );
             // Verify our campaign appears in results
-            let our_service = search_resp.services.iter().find(|s| s.service_id == campaign_id);
-            assert!(our_service.is_some(), "Step 1: our campaign should appear in search results");
+            let our_service = search_resp
+                .services
+                .iter()
+                .find(|s| s.service_id == campaign_id);
+            assert!(
+                our_service.is_some(),
+                "Step 1: our campaign should appear in search results"
+            );
             let our_service = our_service.unwrap();
             assert_eq!(our_service.sponsor, sponsor);
             assert_eq!(our_service.required_task.as_deref(), Some(required_task));
@@ -3086,28 +3963,39 @@ async fn gpt_e2e_flow_search_auth_task_complete_run_status() {
                     roles: vec!["developer".to_string()],
                     tools_used: vec!["design".to_string()],
                 }),
-            ).await;
+            )
+            .await;
             assert!(result.status().is_success(), "Step 2: auth should succeed");
             let auth_resp: types::GptAuthResponse = read_typed(result).await;
             assert!(auth_resp.is_new_user, "Step 2: should be a new user");
             assert_eq!(auth_resp.email, unique_email);
             let session_token = auth_resp.session_token;
             let user_id = auth_resp.user_id;
-            assert!(!session_token.is_nil(), "Step 2: session token should be valid");
+            assert!(
+                !session_token.is_nil(),
+                "Step 2: session token should be valid"
+            );
 
             // ========== Step 3: Get Tasks ==========
             let result = gpt::gpt_get_tasks(
                 axum::extract::State(state.clone()),
                 axum::extract::Path(campaign_id),
                 axum::extract::Query(types::GptTaskParams { session_token }),
-            ).await;
-            assert!(result.status().is_success(), "Step 3: get tasks should succeed");
+            )
+            .await;
+            assert!(
+                result.status().is_success(),
+                "Step 3: get tasks should succeed"
+            );
             let tasks_resp: types::GptTaskResponse = read_typed(result).await;
             assert_eq!(tasks_resp.campaign_id, campaign_id);
             assert_eq!(tasks_resp.campaign_name, campaign_name);
             assert_eq!(tasks_resp.sponsor, sponsor);
             assert_eq!(tasks_resp.required_task, required_task);
-            assert!(!tasks_resp.already_completed, "Step 3: task should not be completed yet");
+            assert!(
+                !tasks_resp.already_completed,
+                "Step 3: task should not be completed yet"
+            );
             assert_eq!(tasks_resp.subsidy_amount_cents, 800);
 
             // ========== Step 4: Complete Task (with consent) ==========
@@ -3124,12 +4012,22 @@ async fn gpt_e2e_flow_search_auth_task_complete_run_status() {
                         contact_permission: false,
                     },
                 }),
-            ).await;
-            assert!(result.status().is_success(), "Step 4: complete task should succeed");
+            )
+            .await;
+            assert!(
+                result.status().is_success(),
+                "Step 4: complete task should succeed"
+            );
             let complete_resp: types::GptCompleteTaskResponse = read_typed(result).await;
             assert_eq!(complete_resp.campaign_id, campaign_id);
-            assert!(complete_resp.consent_recorded, "Step 4: consent should be recorded");
-            assert!(complete_resp.can_use_service, "Step 4: should be able to use service");
+            assert!(
+                complete_resp.consent_recorded,
+                "Step 4: consent should be recorded"
+            );
+            assert!(
+                complete_resp.can_use_service,
+                "Step 4: should be able to use service"
+            );
             assert!(!complete_resp.task_completion_id.is_nil());
 
             // Verify task is now marked as completed
@@ -3137,10 +4035,14 @@ async fn gpt_e2e_flow_search_auth_task_complete_run_status() {
                 axum::extract::State(state.clone()),
                 axum::extract::Path(campaign_id),
                 axum::extract::Query(types::GptTaskParams { session_token }),
-            ).await;
+            )
+            .await;
             assert!(result.status().is_success());
             let tasks_resp2: types::GptTaskResponse = read_typed(result).await;
-            assert!(tasks_resp2.already_completed, "Step 4 verify: task should now be completed");
+            assert!(
+                tasks_resp2.already_completed,
+                "Step 4 verify: task should now be completed"
+            );
 
             // ========== Step 5: Run Service ==========
             let result = gpt::gpt_run_service(
@@ -3150,8 +4052,12 @@ async fn gpt_e2e_flow_search_auth_task_complete_run_status() {
                     session_token,
                     input: "E2E test design input".to_string(),
                 }),
-            ).await;
-            assert!(result.status().is_success(), "Step 5: run service should succeed");
+            )
+            .await;
+            assert!(
+                result.status().is_success(),
+                "Step 5: run service should succeed"
+            );
             let run_resp: types::GptRunServiceResponse = read_typed(result).await;
             assert_eq!(run_resp.service, "design");
             assert_eq!(run_resp.payment_mode, "sponsored");
@@ -3160,14 +4066,16 @@ async fn gpt_e2e_flow_search_auth_task_complete_run_status() {
             assert!(!run_resp.output.is_empty(), "Step 5: should have output");
 
             // Verify budget was deducted
-            let remaining: i64 = sqlx::query_scalar(
-                "SELECT budget_remaining_cents FROM campaigns WHERE id = $1"
-            )
-            .bind(campaign_id)
-            .fetch_one(&pool)
-            .await
-            .unwrap();
-            assert!(remaining < 50000, "Step 5: budget should have been deducted");
+            let remaining: i64 =
+                sqlx::query_scalar("SELECT budget_remaining_cents FROM campaigns WHERE id = $1")
+                    .bind(campaign_id)
+                    .fetch_one(&pool)
+                    .await
+                    .unwrap();
+            assert!(
+                remaining < 50000,
+                "Step 5: budget should have been deducted"
+            );
 
             // Verify payment was recorded
             let payment_exists: bool = sqlx::query_scalar(
@@ -3183,23 +4091,58 @@ async fn gpt_e2e_flow_search_auth_task_complete_run_status() {
             let result = gpt::gpt_user_status(
                 axum::extract::State(state.clone()),
                 axum::extract::Query(types::GptUserStatusParams { session_token }),
-            ).await;
-            assert!(result.status().is_success(), "Step 6: user status should succeed");
+            )
+            .await;
+            assert!(
+                result.status().is_success(),
+                "Step 6: user status should succeed"
+            );
             let status_resp: types::GptUserStatusResponse = read_typed(result).await;
             assert_eq!(status_resp.user_id, user_id);
             assert_eq!(status_resp.email, unique_email);
-            assert!(!status_resp.completed_tasks.is_empty(), "Step 6: should have completed tasks");
-            let our_task = status_resp.completed_tasks.iter().find(|t| t.campaign_id == campaign_id);
+            assert!(
+                !status_resp.completed_tasks.is_empty(),
+                "Step 6: should have completed tasks"
+            );
+            let our_task = status_resp
+                .completed_tasks
+                .iter()
+                .find(|t| t.campaign_id == campaign_id);
             assert!(our_task.is_some(), "Step 6: should find our completed task");
             assert_eq!(our_task.unwrap().task_name, required_task);
 
             // ========== Cleanup ==========
-            sqlx::query("DELETE FROM payments WHERE campaign_id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM consents WHERE user_id = $1 AND campaign_id = $2").bind(user_id).bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM task_completions WHERE campaign_id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1").bind(user_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM campaigns WHERE id = $1").bind(campaign_id).execute(&pool).await.ok();
-            sqlx::query("DELETE FROM users WHERE id = $1").bind(user_id).execute(&pool).await.ok();
+            sqlx::query("DELETE FROM payments WHERE campaign_id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM consents WHERE user_id = $1 AND campaign_id = $2")
+                .bind(user_id)
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM task_completions WHERE campaign_id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM campaigns WHERE id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
         }
     }
 }
@@ -3362,7 +4305,14 @@ fn gpt_search_response_supports_applied_filters_and_categories() {
     assert_eq!(filters.budget, Some(500));
     assert_eq!(filters.intent.as_deref(), Some("screenshot"));
     assert!(filters.preferences_applied);
-    assert_eq!(resp_with_filters.available_categories.as_ref().unwrap().len(), 2);
+    assert_eq!(
+        resp_with_filters
+            .available_categories
+            .as_ref()
+            .unwrap()
+            .len(),
+        2
+    );
 
     // applied_filters と available_categories が None の場合（後方互換性）
     let resp_minimal = GptSearchResponse {
@@ -3377,17 +4327,34 @@ fn gpt_search_response_supports_applied_filters_and_categories() {
 
     // skip_serializing_if の検証: None の場合 JSON に含まれない
     let json = serde_json::to_value(&resp_minimal).unwrap();
-    assert!(!json.as_object().unwrap().contains_key("applied_filters"),
-        "applied_filters=None should be omitted from JSON");
-    assert!(!json.as_object().unwrap().contains_key("available_categories"),
-        "available_categories=None should be omitted from JSON");
+    assert!(
+        !json.as_object().unwrap().contains_key("applied_filters"),
+        "applied_filters=None should be omitted from JSON"
+    );
+    assert!(
+        !json
+            .as_object()
+            .unwrap()
+            .contains_key("available_categories"),
+        "available_categories=None should be omitted from JSON"
+    );
 
     // Some の場合は JSON に含まれる
     let json_with = serde_json::to_value(&resp_with_filters).unwrap();
-    assert!(json_with.as_object().unwrap().contains_key("applied_filters"),
-        "applied_filters=Some should be present in JSON");
-    assert!(json_with.as_object().unwrap().contains_key("available_categories"),
-        "available_categories=Some should be present in JSON");
+    assert!(
+        json_with
+            .as_object()
+            .unwrap()
+            .contains_key("applied_filters"),
+        "applied_filters=Some should be present in JSON"
+    );
+    assert!(
+        json_with
+            .as_object()
+            .unwrap()
+            .contains_key("available_categories"),
+        "available_categories=Some should be present in JSON"
+    );
 }
 
 #[test]
@@ -3432,17 +4399,29 @@ fn gpt_service_item_supports_tags_and_relevance_score() {
 
     // skip_serializing_if: relevance_score=None は JSON に含まれない
     let json_no_score = serde_json::to_value(&item_no_score).unwrap();
-    assert!(!json_no_score.as_object().unwrap().contains_key("relevance_score"),
-        "relevance_score=None should be omitted from JSON");
+    assert!(
+        !json_no_score
+            .as_object()
+            .unwrap()
+            .contains_key("relevance_score"),
+        "relevance_score=None should be omitted from JSON"
+    );
 
     // relevance_score=Some は JSON に含まれる
     let json_with_score = serde_json::to_value(&item_with_score).unwrap();
-    assert!(json_with_score.as_object().unwrap().contains_key("relevance_score"),
-        "relevance_score=Some should be present in JSON");
+    assert!(
+        json_with_score
+            .as_object()
+            .unwrap()
+            .contains_key("relevance_score"),
+        "relevance_score=Some should be present in JSON"
+    );
 
     // tags は常に JSON に含まれる
-    assert!(json_with_score.as_object().unwrap().contains_key("tags"),
-        "tags should always be present in JSON");
+    assert!(
+        json_with_score.as_object().unwrap().contains_key("tags"),
+        "tags should always be present in JSON"
+    );
 }
 
 #[test]
@@ -3451,8 +4430,8 @@ fn preference_types_are_constructible() {
     //           GptPreferencesResponse, GptSetPreferencesResponse を追加
     use chrono::Utc;
     use types::{
-        TaskPreference, GptPreferencesParams, GptSetPreferencesRequest,
-        GptPreferencesResponse, GptSetPreferencesResponse,
+        GptPreferencesParams, GptPreferencesResponse, GptSetPreferencesRequest,
+        GptSetPreferencesResponse, TaskPreference,
     };
 
     // TaskPreference
@@ -3480,8 +4459,14 @@ fn preference_types_are_constructible() {
     let _req = GptSetPreferencesRequest {
         session_token: Uuid::new_v4(),
         preferences: vec![
-            TaskPreference { task_type: "survey".into(), level: "avoided".into() },
-            TaskPreference { task_type: "github_pr".into(), level: "preferred".into() },
+            TaskPreference {
+                task_type: "survey".into(),
+                level: "avoided".into(),
+            },
+            TaskPreference {
+                task_type: "github_pr".into(),
+                level: "preferred".into(),
+            },
         ],
     };
     assert_eq!(_req.preferences.len(), 2);
@@ -3489,9 +4474,10 @@ fn preference_types_are_constructible() {
     // GptPreferencesResponse (Serialize + Deserialize)
     let resp = GptPreferencesResponse {
         user_id: Uuid::new_v4(),
-        preferences: vec![
-            TaskPreference { task_type: "data_provision".into(), level: "neutral".into() },
-        ],
+        preferences: vec![TaskPreference {
+            task_type: "data_provision".into(),
+            level: "neutral".into(),
+        }],
         updated_at: Some(Utc::now()),
         message: "Your preferences".into(),
     };
@@ -3517,7 +4503,10 @@ fn preference_types_are_constructible() {
         message: "Preferences updated".into(),
     };
     let set_json = serde_json::to_value(&set_resp).unwrap();
-    assert_eq!(set_json.get("preferences_count").unwrap().as_u64().unwrap(), 3);
+    assert_eq!(
+        set_json.get("preferences_count").unwrap().as_u64().unwrap(),
+        3
+    );
     assert!(set_json.get("updated_at").is_some());
 }
 
@@ -3534,10 +4523,16 @@ fn migration_0012_campaign_tags_has_expected_schema() {
     assert!(lower.contains("alter table"), "should use ALTER TABLE");
     assert!(lower.contains("campaigns"), "should target campaigns table");
     assert!(lower.contains("add column"), "should add a column");
-    assert!(lower.contains("if not exists"), "should use IF NOT EXISTS for idempotent migration");
+    assert!(
+        lower.contains("if not exists"),
+        "should use IF NOT EXISTS for idempotent migration"
+    );
     assert!(lower.contains("tags"), "should add tags column");
     assert!(lower.contains("text[]"), "tags should be TEXT[] array type");
-    assert!(lower.contains("default '{}'"), "tags should default to empty array");
+    assert!(
+        lower.contains("default '{}'"),
+        "tags should default to empty array"
+    );
 }
 
 // =============================================================================
@@ -3754,8 +4749,14 @@ async fn gpt_preferences_integration_crud() {
             );
             let resp: types::GptPreferencesResponse = read_typed(result).await;
             assert_eq!(resp.user_id, user_id);
-            assert!(resp.preferences.is_empty(), "should have no preferences initially");
-            assert!(resp.updated_at.is_none(), "updated_at should be None when no preferences");
+            assert!(
+                resp.preferences.is_empty(),
+                "should have no preferences initially"
+            );
+            assert!(
+                resp.updated_at.is_none(),
+                "updated_at should be None when no preferences"
+            );
             assert!(
                 resp.message.contains("No preferences"),
                 "should return guidance message"
@@ -3801,7 +4802,10 @@ async fn gpt_preferences_integration_crud() {
             assert!(result.status().is_success());
             let resp: types::GptPreferencesResponse = read_typed(result).await;
             assert_eq!(resp.preferences.len(), 3);
-            assert!(resp.updated_at.is_some(), "updated_at should be set after creating preferences");
+            assert!(
+                resp.updated_at.is_some(),
+                "updated_at should be set after creating preferences"
+            );
 
             // Verify specific preferences
             let survey = resp
@@ -3834,7 +4838,10 @@ async fn gpt_preferences_integration_crud() {
                 "UPDATE preferences should succeed"
             );
             let set_resp: types::GptSetPreferencesResponse = read_typed(result).await;
-            assert_eq!(set_resp.preferences_count, 1, "should replace all with 1 preference");
+            assert_eq!(
+                set_resp.preferences_count, 1,
+                "should replace all with 1 preference"
+            );
 
             // Verify overwrite: only 1 preference now
             let result = gpt::gpt_get_preferences(
@@ -3843,7 +4850,11 @@ async fn gpt_preferences_integration_crud() {
             )
             .await;
             let resp: types::GptPreferencesResponse = read_typed(result).await;
-            assert_eq!(resp.preferences.len(), 1, "old preferences should be replaced");
+            assert_eq!(
+                resp.preferences.len(),
+                1,
+                "old preferences should be replaced"
+            );
             assert_eq!(resp.preferences[0].task_type, "registration");
             assert_eq!(resp.preferences[0].level, "preferred");
 
@@ -3998,7 +5009,10 @@ async fn budget_filter_integration_test() {
                 }),
             )
             .await;
-            assert!(result.status().is_success(), "search without budget should succeed");
+            assert!(
+                result.status().is_success(),
+                "search without budget should succeed"
+            );
             let resp: types::GptSearchResponse = read_typed(result).await;
             assert_eq!(
                 resp.total_count, 3,
@@ -4129,7 +5143,11 @@ fn infer_tags_generates_from_target_tools_and_required_task() {
     let result = gpt::infer_tags(&tags, &target_tools, "survey");
     assert_eq!(
         result,
-        vec!["design".to_string(), "screenshot".to_string(), "survey".to_string()]
+        vec![
+            "design".to_string(),
+            "screenshot".to_string(),
+            "survey".to_string()
+        ]
     );
 }
 
@@ -4139,10 +5157,7 @@ fn infer_tags_avoids_duplicate_required_task() {
     let target_tools = vec!["survey".to_string(), "design".to_string()];
     let result = gpt::infer_tags(&tags, &target_tools, "survey");
     // "survey" already in target_tools, should not be duplicated
-    assert_eq!(
-        result,
-        vec!["survey".to_string(), "design".to_string()]
-    );
+    assert_eq!(result, vec!["survey".to_string(), "design".to_string()]);
 }
 
 #[test]
@@ -4327,7 +5342,10 @@ async fn intent_filter_integration_test() {
                 "intent='screenshot' should match 1 service"
             );
             assert!(resp.services[0].name.contains("screenshot"));
-            assert!(resp.available_categories.is_none(), "should not return categories when results found");
+            assert!(
+                resp.available_categories.is_none(),
+                "should not return categories when results found"
+            );
 
             // ========== Test 2: Intent matches tags — "blockchain" ==========
             let result = gpt::gpt_search_services(
@@ -4389,11 +5407,18 @@ async fn intent_filter_integration_test() {
                 "zero-result intent message should reference intent or categories, got: '{}'",
                 resp.message
             );
-            let cats = resp.available_categories.expect("should have available_categories when intent yields 0 results");
+            let cats = resp
+                .available_categories
+                .expect("should have available_categories when intent yields 0 results");
             assert!(!cats.is_empty(), "available_categories should not be empty");
             // Should contain categories from all 3 test campaigns
-            assert!(cats.contains(&"screenshot".to_string()) || cats.contains(&"design".to_string()) || cats.contains(&"analytics".to_string()),
-                "available_categories should contain categories from test campaigns, got: {:?}", cats);
+            assert!(
+                cats.contains(&"screenshot".to_string())
+                    || cats.contains(&"design".to_string())
+                    || cats.contains(&"analytics".to_string()),
+                "available_categories should contain categories from test campaigns, got: {:?}",
+                cats
+            );
 
             // ========== Test 5: No intent filter — all services returned ==========
             let result = gpt::gpt_search_services(
@@ -4413,11 +5438,16 @@ async fn intent_filter_integration_test() {
                 resp.total_count, 3,
                 "without intent filter, all 3 test campaigns should be returned"
             );
-            assert!(resp.available_categories.is_none(), "no intent → no available_categories");
+            assert!(
+                resp.available_categories.is_none(),
+                "no intent → no available_categories"
+            );
 
             // ========== Test 6: Tags field populated correctly ==========
             // Verify that the screenshot service has its explicit tags
-            let screenshot_svc = resp.services.iter()
+            let screenshot_svc = resp
+                .services
+                .iter()
                 .find(|s| s.name.contains("screenshot"))
                 .expect("screenshot service should exist");
             assert!(
@@ -4426,7 +5456,9 @@ async fn intent_filter_integration_test() {
                 screenshot_svc.tags
             );
             // Verify that analytics service has inferred tags
-            let analytics_svc = resp.services.iter()
+            let analytics_svc = resp
+                .services
+                .iter()
                 .find(|s| s.name.contains("analytics"))
                 .expect("analytics service should exist");
             assert!(
@@ -4472,7 +5504,11 @@ fn calculate_score_no_params_returns_neutral() {
     };
     // All neutral: 0.5*0.3 + 0.5*0.4 + 0.5*0.3 = 0.5
     let score = gpt::calculate_score(&service, None, None, &[]);
-    assert!((score - 0.5).abs() < 0.001, "neutral score should be ~0.5, got {}", score);
+    assert!(
+        (score - 0.5).abs() < 0.001,
+        "neutral score should be ~0.5, got {}",
+        score
+    );
 }
 
 #[test]
@@ -4494,7 +5530,11 @@ fn calculate_score_budget_only() {
     // preference_score = 0.5 (no prefs)
     // total = 0.8*0.3 + 0.5*0.4 + 0.5*0.3 = 0.24 + 0.20 + 0.15 = 0.59
     let score = gpt::calculate_score(&service, Some(1000), None, &[]);
-    assert!((score - 0.59).abs() < 0.001, "score should be ~0.59, got {}", score);
+    assert!(
+        (score - 0.59).abs() < 0.001,
+        "score should be ~0.59, got {}",
+        score
+    );
 }
 
 #[test]
@@ -4520,7 +5560,11 @@ fn calculate_score_preferred_boosts() {
     // preference_score = 1.0 (preferred)
     // total = 0.5*0.3 + 0.5*0.4 + 1.0*0.3 = 0.15 + 0.20 + 0.30 = 0.65
     let score = gpt::calculate_score(&service, None, None, &prefs);
-    assert!((score - 0.65).abs() < 0.001, "preferred score should be ~0.65, got {}", score);
+    assert!(
+        (score - 0.65).abs() < 0.001,
+        "preferred score should be ~0.65, got {}",
+        score
+    );
 }
 
 #[test]
@@ -4544,7 +5588,11 @@ fn calculate_score_avoided_returns_low() {
     // preference_score = 0.0
     // total = 0.5*0.3 + 0.5*0.4 + 0.0*0.3 = 0.15 + 0.20 + 0.0 = 0.35
     let score = gpt::calculate_score(&service, None, None, &prefs);
-    assert!((score - 0.35).abs() < 0.001, "avoided score should be ~0.35, got {}", score);
+    assert!(
+        (score - 0.35).abs() < 0.001,
+        "avoided score should be ~0.35, got {}",
+        score
+    );
 }
 
 #[test]
@@ -4566,7 +5614,11 @@ fn calculate_score_with_intent_matching() {
     // intent_score = 2/4 = 0.5
     let score = gpt::calculate_score(&service, None, Some("screenshot"), &[]);
     // 0.5*0.3 + 0.5*0.4 + 0.5*0.3 = 0.5
-    assert!((score - 0.5).abs() < 0.001, "intent matching score should be ~0.5, got {}", score);
+    assert!(
+        (score - 0.5).abs() < 0.001,
+        "intent matching score should be ~0.5, got {}",
+        score
+    );
 }
 
 #[test]
@@ -4592,7 +5644,11 @@ fn calculate_score_full_match_high_score() {
     // preference: preferred → 1.0
     // total = 0.99*0.3 + 1.0*0.4 + 1.0*0.3 = 0.297 + 0.4 + 0.3 = 0.997
     let score = gpt::calculate_score(&service, Some(10000), Some("screenshot"), &prefs);
-    assert!(score > 0.9, "full match should have high score, got {}", score);
+    assert!(
+        score > 0.9,
+        "full match should have high score, got {}",
+        score
+    );
 }
 
 #[tokio::test]
@@ -4692,7 +5748,10 @@ async fn preference_filter_integration_test() {
             );
             // Verify survey is excluded
             assert!(
-                !resp.services.iter().any(|s| s.required_task.as_deref() == Some("survey")),
+                !resp
+                    .services
+                    .iter()
+                    .any(|s| s.required_task.as_deref() == Some("survey")),
                 "survey service should be excluded by avoided preference"
             );
 
@@ -4713,7 +5772,10 @@ async fn preference_filter_integration_test() {
             );
 
             // ========== Test 3: applied_filters with preferences_applied=true (要件 4.5, 6.3) ==========
-            let filters = resp.applied_filters.as_ref().expect("applied_filters should be present");
+            let filters = resp
+                .applied_filters
+                .as_ref()
+                .expect("applied_filters should be present");
             assert!(
                 filters.preferences_applied,
                 "preferences_applied should be true when preferences are applied"
@@ -4832,7 +5894,10 @@ async fn preference_filter_integration_test() {
                 resp.services[0].required_task.as_deref(),
                 Some("data_provision")
             );
-            let filters = resp.applied_filters.as_ref().expect("applied_filters for combined");
+            let filters = resp
+                .applied_filters
+                .as_ref()
+                .expect("applied_filters for combined");
             assert_eq!(filters.budget, Some(180));
             assert_eq!(filters.intent.as_deref(), Some("data"));
             assert!(filters.preferences_applied);
@@ -5152,13 +6217,34 @@ async fn e2e_smart_suggestion_full_flow() {
             let survey_id = Uuid::new_v4();
 
             for (id, name_suffix, task, subsidy, tags) in [
-                (screenshot_id, "Screenshot Tool", "github_pr", 100_i64, vec!["screenshot", "web"]),
-                (design_id, "Design Generator", "data_provision", 300_i64, vec!["design", "ai"]),
-                (survey_id, "Survey Reward", "survey", 150_i64, vec!["survey", "reward"]),
+                (
+                    screenshot_id,
+                    "Screenshot Tool",
+                    "github_pr",
+                    100_i64,
+                    vec!["screenshot", "web"],
+                ),
+                (
+                    design_id,
+                    "Design Generator",
+                    "data_provision",
+                    300_i64,
+                    vec!["design", "ai"],
+                ),
+                (
+                    survey_id,
+                    "Survey Reward",
+                    "survey",
+                    150_i64,
+                    vec!["survey", "reward"],
+                ),
             ] {
                 let tags_array: String = format!(
                     "{{{}}}",
-                    tags.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(",")
+                    tags.iter()
+                        .map(|t| format!("\"{}\"", t))
+                        .collect::<Vec<_>>()
+                        .join(",")
                 );
                 sqlx::query(
                     "INSERT INTO campaigns (id, name, sponsor, target_roles, target_tools, required_task, \
@@ -5195,7 +6281,10 @@ async fn e2e_smart_suggestion_full_flow() {
                 }),
             )
             .await;
-            assert!(set_result.status().is_success(), "setPreferences should succeed");
+            assert!(
+                set_result.status().is_success(),
+                "setPreferences should succeed"
+            );
 
             // Step 2: Verify preferences saved
             let get_result = gpt::gpt_get_preferences(
@@ -5203,7 +6292,10 @@ async fn e2e_smart_suggestion_full_flow() {
                 axum::extract::Query(types::GptPreferencesParams { session_token }),
             )
             .await;
-            assert!(get_result.status().is_success(), "getPreferences should succeed");
+            assert!(
+                get_result.status().is_success(),
+                "getPreferences should succeed"
+            );
             let prefs_resp: types::GptPreferencesResponse = read_typed(get_result).await;
             assert_eq!(prefs_resp.preferences.len(), 2, "should have 2 preferences");
 
@@ -5238,14 +6330,26 @@ async fn e2e_smart_suggestion_full_flow() {
             );
 
             // Verify relevance_score is present and > 0
-            let score = resp.services[0].relevance_score.expect("relevance_score should be present");
-            assert!(score > 0.0, "relevance_score should be positive, got: {}", score);
+            let score = resp.services[0]
+                .relevance_score
+                .expect("relevance_score should be present");
+            assert!(
+                score > 0.0,
+                "relevance_score should be positive, got: {}",
+                score
+            );
 
             // Verify applied_filters
-            let filters = resp.applied_filters.as_ref().expect("applied_filters should be present");
+            let filters = resp
+                .applied_filters
+                .as_ref()
+                .expect("applied_filters should be present");
             assert_eq!(filters.budget, Some(200));
             assert_eq!(filters.intent.as_deref(), Some("screenshot"));
-            assert!(filters.preferences_applied, "preferences_applied should be true");
+            assert!(
+                filters.preferences_applied,
+                "preferences_applied should be true"
+            );
             assert_eq!(filters.keyword.as_deref(), Some(test_prefix.as_str()));
 
             // Step 4: Search with broader budget to get multiple results, verify score ordering
@@ -5354,7 +6458,10 @@ async fn backward_compatibility_no_extended_params() {
             assert!(result.status().is_success());
             let resp: types::GptSearchResponse = read_typed(result).await;
 
-            assert!(resp.total_count >= 1, "should find at least our test campaign");
+            assert!(
+                resp.total_count >= 1,
+                "should find at least our test campaign"
+            );
             assert!(
                 resp.applied_filters.is_none(),
                 "applied_filters should be None when no extended params (要件 9.1), got: {:?}",

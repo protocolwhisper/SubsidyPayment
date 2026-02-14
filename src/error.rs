@@ -162,7 +162,10 @@ impl ApiError {
             },
             Self::RateLimited { retry_after_secs } => ErrorBody {
                 code: "rate_limited".to_string(),
-                message: format!("Too many requests. Retry after {} seconds.", retry_after_secs),
+                message: format!(
+                    "Too many requests. Retry after {} seconds.",
+                    retry_after_secs
+                ),
                 details: None,
             },
         }
@@ -177,7 +180,10 @@ impl IntoResponse for ApiError {
                 let body = ErrorResponse {
                     error: ErrorBody {
                         code: "rate_limited".to_string(),
-                        message: format!("Too many requests. Retry after {} seconds.", retry_after_secs),
+                        message: format!(
+                            "Too many requests. Retry after {} seconds.",
+                            retry_after_secs
+                        ),
                         details: None,
                     },
                 };

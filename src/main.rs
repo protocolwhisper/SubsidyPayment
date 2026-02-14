@@ -26,9 +26,10 @@ use crate::utils::*;
 use serde::Deserialize;
 
 fn build_gpt_router(state: SharedState) -> Router<SharedState> {
-    let limiter = Arc::new(tokio::sync::Mutex::new(
-        gpt::RateLimiter::new(60, Duration::from_secs(60)),
-    ));
+    let limiter = Arc::new(tokio::sync::Mutex::new(gpt::RateLimiter::new(
+        60,
+        Duration::from_secs(60),
+    )));
 
     Router::new()
         .route("/services", get(gpt::gpt_search_services))
@@ -464,7 +465,8 @@ async fn list_campaigns(
     };
 
     let result: ApiResult<(StatusCode, Json<Vec<Campaign>>)> = async {
-        let mut campaigns = load_campaigns_from_db(&state, query.sponsor_wallet_address.as_deref()).await?;
+        let mut campaigns =
+            load_campaigns_from_db(&state, query.sponsor_wallet_address.as_deref()).await?;
         campaigns.sort_by_key(|campaign| campaign.created_at);
         Ok((StatusCode::OK, Json(campaigns)))
     }
@@ -529,7 +531,10 @@ async fn list_campaign_discovery(State(state): State<SharedState>) -> Response {
     respond(&metrics, "/campaigns/discovery", result)
 }
 
-async fn load_campaigns_from_db(state: &SharedState, sponsor_wallet_address: Option<&str>) -> ApiResult<Vec<Campaign>> {
+async fn load_campaigns_from_db(
+    state: &SharedState,
+    sponsor_wallet_address: Option<&str>,
+) -> ApiResult<Vec<Campaign>> {
     let db = {
         let state = state.inner.read().await;
         state.db.clone()
