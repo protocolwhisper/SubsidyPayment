@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>[APP_NAME]</title>
+    <style>
+      :root {
+        color: #0b0b0f;
+        font-family: "Inter", system-ui, -apple-system, sans-serif;
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #f6f8fb;
+      }
+      main {
+        max-width: 420px;
+        margin: 0 auto;
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+      }
+      form {
+        display: flex;
+        gap: 8px;
+      }
+      input {
+        flex: 1;
+        padding: 10px 12px;
+        border-radius: 10px;
+        border: 1px solid #cad3e0;
+      }
+      button {
+        border: none;
+        border-radius: 10px;
+        background: #111bf5;
+        color: white;
+        font-weight: 600;
+        padding: 0 16px;
+        cursor: pointer;
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+        margin: 16px 0 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      li {
+        background: #f2f4fb;
+        border-radius: 12px;
+        padding: 10px 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h2>[APP_TITLE]</h2>
+      <form id="action-form" autocomplete="off">
+        <input id="input-field" name="value" placeholder="[INPUT_PLACEHOLDER]" />
+        <button type="submit">送信</button>
+      </form>
+      <ul id="result-list"></ul>
+    </main>
+
+    <script type="module">
+      const listEl = document.querySelector("#result-list");
+      const formEl = document.querySelector("#action-form");
+      const inputEl = document.querySelector("#input-field");
+
+      let items = [];
+      let rpcId = 0;
+      const pendingRequests = new Map();
+
+      const render = () => {
+        listEl.innerHTML = "";
+        items.forEach((item) => {
+          const li = document.createElement("li");
+          li.textContent = item;
+          listEl.appendChild(li);
+        });
+      };
+
+      const updateFromResponse = (response) => {
+        if (response?.structuredContent?.items) {
+          items = response.structuredContent.items;
+          render();
+        }
+      };
+
+      const rpcRequest = (method, params) =>
+        new Promise((resolve, reject) => {
+          const id = ++rpcId;
+          pendingRequests.set(id, { resolve, reject });
+          window.parent.postMessage({ jsonrpc: "2.0", id, method, params }, "*");
+        });
+
+      const rpcNotify = (method, params) => {
+        window.parent.postMessage({ jsonrpc: "2.0", method, params }, "*");
+      };
+
+      window.addEventListener("message", (event) => {
+        if (event.source !== window.parent) return;
+        const message = event.data;
+        if (!message || message.jsonrpc !== "2.0") return;
+
+        if (typeof message.id === "number") {
+          const pending = pendingRequests.get(message.id);
+          if (!pending) return;
+          pendingRequests.delete(message.id);
+
+          if (message.error) {
+            pending.reject(message.error);
+            return;
+          }
+          pending.resolve(message.result);
+          return;
+        }
+
+        if (message.method === "ui/notifications/tool-result") {
+          updateFromResponse(message.params);
+        }
+      });
+
+      const initializeBridge = async () => {
+        const appInfo = { name: "[APP_NAME]", version: "[APP_VERSION]" };
+        const appCapabilities = {};
+        const protocolVersion = "[PROTOCOL_VERSION]";
+        await rpcRequest("ui/initialize", {
+          appInfo,
+          appCapabilities,
+          protocolVersion,
+        });
+        rpcNotify("ui/notifications/initialized", {});
+      };
+
+      const bridgeReady = initializeBridge();
+
+      const callTool = async (name, payload) => {
+        await bridgeReady;
+        const response = await rpcRequest("tools/call", {
+          name,
+          arguments: payload,
+        });
+        updateFromResponse(response);
+      };
+
+      formEl.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const value = inputEl.value.trim();
+        if (!value) return;
+        await callTool("[TOOL_NAME]", { value });
+        inputEl.value = "";
+      });
+
+      render();
+    </script>
+  </body>
+</html>
