@@ -15,7 +15,7 @@ paths:
       summary: Search available sponsored services
       description: >-
         Call this when the user wants to find available sponsored services.
-        Supports keyword and category filtering.
+        Supports keyword, category, budget, intent, and preference filtering.
       parameters:
         - name: q
           in: query
@@ -29,6 +29,25 @@ paths:
           schema:
             type: string
           description: Filter by service category (e.g. design, scraping)
+        - name: max_budget_cents
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Maximum budget in cents for service filtering
+        - name: intent
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Natural language description of what the user wants to do
+        - name: session_token
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Session token to apply user preferences for filtering
       responses:
         "200":
           description: List of matching services
@@ -45,6 +64,29 @@ paths:
                     type: integer
                   message:
                     type: string
+                  applied_filters:
+                    type: object
+                    nullable: true
+                    properties:
+                      budget:
+                        type: integer
+                        nullable: true
+                      intent:
+                        type: string
+                        nullable: true
+                      category:
+                        type: string
+                        nullable: true
+                      keyword:
+                        type: string
+                        nullable: true
+                      preferences_applied:
+                        type: boolean
+                  available_categories:
+                    type: array
+                    items:
+                      type: string
+                    nullable: true
         "500":
           description: Internal server error
 
@@ -355,6 +397,103 @@ paths:
         "401":
           description: Invalid or expired session token
 
+  /gpt/preferences:
+    get:
+      operationId: getPreferences
+      summary: Get user task preferences
+      description: >-
+        Call this to retrieve the user's current task preferences.
+        Returns preferred, neutral, and avoided task types.
+      parameters:
+        - name: session_token
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Preferences retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id:
+                    type: string
+                    format: uuid
+                  preferences:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        task_type:
+                          type: string
+                        level:
+                          type: string
+                          enum: [preferred, neutral, avoided]
+                  updated_at:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  message:
+                    type: string
+        "401":
+          description: Invalid or expired session token
+    post:
+      operationId: setPreferences
+      summary: Set user task preferences
+      description: >-
+        Call this when the user wants to set their task preferences.
+        Replaces all existing preferences with the provided list.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - session_token
+                - preferences
+              properties:
+                session_token:
+                  type: string
+                  format: uuid
+                preferences:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - task_type
+                      - level
+                    properties:
+                      task_type:
+                        type: string
+                        description: "Task type (e.g. survey, data_provision, github_pr)"
+                      level:
+                        type: string
+                        enum: [preferred, neutral, avoided]
+      responses:
+        "200":
+          description: Preferences updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user_id:
+                    type: string
+                    format: uuid
+                  preferences_count:
+                    type: integer
+                  updated_at:
+                    type: string
+                    format: date-time
+                  message:
+                    type: string
+        "401":
+          description: Invalid or expired session token
+
 components:
   schemas:
     GptServiceItem:
@@ -380,6 +519,14 @@ components:
             type: string
         active:
           type: boolean
+        tags:
+          type: array
+          items:
+            type: string
+        relevance_score:
+          type: number
+          format: double
+          nullable: true
   securitySchemes:
     ApiKeyAuth:
       type: http

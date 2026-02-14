@@ -40,6 +40,10 @@ fn build_gpt_router(state: SharedState) -> Router<SharedState> {
         )
         .route("/services/{service}/run", post(gpt::gpt_run_service))
         .route("/user/status", get(gpt::gpt_user_status))
+        .route(
+            "/preferences",
+            get(gpt::gpt_get_preferences).post(gpt::gpt_set_preferences),
+        )
         .layer(axum::middleware::from_fn_with_state(
             state,
             gpt::verify_gpt_api_key,

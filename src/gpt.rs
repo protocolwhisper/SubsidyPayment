@@ -14,11 +14,13 @@ use chrono::Utc;
 
 use crate::error::{ApiError, ApiResult};
 use crate::types::{
-    Campaign, CampaignRow as FullCampaignRow, GptAuthRequest, GptAuthResponse,
+    AppliedFilters, Campaign, CampaignRow as FullCampaignRow, GptAuthRequest, GptAuthResponse,
     GptAvailableService, GptCompleteTaskRequest, GptCompleteTaskResponse,
-    GptCompletedTaskSummary, GptRunServiceRequest, GptRunServiceResponse, GptSearchParams,
-    GptSearchResponse, GptServiceItem, GptTaskInputFormat, GptTaskParams, GptTaskResponse,
-    GptUserStatusParams, GptUserStatusResponse, SharedState, UserProfile,
+    GptCompletedTaskSummary, GptPreferencesParams, GptPreferencesResponse,
+    GptRunServiceRequest, GptRunServiceResponse, GptSearchParams, GptSearchResponse,
+    GptServiceItem, GptSetPreferencesRequest, GptSetPreferencesResponse, GptTaskInputFormat,
+    GptTaskParams, GptTaskResponse, GptUserStatusParams, GptUserStatusResponse, SharedState,
+    TaskPreference, UserProfile,
 };
 use crate::utils::respond;
 
@@ -146,7 +148,7 @@ pub async fn gpt_search_services(
 
     // Query campaigns (active=true)
     let campaign_rows = sqlx::query_as::<_, CampaignRow>(
-        "SELECT id, name, sponsor, required_task, subsidy_per_call_cents, target_tools, active \
+        "SELECT id, name, sponsor, required_task, subsidy_per_call_cents, target_tools, active, tags \
          FROM campaigns WHERE active = true"
     )
     .fetch_all(&db)
@@ -154,16 +156,17 @@ pub async fn gpt_search_services(
     .map_err(|e| ApiError::internal(format!("campaign query failed: {e}")))?;
 
     for row in campaign_rows {
+        let inferred_tags = infer_tags(&row.tags, &row.target_tools, &row.required_task);
         services.push(GptServiceItem {
             service_type: "campaign".to_string(),
             service_id: row.id,
-            name: row.name,
+            name: row.name.clone(),
             sponsor: row.sponsor,
             required_task: Some(row.required_task),
             subsidy_amount_cents: row.subsidy_per_call_cents as u64,
             category: row.target_tools,
             active: row.active,
-            tags: vec![],
+            tags: inferred_tags,
             relevance_score: None,
         });
     }
@@ -209,9 +212,132 @@ pub async fn gpt_search_services(
         });
     }
 
+    // Budget filter (要件 1.1): retain only services within budget
+    let budget_applied = params.max_budget_cents.is_some();
+    if let Some(max_budget) = params.max_budget_cents {
+        services.retain(|s| s.subsidy_amount_cents <= max_budget);
+    }
+
+    // Intent filter (要件 2.1): retain only services matching intent keywords
+    let intent_applied = params.intent.is_some();
+    // Save all categories before intent filter for available_categories fallback (要件 2.3)
+    let all_categories: Vec<String> = if intent_applied {
+        let mut cats: Vec<String> = services
+            .iter()
+            .flat_map(|s| s.category.clone())
+            .collect();
+        cats.sort();
+        cats.dedup();
+        cats
+    } else {
+        vec![]
+    };
+
+    if let Some(ref intent) = params.intent {
+        let keywords: Vec<&str> = intent.split_whitespace().collect();
+        if !keywords.is_empty() {
+            services.retain(|s| matches_intent(s, &keywords));
+        }
+    }
+
+    // 要件 2.3: Intent search returned 0 results → provide available_categories
+    let available_categories = if intent_applied && services.is_empty() && !all_categories.is_empty() {
+        Some(all_categories)
+    } else {
+        None
+    };
+
+    // 嗜好フィルタ (要件 4.1–4.3): session_token がある場合に嗜好を適用
+    let mut preferences_applied = false;
+    let preferences: Vec<TaskPreference> = if let Some(session_token) = params.session_token {
+        let user_id = resolve_session(&db, session_token).await?;
+        let rows = sqlx::query_as::<_, TaskPreferenceRow>(
+            "SELECT task_type, level, updated_at FROM user_task_preferences \
+             WHERE user_id = $1 ORDER BY task_type",
+        )
+        .bind(user_id)
+        .fetch_all(&db)
+        .await
+        .map_err(|e| ApiError::internal(format!("preferences query failed: {e}")))?;
+
+        let prefs: Vec<TaskPreference> = rows
+            .into_iter()
+            .map(|r| TaskPreference {
+                task_type: r.task_type,
+                level: r.level,
+            })
+            .collect();
+
+        if !prefs.is_empty() {
+            preferences_applied = true;
+            // 要件 4.1: avoided タスクタイプのサービスを除外
+            let avoided_tasks: Vec<&str> = prefs
+                .iter()
+                .filter(|p| p.level == "avoided")
+                .map(|p| p.task_type.as_str())
+                .collect();
+            services.retain(|s| {
+                match s.required_task.as_ref() {
+                    Some(task) => !avoided_tasks.contains(&task.as_str()),
+                    None => true, // sponsored_api without required_task is never excluded
+                }
+            });
+        }
+
+        prefs
+    } else {
+        vec![]
+    };
+
+    // 後方互換性 (要件 9.1): 拡張パラメータが1つでもある場合のみスコア算出・AppliedFilters構築
+    let has_extended_params = budget_applied || intent_applied || params.session_token.is_some();
+
+    // スコア算出 (要件 6.5) + スコア降順ソート (要件 1.4)
+    if has_extended_params {
+        for service in &mut services {
+            service.relevance_score = Some(calculate_score(
+                service,
+                params.max_budget_cents,
+                params.intent.as_deref(),
+                &preferences,
+            ));
+        }
+        services.sort_by(|a, b| {
+            b.relevance_score
+                .unwrap_or(0.0)
+                .partial_cmp(&a.relevance_score.unwrap_or(0.0))
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+    }
+
+    // AppliedFilters 構築 (要件 6.3)
+    let applied_filters = if has_extended_params {
+        Some(AppliedFilters {
+            budget: params.max_budget_cents,
+            intent: params.intent.clone(),
+            category: params.category.clone(),
+            keyword: params.q.clone(),
+            preferences_applied,
+        })
+    } else {
+        None
+    };
+
     let total_count = services.len();
     let message = if total_count == 0 {
-        "No services found matching your criteria.".to_string()
+        if preferences_applied && budget_applied {
+            "No services found within your budget and preferences. Consider adjusting your budget or updating your preferences.".to_string()
+        } else if preferences_applied {
+            // 要件 4.4: 嗜好フィルタで全除外
+            "No services found matching your preferences. Consider updating your task preferences to see more services.".to_string()
+        } else if budget_applied {
+            // 要件 1.3: 予算フィルタで0件 → 予算緩和・直接支払いの案内
+            "No services found within your budget. Consider increasing your budget or paying directly for the service.".to_string()
+        } else if intent_applied {
+            "No services found matching your intent. Check available categories for alternatives.".to_string()
+        } else {
+            "No services found matching your criteria.".to_string()
+        }
     } else {
         format!("Found {} service(s) matching your criteria.", total_count)
     };
@@ -220,8 +346,8 @@ pub async fn gpt_search_services(
         services,
         total_count,
         message,
-        applied_filters: None,
-        available_categories: None,
+        applied_filters,
+        available_categories,
     }))
     }
     .await;
@@ -237,6 +363,130 @@ struct CampaignRow {
     subsidy_per_call_cents: i64,
     target_tools: Vec<String>,
     active: bool,
+    tags: Vec<String>,
+}
+
+/// 意図キーワードがサービスの name, required_task, category, tags にマッチするか判定 (要件 2.1)
+pub fn matches_intent(service: &GptServiceItem, keywords: &[&str]) -> bool {
+    keywords.iter().any(|kw| {
+        let kw_lower = kw.to_lowercase();
+        service.name.to_lowercase().contains(&kw_lower)
+            || service
+                .required_task
+                .as_ref()
+                .map(|rt| rt.to_lowercase().contains(&kw_lower))
+                .unwrap_or(false)
+            || service
+                .category
+                .iter()
+                .any(|c| c.to_lowercase().contains(&kw_lower))
+            || service
+                .tags
+                .iter()
+                .any(|t| t.to_lowercase().contains(&kw_lower))
+    })
+}
+
+/// タグ未設定時に target_tools + required_task からデフォルトタグを推定する (要件 5.3)
+pub fn infer_tags(tags: &[String], target_tools: &[String], required_task: &str) -> Vec<String> {
+    if !tags.is_empty() {
+        return tags.to_vec();
+    }
+    let mut inferred = target_tools.to_vec();
+    let rt = required_task.to_string();
+    if !inferred.contains(&rt) {
+        inferred.push(rt);
+    }
+    inferred
+}
+
+/// スコア算出関数 (要件 6.5)
+/// budget_score (重み 0.3) + intent_score (重み 0.4) + preference_score (重み 0.3)
+pub fn calculate_score(
+    service: &GptServiceItem,
+    max_budget_cents: Option<u64>,
+    intent: Option<&str>,
+    preferences: &[TaskPreference],
+) -> f64 {
+    // budget_score: max_budget未指定→0.5, 指定あり→1.0 - (cost/budget).min(1.0)
+    let budget_score = match max_budget_cents {
+        None => 0.5,
+        Some(budget) if budget == 0 => 0.0,
+        Some(budget) => 1.0 - (service.subsidy_amount_cents as f64 / budget as f64).min(1.0),
+    };
+
+    // intent_score: intent未指定→0.5, 指定あり→matched_fields / total_searchable_fields
+    let intent_score = match intent {
+        None => 0.5,
+        Some(intent_str) => {
+            let keywords: Vec<&str> = intent_str.split_whitespace().collect();
+            if keywords.is_empty() {
+                0.5
+            } else {
+                // Count how many searchable fields match
+                let mut matched = 0u32;
+                let mut total = 0u32;
+
+                // name field
+                total += 1;
+                if keywords.iter().any(|kw| service.name.to_lowercase().contains(&kw.to_lowercase())) {
+                    matched += 1;
+                }
+
+                // required_task field
+                if let Some(ref rt) = service.required_task {
+                    total += 1;
+                    if keywords.iter().any(|kw| rt.to_lowercase().contains(&kw.to_lowercase())) {
+                        matched += 1;
+                    }
+                }
+
+                // category fields (count as one field)
+                if !service.category.is_empty() {
+                    total += 1;
+                    if keywords.iter().any(|kw| {
+                        service.category.iter().any(|c| c.to_lowercase().contains(&kw.to_lowercase()))
+                    }) {
+                        matched += 1;
+                    }
+                }
+
+                // tags fields (count as one field)
+                if !service.tags.is_empty() {
+                    total += 1;
+                    if keywords.iter().any(|kw| {
+                        service.tags.iter().any(|t| t.to_lowercase().contains(&kw.to_lowercase()))
+                    }) {
+                        matched += 1;
+                    }
+                }
+
+                if total == 0 { 0.5 } else { matched as f64 / total as f64 }
+            }
+        }
+    };
+
+    // preference_score: 嗜好未登録→0.5, preferred→1.0, neutral→0.5, avoided→0.0
+    let preference_score = if preferences.is_empty() {
+        0.5
+    } else {
+        match service.required_task.as_ref() {
+            Some(task) => {
+                match preferences.iter().find(|p| p.task_type == *task) {
+                    Some(pref) => match pref.level.as_str() {
+                        "preferred" => 1.0,
+                        "neutral" => 0.5,
+                        "avoided" => 0.0,
+                        _ => 0.5,
+                    },
+                    None => 0.5, // no preference for this task type
+                }
+            }
+            None => 0.5, // sponsored_api without required_task
+        }
+    };
+
+    budget_score * 0.3 + intent_score * 0.4 + preference_score * 0.3
 }
 
 #[derive(sqlx::FromRow)]
@@ -742,4 +992,131 @@ struct CompletedTaskRow {
     campaign_name: String,
     task_name: String,
     created_at: chrono::DateTime<Utc>,
+}
+
+// --- Smart Service Suggestion: 嗜好管理ハンドラ (タスク 4) ---
+
+#[derive(sqlx::FromRow)]
+struct TaskPreferenceRow {
+    task_type: String,
+    level: String,
+    updated_at: chrono::DateTime<Utc>,
+}
+
+pub async fn gpt_get_preferences(
+    State(state): State<SharedState>,
+    Query(params): Query<GptPreferencesParams>,
+) -> Response {
+    let metrics = { state.inner.read().await.metrics.clone() };
+    let result: ApiResult<Json<GptPreferencesResponse>> = async {
+        let db = {
+            let s = state.inner.read().await;
+            s.db.clone()
+                .ok_or_else(|| ApiError::internal("database not configured"))?
+        };
+
+        let user_id = resolve_session(&db, params.session_token).await?;
+
+        let rows = sqlx::query_as::<_, TaskPreferenceRow>(
+            "SELECT task_type, level, updated_at FROM user_task_preferences \
+             WHERE user_id = $1 ORDER BY task_type",
+        )
+        .bind(user_id)
+        .fetch_all(&db)
+        .await
+        .map_err(|e| ApiError::internal(format!("preferences query failed: {e}")))?;
+
+        let updated_at = rows.first().map(|r| r.updated_at);
+
+        let preferences: Vec<TaskPreference> = rows
+            .into_iter()
+            .map(|r| TaskPreference {
+                task_type: r.task_type,
+                level: r.level,
+            })
+            .collect();
+
+        let message = if preferences.is_empty() {
+            "No preferences set yet. You can set your task preferences to get personalized service recommendations.".to_string()
+        } else {
+            format!(
+                "You have {} preference(s) configured.",
+                preferences.len()
+            )
+        };
+
+        Ok(Json(GptPreferencesResponse {
+            user_id,
+            preferences,
+            updated_at,
+            message,
+        }))
+    }
+    .await;
+    respond(&metrics, "gpt_get_preferences", result)
+}
+
+pub async fn gpt_set_preferences(
+    State(state): State<SharedState>,
+    Json(payload): Json<GptSetPreferencesRequest>,
+) -> Response {
+    let metrics = { state.inner.read().await.metrics.clone() };
+    let result: ApiResult<Json<GptSetPreferencesResponse>> = async {
+        let db = {
+            let s = state.inner.read().await;
+            s.db.clone()
+                .ok_or_else(|| ApiError::internal("database not configured"))?
+        };
+
+        let user_id = resolve_session(&db, payload.session_token).await?;
+
+        // Validate preference levels
+        for pref in &payload.preferences {
+            match pref.level.as_str() {
+                "preferred" | "neutral" | "avoided" => {}
+                _ => {
+                    return Err(ApiError::validation(format!(
+                        "invalid preference level '{}' for task_type '{}'. Must be one of: preferred, neutral, avoided",
+                        pref.level, pref.task_type
+                    )));
+                }
+            }
+        }
+
+        // Delete existing preferences
+        sqlx::query("DELETE FROM user_task_preferences WHERE user_id = $1")
+            .bind(user_id)
+            .execute(&db)
+            .await
+            .map_err(|e| ApiError::internal(format!("preferences delete failed: {e}")))?;
+
+        // Insert new preferences
+        let now = Utc::now();
+        for pref in &payload.preferences {
+            sqlx::query(
+                "INSERT INTO user_task_preferences (id, user_id, task_type, level, created_at, updated_at) \
+                 VALUES ($1, $2, $3, $4, $5, $5)",
+            )
+            .bind(Uuid::new_v4())
+            .bind(user_id)
+            .bind(&pref.task_type)
+            .bind(&pref.level)
+            .bind(now)
+            .execute(&db)
+            .await
+            .map_err(|e| ApiError::internal(format!("preference insert failed: {e}")))?;
+        }
+
+        Ok(Json(GptSetPreferencesResponse {
+            user_id,
+            preferences_count: payload.preferences.len(),
+            updated_at: now,
+            message: format!(
+                "Successfully updated {} preference(s).",
+                payload.preferences.len()
+            ),
+        }))
+    }
+    .await;
+    respond(&metrics, "gpt_set_preferences", result)
 }

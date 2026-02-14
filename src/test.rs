@@ -3539,3 +3539,1923 @@ fn migration_0012_campaign_tags_has_expected_schema() {
     assert!(lower.contains("text[]"), "tags should be TEXT[] array type");
     assert!(lower.contains("default '{}'"), "tags should default to empty array");
 }
+
+// =============================================================================
+// Smart Service Suggestion — タスク 4: 嗜好管理ハンドラ
+// =============================================================================
+
+// --- Task 4.3: ハンドラ署名テスト（ルーター到達性） ---
+
+#[tokio::test]
+async fn gpt_preferences_get_is_reachable() {
+    let (app, _state) = test_app();
+    let fake_token = Uuid::new_v4();
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(&format!("/gpt/preferences?session_token={}", fake_token))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    // Should not be 404 (route exists); may be 500 if no DB, but route is reachable
+    assert_ne!(
+        response.status().as_u16(),
+        404,
+        "GET /gpt/preferences should be routed"
+    );
+}
+
+#[tokio::test]
+async fn gpt_preferences_post_is_reachable() {
+    let (app, _state) = test_app();
+    let response = post_json(
+        &app,
+        "/gpt/preferences",
+        serde_json::json!({
+            "session_token": Uuid::new_v4(),
+            "preferences": [
+                { "task_type": "survey", "level": "avoided" }
+            ]
+        }),
+        None,
+    )
+    .await;
+    // Should not be 404 (route exists); may be 500 if no DB or 401 if session invalid
+    assert_ne!(
+        response.status().as_u16(),
+        404,
+        "POST /gpt/preferences should be routed"
+    );
+}
+
+#[tokio::test]
+async fn gpt_preferences_behind_auth_middleware() {
+    let state = SharedState {
+        inner: Arc::new(RwLock::new(AppState::new())),
+    };
+    {
+        let mut s = state.inner.write().await;
+        s.config.gpt_actions_api_key = Some("pref-test-key".to_string());
+    }
+    let app = build_app(state);
+
+    // GET without auth should be rejected
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(&format!(
+                    "/gpt/preferences?session_token={}",
+                    Uuid::new_v4()
+                ))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        response.status().as_u16(),
+        401,
+        "GET /gpt/preferences should require API key"
+    );
+
+    // POST without auth should be rejected
+    let response = post_json(
+        &app,
+        "/gpt/preferences",
+        serde_json::json!({
+            "session_token": Uuid::new_v4(),
+            "preferences": []
+        }),
+        None,
+    )
+    .await;
+    assert_eq!(
+        response.status().as_u16(),
+        401,
+        "POST /gpt/preferences should require API key"
+    );
+}
+
+#[tokio::test]
+async fn gpt_preferences_endpoints_record_metrics() {
+    let (app, state) = test_app();
+    {
+        let mut s = state.inner.write().await;
+        s.config.gpt_actions_api_key = None;
+    }
+
+    // Hit GET /gpt/preferences
+    let _ = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(&format!(
+                    "/gpt/preferences?session_token={}",
+                    Uuid::new_v4()
+                ))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // Hit POST /gpt/preferences
+    let req = Request::builder()
+        .method("POST")
+        .uri("/gpt/preferences")
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            serde_json::json!({
+                "session_token": Uuid::new_v4(),
+                "preferences": []
+            })
+            .to_string(),
+        ))
+        .unwrap();
+    let _ = app.clone().oneshot(req).await.unwrap();
+
+    // Check metrics
+    let s = state.inner.read().await;
+    let metric_families = s.metrics.registry.gather();
+    let http_requests = metric_families
+        .iter()
+        .find(|mf| mf.get_name() == "http_requests_total")
+        .expect("http_requests_total should exist");
+
+    let recorded: std::collections::HashSet<String> = http_requests
+        .get_metric()
+        .iter()
+        .flat_map(|m| m.get_label().iter())
+        .filter(|l| l.get_name() == "endpoint" && l.get_value().starts_with("gpt_"))
+        .map(|l| l.get_value().to_string())
+        .collect();
+
+    assert!(
+        recorded.contains("gpt_get_preferences"),
+        "should record gpt_get_preferences metric. Recorded: {:?}",
+        recorded
+    );
+    assert!(
+        recorded.contains("gpt_set_preferences"),
+        "should record gpt_set_preferences metric. Recorded: {:?}",
+        recorded
+    );
+}
+
+// --- Task 4.4: 統合テスト（DATABASE_URL 必要） ---
+
+#[tokio::test]
+async fn gpt_preferences_integration_crud() {
+    if let Ok(url) = std::env::var("DATABASE_URL") {
+        use sqlx::postgres::PgPoolOptions;
+        if let Ok(pool) = PgPoolOptions::new().max_connections(1).connect(&url).await {
+            sqlx::migrate!("./migrations").run(&pool).await.ok();
+
+            let state = SharedState {
+                inner: Arc::new(RwLock::new(AppState::new())),
+            };
+
+            // --- Setup: create user and session ---
+            let user_id = Uuid::new_v4();
+            let unique_email = format!("pref_test_{}@example.com", Uuid::new_v4());
+            sqlx::query(
+                "INSERT INTO users (id, email, region, roles, tools_used, attributes, created_at, source) \
+                 VALUES ($1, $2, 'JP', '{developer}', '{design}', '{}'::jsonb, NOW(), 'gpt_apps')",
+            )
+            .bind(user_id)
+            .bind(&unique_email)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+            let session_token: Uuid = sqlx::query_scalar(
+                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token",
+            )
+            .bind(user_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+            // ========== Step 1: GET preferences (empty) ==========
+            let result = gpt::gpt_get_preferences(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptPreferencesParams { session_token }),
+            )
+            .await;
+            assert!(
+                result.status().is_success(),
+                "GET preferences should succeed"
+            );
+            let resp: types::GptPreferencesResponse = read_typed(result).await;
+            assert_eq!(resp.user_id, user_id);
+            assert!(resp.preferences.is_empty(), "should have no preferences initially");
+            assert!(resp.updated_at.is_none(), "updated_at should be None when no preferences");
+            assert!(
+                resp.message.contains("No preferences"),
+                "should return guidance message"
+            );
+
+            // ========== Step 2: SET preferences ==========
+            let result = gpt::gpt_set_preferences(
+                axum::extract::State(state.clone()),
+                axum::Json(types::GptSetPreferencesRequest {
+                    session_token,
+                    preferences: vec![
+                        types::TaskPreference {
+                            task_type: "survey".into(),
+                            level: "avoided".into(),
+                        },
+                        types::TaskPreference {
+                            task_type: "github_pr".into(),
+                            level: "preferred".into(),
+                        },
+                        types::TaskPreference {
+                            task_type: "data_provision".into(),
+                            level: "neutral".into(),
+                        },
+                    ],
+                }),
+            )
+            .await;
+            assert!(
+                result.status().is_success(),
+                "SET preferences should succeed"
+            );
+            let set_resp: types::GptSetPreferencesResponse = read_typed(result).await;
+            assert_eq!(set_resp.user_id, user_id);
+            assert_eq!(set_resp.preferences_count, 3);
+            assert!(set_resp.message.contains("3"));
+
+            // ========== Step 3: GET preferences (should return 3) ==========
+            let result = gpt::gpt_get_preferences(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptPreferencesParams { session_token }),
+            )
+            .await;
+            assert!(result.status().is_success());
+            let resp: types::GptPreferencesResponse = read_typed(result).await;
+            assert_eq!(resp.preferences.len(), 3);
+            assert!(resp.updated_at.is_some(), "updated_at should be set after creating preferences");
+
+            // Verify specific preferences
+            let survey = resp
+                .preferences
+                .iter()
+                .find(|p| p.task_type == "survey")
+                .expect("should have survey preference");
+            assert_eq!(survey.level, "avoided");
+            let github = resp
+                .preferences
+                .iter()
+                .find(|p| p.task_type == "github_pr")
+                .expect("should have github_pr preference");
+            assert_eq!(github.level, "preferred");
+
+            // ========== Step 4: UPDATE preferences (overwrite) ==========
+            let result = gpt::gpt_set_preferences(
+                axum::extract::State(state.clone()),
+                axum::Json(types::GptSetPreferencesRequest {
+                    session_token,
+                    preferences: vec![types::TaskPreference {
+                        task_type: "registration".into(),
+                        level: "preferred".into(),
+                    }],
+                }),
+            )
+            .await;
+            assert!(
+                result.status().is_success(),
+                "UPDATE preferences should succeed"
+            );
+            let set_resp: types::GptSetPreferencesResponse = read_typed(result).await;
+            assert_eq!(set_resp.preferences_count, 1, "should replace all with 1 preference");
+
+            // Verify overwrite: only 1 preference now
+            let result = gpt::gpt_get_preferences(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptPreferencesParams { session_token }),
+            )
+            .await;
+            let resp: types::GptPreferencesResponse = read_typed(result).await;
+            assert_eq!(resp.preferences.len(), 1, "old preferences should be replaced");
+            assert_eq!(resp.preferences[0].task_type, "registration");
+            assert_eq!(resp.preferences[0].level, "preferred");
+
+            // ========== Step 5: Invalid session token ==========
+            let result = gpt::gpt_get_preferences(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptPreferencesParams {
+                    session_token: Uuid::new_v4(), // non-existent
+                }),
+            )
+            .await;
+            assert_eq!(
+                result.status().as_u16(),
+                401,
+                "invalid session token should return 401"
+            );
+
+            // ========== Cleanup ==========
+            sqlx::query("DELETE FROM user_task_preferences WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+        }
+    }
+}
+
+#[tokio::test]
+async fn gpt_set_preferences_validates_level() {
+    if let Ok(url) = std::env::var("DATABASE_URL") {
+        use sqlx::postgres::PgPoolOptions;
+        if let Ok(pool) = PgPoolOptions::new().max_connections(1).connect(&url).await {
+            sqlx::migrate!("./migrations").run(&pool).await.ok();
+
+            let state = SharedState {
+                inner: Arc::new(RwLock::new(AppState::new())),
+            };
+
+            // Setup user and session
+            let user_id = Uuid::new_v4();
+            let unique_email = format!("pref_val_{}@example.com", Uuid::new_v4());
+            sqlx::query(
+                "INSERT INTO users (id, email, region, roles, tools_used, attributes, created_at, source) \
+                 VALUES ($1, $2, 'JP', '{developer}', '{design}', '{}'::jsonb, NOW(), 'gpt_apps')",
+            )
+            .bind(user_id)
+            .bind(&unique_email)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+            let session_token: Uuid = sqlx::query_scalar(
+                "INSERT INTO gpt_sessions (user_id) VALUES ($1) RETURNING token",
+            )
+            .bind(user_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+            // Invalid level should fail validation
+            let result = gpt::gpt_set_preferences(
+                axum::extract::State(state.clone()),
+                axum::Json(types::GptSetPreferencesRequest {
+                    session_token,
+                    preferences: vec![types::TaskPreference {
+                        task_type: "survey".into(),
+                        level: "invalid_level".into(),
+                    }],
+                }),
+            )
+            .await;
+            assert_eq!(
+                result.status().as_u16(),
+                400,
+                "invalid preference level should return 400"
+            );
+
+            // Cleanup
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+        }
+    }
+}
+
+// =============================================================================
+// Smart Service Suggestion — タスク 5: 予算フィルタ
+// =============================================================================
+
+#[tokio::test]
+async fn budget_filter_integration_test() {
+    if let Ok(url) = std::env::var("DATABASE_URL") {
+        use sqlx::postgres::PgPoolOptions;
+        if let Ok(pool) = PgPoolOptions::new().max_connections(1).connect(&url).await {
+            sqlx::migrate!("./migrations").run(&pool).await.ok();
+
+            let state = SharedState {
+                inner: Arc::new(RwLock::new(AppState::new())),
+            };
+
+            // --- Setup: Create campaigns with different subsidy amounts ---
+            let cheap_id = Uuid::new_v4();
+            let mid_id = Uuid::new_v4();
+            let expensive_id = Uuid::new_v4();
+            let campaign_prefix = format!("budget_test_{}", Uuid::new_v4());
+
+            for (id, name_suffix, subsidy) in [
+                (cheap_id, "cheap", 100_i64),
+                (mid_id, "mid", 500_i64),
+                (expensive_id, "expensive", 1000_i64),
+            ] {
+                sqlx::query(
+                    "INSERT INTO campaigns (id, name, sponsor, target_roles, target_tools, required_task, \
+                     subsidy_per_call_cents, budget_total_cents, budget_remaining_cents, query_urls, active, created_at) \
+                     VALUES ($1, $2, 'TestSponsor', '{developer}', '{design}', 'survey', \
+                     $3, 50000, 50000, '{}', true, NOW())",
+                )
+                .bind(id)
+                .bind(format!("{}_{}", campaign_prefix, name_suffix))
+                .bind(subsidy)
+                .execute(&pool)
+                .await
+                .unwrap();
+            }
+
+            // ========== Test 1: No budget filter — all services returned (要件 1.2) ==========
+            let result = gpt::gpt_search_services(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptSearchParams {
+                    q: Some(campaign_prefix.clone()),
+                    category: None,
+                    max_budget_cents: None,
+                    intent: None,
+                    session_token: None,
+                }),
+            )
+            .await;
+            assert!(result.status().is_success(), "search without budget should succeed");
+            let resp: types::GptSearchResponse = read_typed(result).await;
+            assert_eq!(
+                resp.total_count, 3,
+                "without budget filter, all 3 test campaigns should be returned"
+            );
+
+            // ========== Test 2: Budget = 500 — only cheap and mid returned (要件 1.1) ==========
+            let result = gpt::gpt_search_services(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptSearchParams {
+                    q: Some(campaign_prefix.clone()),
+                    category: None,
+                    max_budget_cents: Some(500),
+                    intent: None,
+                    session_token: None,
+                }),
+            )
+            .await;
+            assert!(result.status().is_success());
+            let resp: types::GptSearchResponse = read_typed(result).await;
+            assert_eq!(
+                resp.total_count, 2,
+                "budget=500 should return 2 services (cheap=100, mid=500)"
+            );
+            // Verify all returned services have subsidy <= 500
+            for svc in &resp.services {
+                assert!(
+                    svc.subsidy_amount_cents <= 500,
+                    "service '{}' has subsidy {} which exceeds budget 500",
+                    svc.name,
+                    svc.subsidy_amount_cents
+                );
+            }
+
+            // ========== Test 3: Budget = 99 — 0 results with budget message (要件 1.3) ==========
+            let result = gpt::gpt_search_services(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptSearchParams {
+                    q: Some(campaign_prefix.clone()),
+                    category: None,
+                    max_budget_cents: Some(99),
+                    intent: None,
+                    session_token: None,
+                }),
+            )
+            .await;
+            assert!(result.status().is_success());
+            let resp: types::GptSearchResponse = read_typed(result).await;
+            assert_eq!(resp.total_count, 0, "budget=99 should return 0 services");
+            assert!(
+                resp.message.contains("budget") || resp.message.contains("Budget"),
+                "zero-result message should mention budget, got: '{}'",
+                resp.message
+            );
+            assert!(
+                resp.message.contains("paying directly") || resp.message.contains("increasing"),
+                "zero-result message should suggest alternatives, got: '{}'",
+                resp.message
+            );
+
+            // ========== Test 4: Budget = 100 — only cheapest (boundary test) ==========
+            let result = gpt::gpt_search_services(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptSearchParams {
+                    q: Some(campaign_prefix.clone()),
+                    category: None,
+                    max_budget_cents: Some(100),
+                    intent: None,
+                    session_token: None,
+                }),
+            )
+            .await;
+            assert!(result.status().is_success());
+            let resp: types::GptSearchResponse = read_typed(result).await;
+            assert_eq!(
+                resp.total_count, 1,
+                "budget=100 should return exactly 1 service (cheap=100, boundary inclusive)"
+            );
+            assert_eq!(resp.services[0].subsidy_amount_cents, 100);
+
+            // ========== Test 5: Budget = 10000 — all services returned ==========
+            let result = gpt::gpt_search_services(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptSearchParams {
+                    q: Some(campaign_prefix.clone()),
+                    category: None,
+                    max_budget_cents: Some(10000),
+                    intent: None,
+                    session_token: None,
+                }),
+            )
+            .await;
+            assert!(result.status().is_success());
+            let resp: types::GptSearchResponse = read_typed(result).await;
+            assert_eq!(
+                resp.total_count, 3,
+                "budget=10000 should return all 3 services"
+            );
+
+            // ========== Cleanup ==========
+            for id in [cheap_id, mid_id, expensive_id] {
+                sqlx::query("DELETE FROM campaigns WHERE id = $1")
+                    .bind(id)
+                    .execute(&pool)
+                    .await
+                    .ok();
+            }
+        }
+    }
+}
+
+// =============================================================================
+// Smart Service Suggestion — タスク 6: 意図フィルタとタグマッチング
+// =============================================================================
+
+#[test]
+fn infer_tags_returns_existing_tags_when_non_empty() {
+    let tags = vec!["custom_tag".to_string()];
+    let target_tools = vec!["design".to_string()];
+    let result = gpt::infer_tags(&tags, &target_tools, "survey");
+    assert_eq!(result, vec!["custom_tag".to_string()]);
+}
+
+#[test]
+fn infer_tags_generates_from_target_tools_and_required_task() {
+    let tags: Vec<String> = vec![];
+    let target_tools = vec!["design".to_string(), "screenshot".to_string()];
+    let result = gpt::infer_tags(&tags, &target_tools, "survey");
+    assert_eq!(
+        result,
+        vec!["design".to_string(), "screenshot".to_string(), "survey".to_string()]
+    );
+}
+
+#[test]
+fn infer_tags_avoids_duplicate_required_task() {
+    let tags: Vec<String> = vec![];
+    let target_tools = vec!["survey".to_string(), "design".to_string()];
+    let result = gpt::infer_tags(&tags, &target_tools, "survey");
+    // "survey" already in target_tools, should not be duplicated
+    assert_eq!(
+        result,
+        vec!["survey".to_string(), "design".to_string()]
+    );
+}
+
+#[test]
+fn matches_intent_matches_name() {
+    let service = types::GptServiceItem {
+        service_type: "campaign".to_string(),
+        service_id: uuid::Uuid::new_v4(),
+        name: "Screenshot Service".to_string(),
+        sponsor: "TestSponsor".to_string(),
+        required_task: Some("survey".to_string()),
+        subsidy_amount_cents: 100,
+        category: vec!["design".to_string()],
+        active: true,
+        tags: vec!["web".to_string()],
+        relevance_score: None,
+    };
+    assert!(gpt::matches_intent(&service, &["screenshot"]));
+    assert!(gpt::matches_intent(&service, &["SCREENSHOT"])); // case-insensitive
+}
+
+#[test]
+fn matches_intent_matches_required_task() {
+    let service = types::GptServiceItem {
+        service_type: "campaign".to_string(),
+        service_id: uuid::Uuid::new_v4(),
+        name: "Some Service".to_string(),
+        sponsor: "TestSponsor".to_string(),
+        required_task: Some("github_pr".to_string()),
+        subsidy_amount_cents: 100,
+        category: vec!["dev".to_string()],
+        active: true,
+        tags: vec![],
+        relevance_score: None,
+    };
+    assert!(gpt::matches_intent(&service, &["github"]));
+}
+
+#[test]
+fn matches_intent_matches_category() {
+    let service = types::GptServiceItem {
+        service_type: "campaign".to_string(),
+        service_id: uuid::Uuid::new_v4(),
+        name: "Some Service".to_string(),
+        sponsor: "TestSponsor".to_string(),
+        required_task: Some("survey".to_string()),
+        subsidy_amount_cents: 100,
+        category: vec!["design".to_string(), "screenshot".to_string()],
+        active: true,
+        tags: vec![],
+        relevance_score: None,
+    };
+    assert!(gpt::matches_intent(&service, &["design"]));
+    assert!(gpt::matches_intent(&service, &["screenshot"]));
+}
+
+#[test]
+fn matches_intent_matches_tags() {
+    let service = types::GptServiceItem {
+        service_type: "campaign".to_string(),
+        service_id: uuid::Uuid::new_v4(),
+        name: "Some Service".to_string(),
+        sponsor: "TestSponsor".to_string(),
+        required_task: Some("survey".to_string()),
+        subsidy_amount_cents: 100,
+        category: vec!["design".to_string()],
+        active: true,
+        tags: vec!["blockchain".to_string(), "web3".to_string()],
+        relevance_score: None,
+    };
+    assert!(gpt::matches_intent(&service, &["blockchain"]));
+    assert!(gpt::matches_intent(&service, &["WEB3"])); // case-insensitive
+}
+
+#[test]
+fn matches_intent_returns_false_when_no_match() {
+    let service = types::GptServiceItem {
+        service_type: "campaign".to_string(),
+        service_id: uuid::Uuid::new_v4(),
+        name: "Screenshot Service".to_string(),
+        sponsor: "TestSponsor".to_string(),
+        required_task: Some("survey".to_string()),
+        subsidy_amount_cents: 100,
+        category: vec!["design".to_string()],
+        active: true,
+        tags: vec!["web".to_string()],
+        relevance_score: None,
+    };
+    assert!(!gpt::matches_intent(&service, &["blockchain"]));
+    assert!(!gpt::matches_intent(&service, &["finance"]));
+}
+
+#[test]
+fn matches_intent_any_keyword_matches() {
+    let service = types::GptServiceItem {
+        service_type: "campaign".to_string(),
+        service_id: uuid::Uuid::new_v4(),
+        name: "Screenshot Service".to_string(),
+        sponsor: "TestSponsor".to_string(),
+        required_task: Some("survey".to_string()),
+        subsidy_amount_cents: 100,
+        category: vec!["design".to_string()],
+        active: true,
+        tags: vec![],
+        relevance_score: None,
+    };
+    // "finance" doesn't match, but "screenshot" does → overall true
+    assert!(gpt::matches_intent(&service, &["finance", "screenshot"]));
+}
+
+#[tokio::test]
+async fn intent_filter_integration_test() {
+    if let Ok(url) = std::env::var("DATABASE_URL") {
+        use sqlx::postgres::PgPoolOptions;
+        if let Ok(pool) = PgPoolOptions::new().max_connections(1).connect(&url).await {
+            sqlx::migrate!("./migrations").run(&pool).await.ok();
+
+            let state = SharedState {
+                inner: Arc::new(RwLock::new(AppState::new())),
+            };
+
+            // --- Setup: Create campaigns with different names/tasks/tags ---
+            let screenshot_id = Uuid::new_v4();
+            let blockchain_id = Uuid::new_v4();
+            let analytics_id = Uuid::new_v4();
+            let test_prefix = format!("intent_test_{}", Uuid::new_v4());
+
+            // Campaign 1: screenshot-related
+            sqlx::query(
+                "INSERT INTO campaigns (id, name, sponsor, target_roles, target_tools, required_task, \
+                 subsidy_per_call_cents, budget_total_cents, budget_remaining_cents, query_urls, active, created_at, tags) \
+                 VALUES ($1, $2, 'TestSponsor', '{developer}', '{screenshot,design}', 'survey', \
+                 100, 50000, 50000, '{}', true, NOW(), '{screenshot,web,capture}')",
+            )
+            .bind(screenshot_id)
+            .bind(format!("{}_screenshot_svc", test_prefix))
+            .execute(&pool)
+            .await
+            .unwrap();
+
+            // Campaign 2: blockchain-related
+            sqlx::query(
+                "INSERT INTO campaigns (id, name, sponsor, target_roles, target_tools, required_task, \
+                 subsidy_per_call_cents, budget_total_cents, budget_remaining_cents, query_urls, active, created_at, tags) \
+                 VALUES ($1, $2, 'TestSponsor', '{developer}', '{defi}', 'github_pr', \
+                 200, 50000, 50000, '{}', true, NOW(), '{blockchain,web3,defi}')",
+            )
+            .bind(blockchain_id)
+            .bind(format!("{}_blockchain_svc", test_prefix))
+            .execute(&pool)
+            .await
+            .unwrap();
+
+            // Campaign 3: analytics (no tags set, should infer from target_tools + required_task)
+            sqlx::query(
+                "INSERT INTO campaigns (id, name, sponsor, target_roles, target_tools, required_task, \
+                 subsidy_per_call_cents, budget_total_cents, budget_remaining_cents, query_urls, active, created_at) \
+                 VALUES ($1, $2, 'TestSponsor', '{developer}', '{analytics}', 'data_provision', \
+                 150, 50000, 50000, '{}', true, NOW())",
+            )
+            .bind(analytics_id)
+            .bind(format!("{}_analytics_svc", test_prefix))
+            .execute(&pool)
+            .await
+            .unwrap();
+
+            // ========== Test 1: Intent matches name — "screenshot" ==========
+            let result = gpt::gpt_search_services(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptSearchParams {
+                    q: Some(test_prefix.clone()),
+                    category: None,
+                    max_budget_cents: None,
+                    intent: Some("screenshot".to_string()),
+                    session_token: None,
+                }),
+            )
+            .await;
+            assert!(result.status().is_success());
+            let resp: types::GptSearchResponse = read_typed(result).await;
+            assert_eq!(
+                resp.total_count, 1,
+                "intent='screenshot' should match 1 service"
+            );
+            assert!(resp.services[0].name.contains("screenshot"));
+            assert!(resp.available_categories.is_none(), "should not return categories when results found");
+
+            // ========== Test 2: Intent matches tags — "blockchain" ==========
+            let result = gpt::gpt_search_services(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptSearchParams {
+                    q: Some(test_prefix.clone()),
+                    category: None,
+                    max_budget_cents: None,
+                    intent: Some("blockchain".to_string()),
+                    session_token: None,
+                }),
+            )
+            .await;
+            assert!(result.status().is_success());
+            let resp: types::GptSearchResponse = read_typed(result).await;
+            assert_eq!(
+                resp.total_count, 1,
+                "intent='blockchain' should match 1 service via tags"
+            );
+            assert!(resp.services[0].name.contains("blockchain"));
+
+            // ========== Test 3: Intent matches inferred tags — "data_provision" ==========
+            let result = gpt::gpt_search_services(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptSearchParams {
+                    q: Some(test_prefix.clone()),
+                    category: None,
+                    max_budget_cents: None,
+                    intent: Some("data_provision".to_string()),
+                    session_token: None,
+                }),
+            )
+            .await;
+            assert!(result.status().is_success());
+            let resp: types::GptSearchResponse = read_typed(result).await;
+            assert_eq!(
+                resp.total_count, 1,
+                "intent='data_provision' should match analytics service via inferred tags (required_task)"
+            );
+            assert!(resp.services[0].name.contains("analytics"));
+
+            // ========== Test 4: No intent matches — 0 results with available_categories (要件 2.3) ==========
+            let result = gpt::gpt_search_services(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptSearchParams {
+                    q: Some(test_prefix.clone()),
+                    category: None,
+                    max_budget_cents: None,
+                    intent: Some("nonexistent_xyz_12345".to_string()),
+                    session_token: None,
+                }),
+            )
+            .await;
+            assert!(result.status().is_success());
+            let resp: types::GptSearchResponse = read_typed(result).await;
+            assert_eq!(resp.total_count, 0, "non-matching intent should return 0");
+            assert!(
+                resp.message.contains("intent") || resp.message.contains("categories"),
+                "zero-result intent message should reference intent or categories, got: '{}'",
+                resp.message
+            );
+            let cats = resp.available_categories.expect("should have available_categories when intent yields 0 results");
+            assert!(!cats.is_empty(), "available_categories should not be empty");
+            // Should contain categories from all 3 test campaigns
+            assert!(cats.contains(&"screenshot".to_string()) || cats.contains(&"design".to_string()) || cats.contains(&"analytics".to_string()),
+                "available_categories should contain categories from test campaigns, got: {:?}", cats);
+
+            // ========== Test 5: No intent filter — all services returned ==========
+            let result = gpt::gpt_search_services(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptSearchParams {
+                    q: Some(test_prefix.clone()),
+                    category: None,
+                    max_budget_cents: None,
+                    intent: None,
+                    session_token: None,
+                }),
+            )
+            .await;
+            assert!(result.status().is_success());
+            let resp: types::GptSearchResponse = read_typed(result).await;
+            assert_eq!(
+                resp.total_count, 3,
+                "without intent filter, all 3 test campaigns should be returned"
+            );
+            assert!(resp.available_categories.is_none(), "no intent → no available_categories");
+
+            // ========== Test 6: Tags field populated correctly ==========
+            // Verify that the screenshot service has its explicit tags
+            let screenshot_svc = resp.services.iter()
+                .find(|s| s.name.contains("screenshot"))
+                .expect("screenshot service should exist");
+            assert!(
+                screenshot_svc.tags.contains(&"screenshot".to_string()),
+                "screenshot service should have 'screenshot' tag, got: {:?}",
+                screenshot_svc.tags
+            );
+            // Verify that analytics service has inferred tags
+            let analytics_svc = resp.services.iter()
+                .find(|s| s.name.contains("analytics"))
+                .expect("analytics service should exist");
+            assert!(
+                analytics_svc.tags.contains(&"analytics".to_string()),
+                "analytics service should have inferred 'analytics' tag from target_tools, got: {:?}",
+                analytics_svc.tags
+            );
+            assert!(
+                analytics_svc.tags.contains(&"data_provision".to_string()),
+                "analytics service should have inferred 'data_provision' tag from required_task, got: {:?}",
+                analytics_svc.tags
+            );
+
+            // ========== Cleanup ==========
+            for id in [screenshot_id, blockchain_id, analytics_id] {
+                sqlx::query("DELETE FROM campaigns WHERE id = $1")
+                    .bind(id)
+                    .execute(&pool)
+                    .await
+                    .ok();
+            }
+        }
+    }
+}
+
+// =============================================================================
+// Smart Service Suggestion — タスク 7: 嗜好フィルタとスコアリング
+// =============================================================================
+
+#[test]
+fn calculate_score_no_params_returns_neutral() {
+    let service = types::GptServiceItem {
+        service_type: "campaign".to_string(),
+        service_id: uuid::Uuid::new_v4(),
+        name: "Test".to_string(),
+        sponsor: "Sponsor".to_string(),
+        required_task: Some("survey".to_string()),
+        subsidy_amount_cents: 100,
+        category: vec!["design".to_string()],
+        active: true,
+        tags: vec![],
+        relevance_score: None,
+    };
+    // All neutral: 0.5*0.3 + 0.5*0.4 + 0.5*0.3 = 0.5
+    let score = gpt::calculate_score(&service, None, None, &[]);
+    assert!((score - 0.5).abs() < 0.001, "neutral score should be ~0.5, got {}", score);
+}
+
+#[test]
+fn calculate_score_budget_only() {
+    let service = types::GptServiceItem {
+        service_type: "campaign".to_string(),
+        service_id: uuid::Uuid::new_v4(),
+        name: "Test".to_string(),
+        sponsor: "Sponsor".to_string(),
+        required_task: Some("survey".to_string()),
+        subsidy_amount_cents: 200,
+        category: vec!["design".to_string()],
+        active: true,
+        tags: vec![],
+        relevance_score: None,
+    };
+    // budget_score = 1.0 - (200/1000) = 0.8
+    // intent_score = 0.5 (not specified)
+    // preference_score = 0.5 (no prefs)
+    // total = 0.8*0.3 + 0.5*0.4 + 0.5*0.3 = 0.24 + 0.20 + 0.15 = 0.59
+    let score = gpt::calculate_score(&service, Some(1000), None, &[]);
+    assert!((score - 0.59).abs() < 0.001, "score should be ~0.59, got {}", score);
+}
+
+#[test]
+fn calculate_score_preferred_boosts() {
+    let service = types::GptServiceItem {
+        service_type: "campaign".to_string(),
+        service_id: uuid::Uuid::new_v4(),
+        name: "Test".to_string(),
+        sponsor: "Sponsor".to_string(),
+        required_task: Some("survey".to_string()),
+        subsidy_amount_cents: 100,
+        category: vec!["design".to_string()],
+        active: true,
+        tags: vec![],
+        relevance_score: None,
+    };
+    let prefs = vec![types::TaskPreference {
+        task_type: "survey".to_string(),
+        level: "preferred".to_string(),
+    }];
+    // budget_score = 0.5 (no budget)
+    // intent_score = 0.5 (no intent)
+    // preference_score = 1.0 (preferred)
+    // total = 0.5*0.3 + 0.5*0.4 + 1.0*0.3 = 0.15 + 0.20 + 0.30 = 0.65
+    let score = gpt::calculate_score(&service, None, None, &prefs);
+    assert!((score - 0.65).abs() < 0.001, "preferred score should be ~0.65, got {}", score);
+}
+
+#[test]
+fn calculate_score_avoided_returns_low() {
+    let service = types::GptServiceItem {
+        service_type: "campaign".to_string(),
+        service_id: uuid::Uuid::new_v4(),
+        name: "Test".to_string(),
+        sponsor: "Sponsor".to_string(),
+        required_task: Some("survey".to_string()),
+        subsidy_amount_cents: 100,
+        category: vec!["design".to_string()],
+        active: true,
+        tags: vec![],
+        relevance_score: None,
+    };
+    let prefs = vec![types::TaskPreference {
+        task_type: "survey".to_string(),
+        level: "avoided".to_string(),
+    }];
+    // preference_score = 0.0
+    // total = 0.5*0.3 + 0.5*0.4 + 0.0*0.3 = 0.15 + 0.20 + 0.0 = 0.35
+    let score = gpt::calculate_score(&service, None, None, &prefs);
+    assert!((score - 0.35).abs() < 0.001, "avoided score should be ~0.35, got {}", score);
+}
+
+#[test]
+fn calculate_score_with_intent_matching() {
+    let service = types::GptServiceItem {
+        service_type: "campaign".to_string(),
+        service_id: uuid::Uuid::new_v4(),
+        name: "Screenshot Service".to_string(),
+        sponsor: "Sponsor".to_string(),
+        required_task: Some("survey".to_string()),
+        subsidy_amount_cents: 100,
+        category: vec!["screenshot".to_string(), "design".to_string()],
+        active: true,
+        tags: vec!["web".to_string()],
+        relevance_score: None,
+    };
+    // intent "screenshot" matches: name (1), category (1), not required_task (0), not tags (0)
+    // total_fields = 4 (name, required_task, category, tags)
+    // intent_score = 2/4 = 0.5
+    let score = gpt::calculate_score(&service, None, Some("screenshot"), &[]);
+    // 0.5*0.3 + 0.5*0.4 + 0.5*0.3 = 0.5
+    assert!((score - 0.5).abs() < 0.001, "intent matching score should be ~0.5, got {}", score);
+}
+
+#[test]
+fn calculate_score_full_match_high_score() {
+    let service = types::GptServiceItem {
+        service_type: "campaign".to_string(),
+        service_id: uuid::Uuid::new_v4(),
+        name: "Screenshot Tool".to_string(),
+        sponsor: "Sponsor".to_string(),
+        required_task: Some("screenshot".to_string()),
+        subsidy_amount_cents: 100,
+        category: vec!["screenshot".to_string()],
+        active: true,
+        tags: vec!["screenshot".to_string()],
+        relevance_score: None,
+    };
+    let prefs = vec![types::TaskPreference {
+        task_type: "screenshot".to_string(),
+        level: "preferred".to_string(),
+    }];
+    // budget: 1.0 - (100/10000) = 0.99
+    // intent "screenshot": matches all 4 fields → 4/4 = 1.0
+    // preference: preferred → 1.0
+    // total = 0.99*0.3 + 1.0*0.4 + 1.0*0.3 = 0.297 + 0.4 + 0.3 = 0.997
+    let score = gpt::calculate_score(&service, Some(10000), Some("screenshot"), &prefs);
+    assert!(score > 0.9, "full match should have high score, got {}", score);
+}
+
+#[tokio::test]
+async fn preference_filter_integration_test() {
+    if let Ok(url) = std::env::var("DATABASE_URL") {
+        use sqlx::postgres::PgPoolOptions;
+        if let Ok(pool) = PgPoolOptions::new().max_connections(1).connect(&url).await {
+            sqlx::migrate!("./migrations").run(&pool).await.ok();
+
+            let state = SharedState {
+                inner: Arc::new(RwLock::new(AppState::new())),
+            };
+
+            // --- Setup: Create test user, session, campaigns, preferences ---
+            let user_id = Uuid::new_v4();
+            let session_token = Uuid::new_v4();
+            let test_prefix = format!("pref_test_{}", Uuid::new_v4());
+
+            // Create user
+            sqlx::query(
+                "INSERT INTO users (id, email, region, roles, tools_used, attributes, created_at, source) \
+                 VALUES ($1, $2, 'US', '{developer}', '{design}', '{}'::jsonb, NOW(), 'gpt_apps')",
+            )
+            .bind(user_id)
+            .bind(format!("{}@test.com", test_prefix))
+            .execute(&pool)
+            .await
+            .unwrap();
+
+            // Create session
+            sqlx::query(
+                "INSERT INTO gpt_sessions (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '1 hour')",
+            )
+            .bind(session_token)
+            .bind(user_id)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+            // Create campaigns: survey (will be avoided), github_pr (preferred), data_provision (neutral)
+            let survey_id = Uuid::new_v4();
+            let github_id = Uuid::new_v4();
+            let data_id = Uuid::new_v4();
+
+            for (id, name_suffix, task, subsidy) in [
+                (survey_id, "survey_svc", "survey", 100_i64),
+                (github_id, "github_svc", "github_pr", 200_i64),
+                (data_id, "data_svc", "data_provision", 150_i64),
+            ] {
+                sqlx::query(
+                    "INSERT INTO campaigns (id, name, sponsor, target_roles, target_tools, required_task, \
+                     subsidy_per_call_cents, budget_total_cents, budget_remaining_cents, query_urls, active, created_at) \
+                     VALUES ($1, $2, 'TestSponsor', '{developer}', '{design}', $3, \
+                     $4, 50000, 50000, '{}', true, NOW())",
+                )
+                .bind(id)
+                .bind(format!("{}_{}", test_prefix, name_suffix))
+                .bind(task)
+                .bind(subsidy)
+                .execute(&pool)
+                .await
+                .unwrap();
+            }
+
+            // Set preferences: survey=avoided, github_pr=preferred
+            for (task_type, level) in [("survey", "avoided"), ("github_pr", "preferred")] {
+                sqlx::query(
+                    "INSERT INTO user_task_preferences (id, user_id, task_type, level, created_at, updated_at) \
+                     VALUES ($1, $2, $3, $4, NOW(), NOW())",
+                )
+                .bind(Uuid::new_v4())
+                .bind(user_id)
+                .bind(task_type)
+                .bind(level)
+                .execute(&pool)
+                .await
+                .unwrap();
+            }
+
+            // ========== Test 1: With session_token — avoided excluded (要件 4.1) ==========
+            let result = gpt::gpt_search_services(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptSearchParams {
+                    q: Some(test_prefix.clone()),
+                    category: None,
+                    max_budget_cents: None,
+                    intent: None,
+                    session_token: Some(session_token),
+                }),
+            )
+            .await;
+            assert!(result.status().is_success());
+            let resp: types::GptSearchResponse = read_typed(result).await;
+            assert_eq!(
+                resp.total_count, 2,
+                "with preferences, survey (avoided) should be excluded, leaving 2 services"
+            );
+            // Verify survey is excluded
+            assert!(
+                !resp.services.iter().any(|s| s.required_task.as_deref() == Some("survey")),
+                "survey service should be excluded by avoided preference"
+            );
+
+            // ========== Test 2: Preferred service ranked first (要件 4.2) ==========
+            assert!(
+                resp.services[0].required_task.as_deref() == Some("github_pr"),
+                "preferred github_pr service should be ranked first, got: {:?}",
+                resp.services[0].required_task
+            );
+            // Verify scores are present and preferred > neutral
+            let github_score = resp.services[0].relevance_score.unwrap();
+            let data_score = resp.services[1].relevance_score.unwrap();
+            assert!(
+                github_score > data_score,
+                "preferred github_pr score ({}) should be > neutral data_provision score ({})",
+                github_score,
+                data_score
+            );
+
+            // ========== Test 3: applied_filters with preferences_applied=true (要件 4.5, 6.3) ==========
+            let filters = resp.applied_filters.as_ref().expect("applied_filters should be present");
+            assert!(
+                filters.preferences_applied,
+                "preferences_applied should be true when preferences are applied"
+            );
+            assert_eq!(filters.keyword.as_deref(), Some(test_prefix.as_str()));
+
+            // ========== Test 4: Without session_token — all services returned, no preferences (後方互換 要件 6.4) ==========
+            let result = gpt::gpt_search_services(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptSearchParams {
+                    q: Some(test_prefix.clone()),
+                    category: None,
+                    max_budget_cents: None,
+                    intent: None,
+                    session_token: None,
+                }),
+            )
+            .await;
+            assert!(result.status().is_success());
+            let resp: types::GptSearchResponse = read_typed(result).await;
+            assert_eq!(
+                resp.total_count, 3,
+                "without session_token, all 3 services should be returned (backward compat)"
+            );
+
+            // ========== Test 5: No extended params — backward compatibility (要件 9.1) ==========
+            // When only q is used (no max_budget_cents, intent, session_token), applied_filters and
+            // relevance_score should be None for backward compatibility.
+            assert!(
+                resp.applied_filters.is_none(),
+                "applied_filters should be None when no extended params are used"
+            );
+            for svc in &resp.services {
+                assert!(
+                    svc.relevance_score.is_none(),
+                    "relevance_score should be None when no extended params are used"
+                );
+            }
+
+            // ========== Test 6: Preference filter excludes all — message (要件 4.4) ==========
+            // Make a new user with ALL tasks avoided
+            let user_id_all_avoided = Uuid::new_v4();
+            let session_all_avoided = Uuid::new_v4();
+            sqlx::query(
+                "INSERT INTO users (id, email, region, roles, tools_used, attributes, created_at, source) \
+                 VALUES ($1, $2, 'US', '{developer}', '{design}', '{}'::jsonb, NOW(), 'gpt_apps')",
+            )
+            .bind(user_id_all_avoided)
+            .bind(format!("{}_all_avoided@test.com", test_prefix))
+            .execute(&pool)
+            .await
+            .unwrap();
+            sqlx::query(
+                "INSERT INTO gpt_sessions (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '1 hour')",
+            )
+            .bind(session_all_avoided)
+            .bind(user_id_all_avoided)
+            .execute(&pool)
+            .await
+            .unwrap();
+            for task_type in ["survey", "github_pr", "data_provision"] {
+                sqlx::query(
+                    "INSERT INTO user_task_preferences (id, user_id, task_type, level, created_at, updated_at) \
+                     VALUES ($1, $2, $3, 'avoided', NOW(), NOW())",
+                )
+                .bind(Uuid::new_v4())
+                .bind(user_id_all_avoided)
+                .bind(task_type)
+                .execute(&pool)
+                .await
+                .unwrap();
+            }
+
+            let result = gpt::gpt_search_services(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptSearchParams {
+                    q: Some(test_prefix.clone()),
+                    category: None,
+                    max_budget_cents: None,
+                    intent: None,
+                    session_token: Some(session_all_avoided),
+                }),
+            )
+            .await;
+            assert!(result.status().is_success());
+            let resp: types::GptSearchResponse = read_typed(result).await;
+            assert_eq!(resp.total_count, 0, "all avoided should return 0 services");
+            assert!(
+                resp.message.contains("preferences") || resp.message.contains("preference"),
+                "zero-result preference message should mention preferences, got: '{}'",
+                resp.message
+            );
+
+            // ========== Test 7: Combined budget + intent + preferences (要件 6.2: AND条件) ==========
+            let result = gpt::gpt_search_services(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptSearchParams {
+                    q: Some(test_prefix.clone()),
+                    category: None,
+                    max_budget_cents: Some(180), // excludes github_pr (200)
+                    intent: Some("data".to_string()), // matches data_provision
+                    session_token: Some(session_token), // excludes survey (avoided)
+                }),
+            )
+            .await;
+            assert!(result.status().is_success());
+            let resp: types::GptSearchResponse = read_typed(result).await;
+            // survey: excluded by avoided preference
+            // github_pr: excluded by budget (200 > 180)
+            // data_provision: passes all filters (150 <= 180, matches "data" intent, not avoided)
+            assert_eq!(
+                resp.total_count, 1,
+                "combined filters should return only data_provision"
+            );
+            assert_eq!(
+                resp.services[0].required_task.as_deref(),
+                Some("data_provision")
+            );
+            let filters = resp.applied_filters.as_ref().expect("applied_filters for combined");
+            assert_eq!(filters.budget, Some(180));
+            assert_eq!(filters.intent.as_deref(), Some("data"));
+            assert!(filters.preferences_applied);
+
+            // ========== Cleanup ==========
+            sqlx::query("DELETE FROM user_task_preferences WHERE user_id = $1 OR user_id = $2")
+                .bind(user_id)
+                .bind(user_id_all_avoided)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1 OR user_id = $2")
+                .bind(user_id)
+                .bind(user_id_all_avoided)
+                .execute(&pool)
+                .await
+                .ok();
+            for id in [survey_id, github_id, data_id] {
+                sqlx::query("DELETE FROM campaigns WHERE id = $1")
+                    .bind(id)
+                    .execute(&pool)
+                    .await
+                    .ok();
+            }
+            sqlx::query("DELETE FROM users WHERE id = $1 OR id = $2")
+                .bind(user_id)
+                .bind(user_id_all_avoided)
+                .execute(&pool)
+                .await
+                .ok();
+        }
+    }
+}
+
+// =============================================================================
+// Smart Service Suggestion — タスク 8: ルーター統合とメトリクス
+// =============================================================================
+
+#[tokio::test]
+async fn preferences_route_does_not_break_existing_routes() {
+    let (app, _state) = test_app();
+
+    // /health should still work
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/health")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        response.status().as_u16(),
+        200,
+        "/health should still return 200"
+    );
+
+    // /gpt/services should still be routed (not 404)
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/gpt/services")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_ne!(
+        response.status().as_u16(),
+        404,
+        "/gpt/services should still be reachable"
+    );
+
+    // /gpt/auth should still be routed (not 404)
+    let response = post_json(
+        &app,
+        "/gpt/auth",
+        serde_json::json!({"email": "test@test.com", "region": "US", "roles": [], "tools_used": []}),
+        None,
+    )
+    .await;
+    assert_ne!(
+        response.status().as_u16(),
+        404,
+        "/gpt/auth should still be reachable"
+    );
+
+    // /.well-known/openapi.yaml should still work
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/.well-known/openapi.yaml")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        response.status().as_u16(),
+        200,
+        "/.well-known/openapi.yaml should still return 200"
+    );
+}
+
+// =============================================================================
+// Smart Service Suggestion — タスク 9: OpenAPIスキーマ検証
+// =============================================================================
+
+#[tokio::test]
+async fn openapi_schema_contains_new_parameters() {
+    let (app, _state) = test_app();
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/.well-known/openapi.yaml")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 200);
+    let body = read_body_string(response).await;
+
+    // 9.1: New parameters on /gpt/services
+    assert!(
+        body.contains("max_budget_cents"),
+        "openapi.yaml should contain max_budget_cents parameter"
+    );
+    assert!(
+        body.contains("intent"),
+        "openapi.yaml should contain intent parameter"
+    );
+    // session_token should appear in /gpt/services parameters (not just other endpoints)
+    assert!(
+        body.contains("session_token"),
+        "openapi.yaml should contain session_token parameter"
+    );
+
+    // 9.1: New response fields
+    assert!(
+        body.contains("applied_filters"),
+        "openapi.yaml should contain applied_filters in response"
+    );
+    assert!(
+        body.contains("available_categories"),
+        "openapi.yaml should contain available_categories in response"
+    );
+    assert!(
+        body.contains("preferences_applied"),
+        "openapi.yaml should contain preferences_applied in applied_filters"
+    );
+
+    // 9.1: GptServiceItem extensions
+    assert!(
+        body.contains("tags"),
+        "openapi.yaml GptServiceItem should contain tags"
+    );
+    assert!(
+        body.contains("relevance_score"),
+        "openapi.yaml GptServiceItem should contain relevance_score"
+    );
+}
+
+#[tokio::test]
+async fn openapi_schema_contains_preferences_endpoints() {
+    let (app, _state) = test_app();
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/.well-known/openapi.yaml")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 200);
+    let body = read_body_string(response).await;
+
+    // 9.2: New endpoints
+    assert!(
+        body.contains("/gpt/preferences"),
+        "openapi.yaml should contain /gpt/preferences path"
+    );
+
+    // 9.2: operationIds
+    assert!(
+        body.contains("getPreferences"),
+        "openapi.yaml should contain getPreferences operationId"
+    );
+    assert!(
+        body.contains("setPreferences"),
+        "openapi.yaml should contain setPreferences operationId"
+    );
+}
+
+#[tokio::test]
+async fn openapi_schema_endpoint_count_within_limit() {
+    let (app, _state) = test_app();
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/.well-known/openapi.yaml")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 200);
+    let body = read_body_string(response).await;
+
+    // Count operationIds to determine number of endpoints
+    let operation_count = body.matches("operationId:").count();
+    assert!(
+        operation_count <= 30,
+        "total endpoints ({}) should be <= 30",
+        operation_count
+    );
+    // We should have at least 8 endpoints (6 existing + 2 new)
+    assert!(
+        operation_count >= 8,
+        "should have at least 8 endpoints, got {}",
+        operation_count
+    );
+}
+
+#[tokio::test]
+async fn openapi_schema_has_all_expected_operation_ids() {
+    let (app, _state) = test_app();
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/.well-known/openapi.yaml")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 200);
+    let body = read_body_string(response).await;
+
+    let expected_operations = [
+        "searchServices",
+        "authenticateUser",
+        "getTaskDetails",
+        "completeTask",
+        "runService",
+        "getUserStatus",
+        "getPreferences",
+        "setPreferences",
+    ];
+
+    for op_id in &expected_operations {
+        assert!(
+            body.contains(op_id),
+            "openapi.yaml should contain operationId: {}",
+            op_id
+        );
+    }
+}
+
+// =============================================================================
+// Smart Service Suggestion — タスク 11: E2Eテストと後方互換性検証
+// =============================================================================
+
+/// 11.1: E2E統合テスト — 嗜好設定 → 意図+予算検索 → フィルタリング結果検証 → スコア降順確認
+#[tokio::test]
+async fn e2e_smart_suggestion_full_flow() {
+    if let Ok(url) = std::env::var("DATABASE_URL") {
+        use sqlx::postgres::PgPoolOptions;
+        if let Ok(pool) = PgPoolOptions::new().max_connections(1).connect(&url).await {
+            sqlx::migrate!("./migrations").run(&pool).await.ok();
+
+            let state = SharedState {
+                inner: Arc::new(RwLock::new(AppState::new())),
+            };
+
+            // --- Setup: user, session, campaigns, preferences ---
+            let user_id = Uuid::new_v4();
+            let session_token = Uuid::new_v4();
+            let test_prefix = format!("e2e_smart_{}", Uuid::new_v4());
+
+            // Create user
+            sqlx::query(
+                "INSERT INTO users (id, email, region, roles, tools_used, attributes, created_at, source) \
+                 VALUES ($1, $2, 'JP', '{developer}', '{scraping}', '{}'::jsonb, NOW(), 'gpt_apps')",
+            )
+            .bind(user_id)
+            .bind(format!("{}@test.com", test_prefix))
+            .execute(&pool)
+            .await
+            .unwrap();
+
+            // Create session
+            sqlx::query(
+                "INSERT INTO gpt_sessions (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '1 hour')",
+            )
+            .bind(session_token)
+            .bind(user_id)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+            // Create 3 campaigns with different tasks/budgets/names
+            let screenshot_id = Uuid::new_v4();
+            let design_id = Uuid::new_v4();
+            let survey_id = Uuid::new_v4();
+
+            for (id, name_suffix, task, subsidy, tags) in [
+                (screenshot_id, "Screenshot Tool", "github_pr", 100_i64, vec!["screenshot", "web"]),
+                (design_id, "Design Generator", "data_provision", 300_i64, vec!["design", "ai"]),
+                (survey_id, "Survey Reward", "survey", 150_i64, vec!["survey", "reward"]),
+            ] {
+                let tags_array: String = format!(
+                    "{{{}}}",
+                    tags.iter().map(|t| format!("\"{}\"", t)).collect::<Vec<_>>().join(",")
+                );
+                sqlx::query(
+                    "INSERT INTO campaigns (id, name, sponsor, target_roles, target_tools, required_task, \
+                     subsidy_per_call_cents, budget_total_cents, budget_remaining_cents, query_urls, \
+                     active, created_at, tags) \
+                     VALUES ($1, $2, 'E2ESponsor', '{developer}', '{scraping}', $3, \
+                     $4, 50000, 50000, '{}', true, NOW(), $5::TEXT[])",
+                )
+                .bind(id)
+                .bind(format!("{}_{}", test_prefix, name_suffix))
+                .bind(task)
+                .bind(subsidy)
+                .bind(tags_array)
+                .execute(&pool)
+                .await
+                .unwrap();
+            }
+
+            // Step 1: Set preferences — survey=avoided, github_pr=preferred
+            let set_result = gpt::gpt_set_preferences(
+                axum::extract::State(state.clone()),
+                axum::Json(types::GptSetPreferencesRequest {
+                    session_token,
+                    preferences: vec![
+                        types::TaskPreference {
+                            task_type: "survey".to_string(),
+                            level: "avoided".to_string(),
+                        },
+                        types::TaskPreference {
+                            task_type: "github_pr".to_string(),
+                            level: "preferred".to_string(),
+                        },
+                    ],
+                }),
+            )
+            .await;
+            assert!(set_result.status().is_success(), "setPreferences should succeed");
+
+            // Step 2: Verify preferences saved
+            let get_result = gpt::gpt_get_preferences(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptPreferencesParams { session_token }),
+            )
+            .await;
+            assert!(get_result.status().is_success(), "getPreferences should succeed");
+            let prefs_resp: types::GptPreferencesResponse = read_typed(get_result).await;
+            assert_eq!(prefs_resp.preferences.len(), 2, "should have 2 preferences");
+
+            // Step 3: Search with intent + budget + session_token (全拡張パラメータ使用)
+            let search_result = gpt::gpt_search_services(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptSearchParams {
+                    q: Some(test_prefix.clone()),
+                    category: None,
+                    max_budget_cents: Some(200), // excludes design_id (300)
+                    intent: Some("screenshot".to_string()), // matches screenshot_id
+                    session_token: Some(session_token), // excludes survey_id (avoided)
+                }),
+            )
+            .await;
+            assert!(search_result.status().is_success(), "search should succeed");
+            let resp: types::GptSearchResponse = read_typed(search_result).await;
+
+            // Verify: only screenshot_id passes all filters
+            // - survey_id: excluded by avoided preference
+            // - design_id: excluded by budget (300 > 200)
+            // - screenshot_id: passes budget (100 <= 200), matches intent ("screenshot"), not avoided
+            assert_eq!(
+                resp.total_count, 1,
+                "only screenshot service should pass all filters, got {}",
+                resp.total_count
+            );
+            assert!(
+                resp.services[0].name.contains("Screenshot Tool"),
+                "result should be Screenshot Tool, got: {}",
+                resp.services[0].name
+            );
+
+            // Verify relevance_score is present and > 0
+            let score = resp.services[0].relevance_score.expect("relevance_score should be present");
+            assert!(score > 0.0, "relevance_score should be positive, got: {}", score);
+
+            // Verify applied_filters
+            let filters = resp.applied_filters.as_ref().expect("applied_filters should be present");
+            assert_eq!(filters.budget, Some(200));
+            assert_eq!(filters.intent.as_deref(), Some("screenshot"));
+            assert!(filters.preferences_applied, "preferences_applied should be true");
+            assert_eq!(filters.keyword.as_deref(), Some(test_prefix.as_str()));
+
+            // Step 4: Search with broader budget to get multiple results, verify score ordering
+            let search_result = gpt::gpt_search_services(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptSearchParams {
+                    q: Some(test_prefix.clone()),
+                    category: None,
+                    max_budget_cents: Some(500), // includes all
+                    intent: Some("screenshot design".to_string()), // matches screenshot + design
+                    session_token: Some(session_token), // excludes survey
+                }),
+            )
+            .await;
+            assert!(search_result.status().is_success());
+            let resp: types::GptSearchResponse = read_typed(search_result).await;
+
+            // survey excluded (avoided), screenshot + design remain
+            assert_eq!(
+                resp.total_count, 2,
+                "screenshot + design should remain after survey excluded"
+            );
+
+            // Verify score descending order
+            let scores: Vec<f64> = resp
+                .services
+                .iter()
+                .map(|s| s.relevance_score.expect("score should be present"))
+                .collect();
+            for i in 0..scores.len() - 1 {
+                assert!(
+                    scores[i] >= scores[i + 1],
+                    "scores should be in descending order: {:?}",
+                    scores
+                );
+            }
+
+            // ========== Cleanup ==========
+            sqlx::query("DELETE FROM user_task_preferences WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            sqlx::query("DELETE FROM gpt_sessions WHERE user_id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+            for id in [screenshot_id, design_id, survey_id] {
+                sqlx::query("DELETE FROM campaigns WHERE id = $1")
+                    .bind(id)
+                    .execute(&pool)
+                    .await
+                    .ok();
+            }
+            sqlx::query("DELETE FROM users WHERE id = $1")
+                .bind(user_id)
+                .execute(&pool)
+                .await
+                .ok();
+        }
+    }
+}
+
+/// 11.2: 後方互換性テスト — 拡張パラメータ未指定時のレスポンス構造検証
+#[tokio::test]
+async fn backward_compatibility_no_extended_params() {
+    if let Ok(url) = std::env::var("DATABASE_URL") {
+        use sqlx::postgres::PgPoolOptions;
+        if let Ok(pool) = PgPoolOptions::new().max_connections(1).connect(&url).await {
+            sqlx::migrate!("./migrations").run(&pool).await.ok();
+
+            let state = SharedState {
+                inner: Arc::new(RwLock::new(AppState::new())),
+            };
+
+            let test_prefix = format!("compat_test_{}", Uuid::new_v4());
+
+            // Create a campaign for testing
+            let campaign_id = Uuid::new_v4();
+            sqlx::query(
+                "INSERT INTO campaigns (id, name, sponsor, target_roles, target_tools, required_task, \
+                 subsidy_per_call_cents, budget_total_cents, budget_remaining_cents, query_urls, \
+                 active, created_at) \
+                 VALUES ($1, $2, 'CompatSponsor', '{developer}', '{design}', 'survey', \
+                 100, 50000, 50000, '{}', true, NOW())",
+            )
+            .bind(campaign_id)
+            .bind(format!("{}_service", test_prefix))
+            .execute(&pool)
+            .await
+            .unwrap();
+
+            // Test A: keyword only (existing param) — no extended params
+            let result = gpt::gpt_search_services(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptSearchParams {
+                    q: Some(test_prefix.clone()),
+                    category: None,
+                    max_budget_cents: None,
+                    intent: None,
+                    session_token: None,
+                }),
+            )
+            .await;
+            assert!(result.status().is_success());
+            let resp: types::GptSearchResponse = read_typed(result).await;
+
+            assert!(resp.total_count >= 1, "should find at least our test campaign");
+            assert!(
+                resp.applied_filters.is_none(),
+                "applied_filters should be None when no extended params (要件 9.1), got: {:?}",
+                resp.applied_filters
+            );
+            assert!(
+                resp.available_categories.is_none(),
+                "available_categories should be None when no extended params (要件 9.1)"
+            );
+            for svc in &resp.services {
+                assert!(
+                    svc.relevance_score.is_none(),
+                    "relevance_score should be None when no extended params (要件 9.1), service: {}",
+                    svc.name
+                );
+            }
+
+            // Test B: category only (existing param) — no extended params
+            let result = gpt::gpt_search_services(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptSearchParams {
+                    q: None,
+                    category: Some("design".to_string()),
+                    max_budget_cents: None,
+                    intent: None,
+                    session_token: None,
+                }),
+            )
+            .await;
+            assert!(result.status().is_success());
+            let resp: types::GptSearchResponse = read_typed(result).await;
+
+            assert!(
+                resp.applied_filters.is_none(),
+                "applied_filters should be None with only category param"
+            );
+            assert!(
+                resp.available_categories.is_none(),
+                "available_categories should be None with only category param"
+            );
+            for svc in &resp.services {
+                assert!(
+                    svc.relevance_score.is_none(),
+                    "relevance_score should be None with only category param, service: {}",
+                    svc.name
+                );
+            }
+
+            // Test C: no params at all — full backward compat
+            let result = gpt::gpt_search_services(
+                axum::extract::State(state.clone()),
+                axum::extract::Query(types::GptSearchParams {
+                    q: None,
+                    category: None,
+                    max_budget_cents: None,
+                    intent: None,
+                    session_token: None,
+                }),
+            )
+            .await;
+            assert!(result.status().is_success());
+            let resp: types::GptSearchResponse = read_typed(result).await;
+
+            assert!(
+                resp.applied_filters.is_none(),
+                "applied_filters should be None with no params at all"
+            );
+            assert!(
+                resp.available_categories.is_none(),
+                "available_categories should be None with no params at all"
+            );
+            for svc in &resp.services {
+                assert!(
+                    svc.relevance_score.is_none(),
+                    "relevance_score should be None with no params at all, service: {}",
+                    svc.name
+                );
+            }
+
+            // Test D: Verify JSON structure matches gpt-apps-integration format
+            // When serialized, optional None fields with skip_serializing_if should be absent
+            let json_str = serde_json::to_string(&resp).unwrap();
+            assert!(
+                !json_str.contains("applied_filters"),
+                "applied_filters should not appear in JSON when None"
+            );
+            assert!(
+                !json_str.contains("available_categories"),
+                "available_categories should not appear in JSON when None"
+            );
+            assert!(
+                !json_str.contains("relevance_score"),
+                "relevance_score should not appear in JSON when None"
+            );
+
+            // ========== Cleanup ==========
+            sqlx::query("DELETE FROM campaigns WHERE id = $1")
+                .bind(campaign_id)
+                .execute(&pool)
+                .await
+                .ok();
+        }
+    }
+}
