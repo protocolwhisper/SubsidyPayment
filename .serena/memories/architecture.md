@@ -1,118 +1,60 @@
 # Architecture — SubsidyPayment
 
-## High-Level Architecture
-
+## 全体構成
 ```
-User (ChatGPT / Claude / Browser)
-        │
-        ▼
-┌─────────────────────┐
-│  Frontend (React)    │  Vercel
-│  - Paywall UI        │
-│  - Campaign Builder  │
-│  - Sponsor Dashboard │
-│  - Service Discovery │
-└────────┬────────────┘
-         │ REST API (JSON)
-         ▼
-┌─────────────────────┐
-│  Backend (Rust/Axum) │  Render
-│  - Proxy Handler     │
-│  - Campaign CRUD     │
-│  - Task Completion   │
-│  - Sponsored API     │
-│  - x402 Payment      │
-│  - Metrics           │
-└────────┬────────────┘
-         │
-    ┌────┴────┐
-    ▼         ▼
-┌────────┐ ┌──────────────┐
-│PostgreSQL│ │x402 Facilitator│
-│ (SQLx)  │ │ (verify/settle)│
-└─────────┘ └──────────────┘
+利用者 (Browser / GPT Apps)
+   ↓
+Frontend (React + Vite)
+   ↓ REST(JSON)
+Backend (Rust + Axum)
+   ├─ Core API (/health, /campaigns, /proxy, /sponsored-apis ...)
+   ├─ GPT API (/gpt/services, /gpt/auth, /gpt/tasks, /gpt/preferences ...)
+   ├─ Middleware (CORS, GPT API key, レート制限)
+   └─ Metrics (Prometheus)
+   ↓
+PostgreSQL (SQLx migrations 0001-0012)
+   ↓
+x402 Facilitator (verify / settle)
 ```
 
-## Source Code Layout
-
+## ソース構造（現行）
 ```
 src/
-├── main.rs      # Entry point, router, ALL request handlers (~1500 lines)
-├── types.rs     # AppConfig, AppState, SharedState, DB models, enums (~560 lines)
-├── error.rs     # ApiError enum, IntoResponse impl (~150 lines)
-├── onchain.rs   # x402 payment verification/settlement logic (~100 lines)
-├── utils.rs     # Helper functions (env reading, payment utils) (~250 lines)
-└── test.rs      # Integration tests (~160 lines)
+├── main.rs      # ルータ構築、主要ハンドラ、起動処理
+├── gpt.rs       # GPT Actions用ハンドラ、認証、レート制限、嗜好反映
+├── types.rs     # API型、AppState/AppConfig、DB行マッピング
+├── error.rs     # ApiError定義とHTTP応答変換
+├── onchain.rs   # x402 verify/settle 実行
+├── utils.rs     # 共通レスポンス、支払い関連ユーティリティ
+└── test.rs      # API統合テスト
 
 frontend/src/
-├── App.tsx      # Single-file React app with all components (~1800 lines)
-├── main.tsx     # React DOM entry point
-└── styles.css   # All styles
-
-migrations/      # Sequential SQL migrations (0001-0006)
+├── App.tsx
+├── main.tsx
+└── styles.css
 ```
 
-## Key Architectural Patterns
+## バックエンド設計の要点
+- モノリシック構成: `build_app()` と `build_gpt_router()` でルートを集約
+- 共有状態: `SharedState(Arc<RwLock<AppState>>)` に DB/HTTP/Config/Metrics を保持
+- GPT専用ガード: `verify_gpt_api_key`（`GPT_ACTIONS_API_KEY` 設定時のみ検証）
+- レート制限: `RateLimiter`（デフォルト 60 req / 60s）
+- x402支払い: `verify_x402_payment` → facilitator verify/settle → 支払い記録
+- 可観測性: `http_requests_total`, `payment_events_total`, `creator_events_total`, `sponsor_spend_cents_total`
 
-### Backend
-- **Monolithic Axum server**: All handlers in `main.rs` with `build_app()` function
-- **SharedState**: `Arc<RwLock<AppState>>` containing DB pool, HTTP client, config, metrics
-- **x402 Proxy pattern**: Intercept 402 → show paywall → sponsor pays → return resource
-- **Payment flow**: `verify_x402_payment()` → facilitator verify → settle → record payment
-- **Metrics**: Prometheus counters for HTTP requests, payments, creator events, sponsor spend
+## API群（現行）
+- Core API: 19 routes（`/health`, `/campaigns`, `/proxy/{service}/run` など）
+- GPT API: 7 routes（`/gpt/services`, `/gpt/auth`, `/gpt/tasks/{campaign_id}`, `/gpt/preferences` など）
+- 合計: 26 routes（`src/main.rs` の `route(...)` 定義ベース）
 
-### Frontend
-- **Single-file React**: All UI in one `App.tsx` (campaign builder, dashboard, paywall, discovery)
-- **No routing library**: Tab-based navigation via state
-- **No state management library**: `useState` hooks only
-- **Dark mode**: Toggle via state, CSS variables
-
-### Database
-- **PostgreSQL** via SQLx (compile-time checked queries)
-- **Tables**: profiles, campaigns, task_completions, payments, creator_events, sponsored_apis
-- **UUID v4** primary keys, `created_at` timestamps
-
-## API Endpoints (20 total)
-
-### Core
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/health` | Health check |
-| POST/GET | `/profiles` | User profile CRUD |
-| POST | `/register` | User registration |
-
-### Campaigns
-| Method | Path | Purpose |
-|--------|------|---------|
-| POST/GET | `/campaigns` | Campaign CRUD |
-| GET | `/campaigns/discovery` | Campaign search/browse |
-| GET | `/campaigns/{id}` | Campaign details |
-
-### Tasks & Proxy
-| Method | Path | Purpose |
-|--------|------|---------|
-| POST | `/tasks/complete` | Mark task as completed |
-| POST | `/tool/{service}/run` | Run a tool service |
-| POST | `/proxy/{service}/run` | Proxy request to upstream |
-
-### Sponsored APIs
-| Method | Path | Purpose |
-|--------|------|---------|
-| POST/GET | `/sponsored-apis` | Sponsored API CRUD |
-| GET | `/sponsored-apis/{id}` | Sponsored API details |
-| POST | `/sponsored-apis/{id}/run` | Execute sponsored API |
-
-### Webhooks & Metrics
-| Method | Path | Purpose |
-|--------|------|---------|
-| POST | `/webhooks/x402scan/settlement` | x402 settlement webhook |
-| GET | `/dashboard/sponsor/{id}` | Sponsor dashboard data |
-| POST | `/creator/metrics/event` | Record creator metric |
-| GET | `/creator/metrics` | Get creator metrics |
-| GET | `/metrics` | Prometheus metrics |
-
-## External Dependencies
-- **x402 Facilitator** (`https://x402.org/facilitator`): Payment verify & settle
-- **Base Sepolia**: Blockchain network for USDC payments
-- **Vercel**: Frontend hosting
-- **Render**: Backend hosting (render.yaml)
+## DBスキーマ（主要テーブル）
+- `users`
+- `campaigns`（`task_schema`, `tags`, `sponsor_wallet_address` を含む）
+- `task_completions`
+- `payments`
+- `creator_events`
+- `sponsored_apis`
+- `sponsored_api_calls`
+- `consents`
+- `gpt_sessions`
+- `user_task_preferences`
