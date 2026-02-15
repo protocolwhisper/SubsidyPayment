@@ -20,10 +20,10 @@ sqlx migrate run
 sqlx migrate info
 ```
 
-## GPT API変更がある場合
+## API変更がある場合
 ```bash
 rg -n "route\\(" src/main.rs
-rg -n "/gpt/" openapi.yaml
+rg -n "/gpt/|/agent/discovery|/claude/discovery|/openclaw/discovery" openapi.yaml
 ```
 
 ## 最終確認
