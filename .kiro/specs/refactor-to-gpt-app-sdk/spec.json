@@ -1,0 +1,22 @@
+{
+  "feature": "refactor-to-gpt-app-sdk",
+  "description": "既存のChatGPT Actions向け実装をGPT App SDKベースにリファクタリングし、GPT App向けのアーキテクチャに移行する",
+  "language": "ja",
+  "phase": "tasks-generated",
+  "created_at": "2026-02-15T00:00:00Z",
+  "updated_at": "2026-02-15T03:00:00Z",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  }
+}

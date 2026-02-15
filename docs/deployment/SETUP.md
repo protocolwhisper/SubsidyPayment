@@ -11,14 +11,14 @@ Docker Desktopアプリケーションを起動してください。
 
 ### 2. Postgresコンテナを起動
 ```bash
-cd /Users/kuroiwakeita/Cursor/Subsidy_localtest
+cd /path/to/SubsidyPayment
 docker compose -f docker-compose.postgres.yml up -d
 ```
 
 ### 3. バックエンドサーバーを起動
 新しいターミナルで以下を実行：
 ```bash
-cd /Users/kuroiwakeita/Cursor/Subsidy_localtest
+cd /path/to/SubsidyPayment
 export DATABASE_URL=postgres://postgres:postgres@localhost:5432/payloadexchange
 export PUBLIC_BASE_URL=http://localhost:3000
 export PORT=3000
@@ -27,7 +27,7 @@ RUST_LOG=info cargo run
 
 または、スクリプトを使用：
 ```bash
-./start-backend.sh
+./scripts/start-backend.sh
 ```
 
 ### 4. フロントエンドサーバー（既に起動中）
@@ -49,4 +49,3 @@ RUST_LOG=info cargo run
 - `DATABASE_URL`が正しく設定されているか確認
 - Postgresコンテナが起動しているか確認
 - ポート3000が使用されていないか確認
-

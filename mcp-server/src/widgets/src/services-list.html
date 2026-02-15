@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Services List Widget</title>
+    <style>
+      :root {
+        --bg: #f5f7fb;
+        --surface: #ffffff;
+        --text: #101828;
+        --muted: #475467;
+        --border: #d0d5dd;
+        --accent: #0f766e;
+        --accent-soft: #ccfbf1;
+      }
+
+      body.dark {
+        --bg: #0b1220;
+        --surface: #111827;
+        --text: #f3f4f6;
+        --muted: #cbd5e1;
+        --border: #334155;
+        --accent: #5eead4;
+        --accent-soft: #134e4a;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+      }
+
+      #app {
+        padding: 12px;
+        max-width: 100%;
+      }
+
+      .heading {
+        margin: 0 0 10px 0;
+        font-size: 16px;
+        font-weight: 700;
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .card {
+        width: 100%;
+        text-align: left;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface);
+        color: var(--text);
+        padding: 12px;
+        cursor: pointer;
+      }
+
+      .card.selected {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+      }
+
+      .title {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .meta {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .tags {
+        margin-top: 8px;
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      .tag {
+        padding: 2px 8px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        font-size: 12px;
+      }
+
+      .empty {
+        padding: 20px;
+        border: 1px dashed var(--border);
+        border-radius: 10px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main id="app"></main>
+    <script type="module">
+      import { initWidget, notifyWidgetHeight } from './common.ts';
+
+      const { app, toolOutput, widgetState } = initWidget();
+      const root = document.getElementById('app');
+      const selectedServiceId = widgetState.selectedServiceId ?? null;
+      const services = toolOutput?.structuredContent?.services ?? [];
+
+      function formatYen(cents) {
+        const yen = Math.floor((Number(cents) || 0) / 100);
+        return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(yen);
+      }
+
+      async function setWidgetState(nextState) {
+        return app?.setWidgetState?.(nextState);
+      }
+
+      async function callTool(name, input) {
+        return app?.callTool?.(name, input);
+      }
+
+      async function onSelect(service) {
+        const nextState = { selectedServiceId: service.service_id };
+        await setWidgetState(nextState);
+        await callTool('get_task_details', { campaign_id: service.service_id });
+      }
+
+      function renderCards() {
+        if (!root) return;
+
+        if (!Array.isArray(services) || services.length === 0) {
+          root.innerHTML = `<p class="heading">利用可能なサービス</p><div class="empty">条件に一致するサービスがありません。</div>`;
+          notifyWidgetHeight(app);
+          return;
+        }
+
+        const cards = services
+          .map((service) => {
+            const categories = Array.isArray(service.category) ? service.category : [];
+            const selectedClass = selectedServiceId === service.service_id ? 'selected' : '';
+            return `
+              <button class="card ${selectedClass}" data-campaign-id="${service.service_id}">
+                <p class="title">${service.name ?? '-'}</p>
+                <div class="meta">スポンサー: ${service.sponsor ?? '-'}</div>
+                <div class="meta">補助金額: ${formatYen(service.subsidy_amount_cents)}</div>
+                <div class="meta">関連度: ${service.relevance_score ?? '-'}</div>
+                <div class="tags">
+                  ${categories.map((tag) => `<span class="tag">${tag}</span>`).join('')}
+                </div>
+              </button>
+            `;
+          })
+          .join('');
+
+        root.innerHTML = `<p class="heading">利用可能なサービス</p><div class="cards">${cards}</div>`;
+
+        for (const button of root.querySelectorAll('.card')) {
+          button.addEventListener('click', () => {
+            const campaignId = button.getAttribute('data-campaign-id');
+            const service = services.find((item) => item.service_id === campaignId);
+            if (service) {
+              onSelect(service);
+            }
+          });
+        }
+
+        notifyWidgetHeight(app);
+      }
+
+      renderCards();
+      notifyWidgetHeight(app);
+    </script>
+  </body>
+</html>

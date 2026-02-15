@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>User Dashboard Widget</title>
+    <style>
+      :root {
+        --bg: #f8fafc;
+        --surface: #ffffff;
+        --text: #0f172a;
+        --muted: #475569;
+        --border: #cbd5e1;
+        --accent: #2563eb;
+      }
+
+      body.dark {
+        --bg: #0b1220;
+        --surface: #111827;
+        --text: #e5e7eb;
+        --muted: #94a3b8;
+        --border: #334155;
+        --accent: #60a5fa;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+      }
+
+      #app {
+        padding: 12px;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 12px;
+      }
+
+      h2 {
+        margin: 0 0 10px 0;
+        font-size: 16px;
+      }
+
+      .meta {
+        margin: 4px 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+        padding: 8px 4px;
+        font-size: 13px;
+      }
+
+      .service {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px;
+        margin-bottom: 8px;
+      }
+
+      .ready {
+        color: #15803d;
+      }
+
+      .not-ready {
+        color: #b45309;
+      }
+
+      button {
+        margin-top: 8px;
+        border: 1px solid var(--accent);
+        background: var(--accent);
+        color: #fff;
+        border-radius: 8px;
+        padding: 8px 10px;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="app"></main>
+    <script type="module">
+      import { initWidget, notifyWidgetHeight } from './common.ts';
+
+      const { app, toolOutput } = initWidget();
+      const root = document.getElementById('app');
+      const structuredContent = toolOutput?.structuredContent ?? {};
+
+      const email = structuredContent.email ?? '-';
+      const completed_tasks = Array.isArray(structuredContent.completed_tasks) ? structuredContent.completed_tasks : [];
+      const available_services = Array.isArray(structuredContent.available_services) ? structuredContent.available_services : [];
+
+      async function callTool(name, input) {
+        return app?.callTool?.(name, input);
+      }
+
+      async function sendFollowUpMessage(message) {
+        return app?.sendFollowUpMessage?.(message);
+      }
+
+      function renderCompletedTasks() {
+        if (completed_tasks.length === 0) {
+          return '<p class="meta">完了済みタスクはありません。</p>';
+        }
+
+        const rows = completed_tasks
+          .map(
+            (task) => `
+            <tr>
+              <td>${task.campaign_name ?? '-'}</td>
+              <td>${task.task_name ?? '-'}</td>
+              <td>${task.completed_at ?? '-'}</td>
+            </tr>
+          `
+          )
+          .join('');
+
+        return `
+          <table>
+            <thead>
+              <tr>
+                <th>キャンペーン</th>
+                <th>タスク</th>
+                <th>完了日</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
+      }
+
+      function renderServices() {
+        if (available_services.length === 0) {
+          return '<p class="meta">利用可能サービスはありません。</p>';
+        }
+
+        return available_services
+          .map(
+            (item, idx) => `
+            <article class="service">
+              <div><strong>${item.service ?? '-'}</strong></div>
+              <div class="meta">スポンサー: ${item.sponsor ?? '-'}</div>
+              <div class="${item.ready ? 'ready' : 'not-ready'}">${item.ready ? 'ready' : 'not ready'}</div>
+              <button data-run-index="${idx}" ${item.ready ? '' : 'disabled'}>実行</button>
+            </article>
+          `
+          )
+          .join('');
+      }
+
+      async function handleRunService(item) {
+        await callTool('run_service', { service: item.service, input: '' });
+        await sendFollowUpMessage('サービス実行を開始しました。結果を確認します。');
+      }
+
+      function render() {
+        if (!root) return;
+        root.innerHTML = `
+          <section class="panel">
+            <h2>ユーザー情報</h2>
+            <p class="meta">email: ${email}</p>
+          </section>
+          <section class="panel">
+            <h2>完了済みタスク</h2>
+            ${renderCompletedTasks()}
+          </section>
+          <section class="panel">
+            <h2>利用可能サービス</h2>
+            ${renderServices()}
+          </section>
+        `;
+
+        for (const button of root.querySelectorAll('button[data-run-index]')) {
+          button.addEventListener('click', () => {
+            const idx = Number(button.getAttribute('data-run-index'));
+            const item = available_services[idx];
+            if (item?.ready) {
+              handleRunService(item);
+            }
+          });
+        }
+      }
+
+      render();
+      notifyWidgetHeight(app);
+    </script>
+  </body>
+</html>

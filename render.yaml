@@ -14,3 +14,23 @@ services:
     healthCheckPath: /health
     plan: free
 
+  - type: web
+    name: subsidypayment-mcp
+    env: node
+    buildCommand: cd mcp-server && npm ci && npm run build
+    startCommand: cd mcp-server && npm start
+    envVars:
+      - key: RUST_BACKEND_URL
+        sync: false
+      - key: MCP_INTERNAL_API_KEY
+        sync: false
+      - key: AUTH0_DOMAIN
+        sync: false
+      - key: AUTH0_AUDIENCE
+        sync: false
+      - key: PUBLIC_URL
+        sync: false
+      - key: PORT
+        value: 3001
+    healthCheckPath: /health
+    plan: free

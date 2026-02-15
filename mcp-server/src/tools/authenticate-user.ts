@@ -1,0 +1,129 @@
+import { registerAppTool } from '@modelcontextprotocol/ext-apps/server';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+
+import { BackendClient, BackendClientError } from '../backend-client.ts';
+import { TokenVerifier } from '../auth/token-verifier.ts';
+import type { BackendConfig } from '../config.ts';
+import type { AuthenticateUserParams } from '../types.ts';
+
+const authenticateUserInputSchema = z.object({
+  email: z.string().email().optional(),
+  region: z.string().default('auto'),
+  roles: z.array(z.string()).optional().default([]),
+  tools_used: z.array(z.string()).optional().default([]),
+});
+
+function unauthorizedAuthResponse(publicUrl: string) {
+  return {
+    content: [{ type: 'text' as const, text: 'このアクションを実行するにはログインが必要です。' }],
+    _meta: {
+      'mcp/www_authenticate': [
+        `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`,
+      ],
+    },
+    isError: true,
+  };
+}
+
+function resolveOAuthEmail(input: AuthenticateUserParams, context: any): string | null {
+  const authEmail = context?.auth?.email ?? context?._meta?.auth?.email ?? null;
+  if (typeof authEmail === 'string' && authEmail.length > 0) {
+    return authEmail;
+  }
+
+  if (typeof input.email === 'string' && input.email.length > 0) {
+    return input.email;
+  }
+
+  return null;
+}
+
+function resolveBearerToken(context: any): string | null {
+  const authToken = context?.auth?.token ?? context?._meta?.auth?.token ?? null;
+  if (typeof authToken === 'string' && authToken.length > 0) {
+    return authToken;
+  }
+
+  const authorization = context?.headers?.authorization ?? context?._meta?.headers?.authorization ?? null;
+  if (typeof authorization === 'string' && authorization.startsWith('Bearer ')) {
+    return authorization.slice('Bearer '.length);
+  }
+
+  return null;
+}
+
+export function registerAuthenticateUserTool(server: McpServer, config: BackendConfig): void {
+  const client = new BackendClient(config);
+  const verifier = new TokenVerifier({
+    domain: config.auth0Domain,
+    audience: config.auth0Audience,
+  });
+
+  registerAppTool(
+    server,
+    'authenticate_user',
+    {
+      title: 'ユーザー認証',
+      description: 'OAuthトークン情報を使ってユーザーを認証・登録します。',
+      inputSchema: authenticateUserInputSchema,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      },
+      securitySchemes: [{ type: 'oauth2', scopes: ['user.write'] }],
+      _meta: {
+        'openai/toolInvocation/invoking': 'ユーザーを認証中...',
+        'openai/toolInvocation/invoked': '認証が完了しました',
+      },
+    },
+    async (input: AuthenticateUserParams, context: any) => {
+      const bearerToken = resolveBearerToken(context);
+      const authInfo = bearerToken ? await verifier.verify(bearerToken) : null;
+      if (!authInfo) {
+        return unauthorizedAuthResponse(config.publicUrl);
+      }
+
+      const oauthEmail = authInfo.email ?? resolveOAuthEmail(input, context);
+      if (!oauthEmail) {
+        return unauthorizedAuthResponse(config.publicUrl);
+      }
+
+      try {
+        const response = await client.authenticateUser({
+          email: oauthEmail,
+          region: input.region ?? 'auto',
+          roles: input.roles ?? [],
+          tools_used: input.tools_used ?? [],
+        });
+
+        return {
+          structuredContent: {
+            user_id: response.user_id,
+            email: response.email,
+            is_new_user: response.is_new_user,
+          },
+          content: [{ type: 'text' as const, text: response.message }],
+          _meta: {
+            session_token: response.session_token,
+          },
+        };
+      } catch (error) {
+        if (error instanceof BackendClientError) {
+          return {
+            content: [{ type: 'text' as const, text: error.message }],
+            _meta: { code: error.code, details: error.details },
+            isError: true,
+          };
+        }
+
+        return {
+          content: [{ type: 'text' as const, text: '認証中に予期しないエラーが発生しました。' }],
+          _meta: { code: 'unexpected_error' },
+          isError: true,
+        };
+      }
+    }
+  );
+}

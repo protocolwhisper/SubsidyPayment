@@ -1,4 +1,8 @@
 #!/bin/bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # Dockerが起動しているか確認
 if ! docker info > /dev/null 2>&1; then
@@ -14,7 +18,7 @@ export PORT=3000
 
 # Postgresコンテナを起動
 echo "Postgresコンテナを起動中..."
-docker compose -f docker-compose.postgres.yml up -d
+docker compose -f "${REPO_ROOT}/docker-compose.postgres.yml" up -d
 
 # Postgresが起動するまで待つ（最大30秒）
 echo "Postgresの起動を待機中..."
@@ -32,5 +36,5 @@ done
 
 # バックエンドサーバーを起動
 echo "バックエンドサーバーを起動中..."
+cd "${REPO_ROOT}"
 RUST_LOG=info cargo run
-

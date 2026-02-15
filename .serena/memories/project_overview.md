@@ -1,28 +1,29 @@
 # Project Overview — SubsidyPayment
 
 ## 目的
-x402 の HTTP 402 ペイウォールをプロキシで扱い、スポンサー補助とユーザータスクを組み合わせて有料APIアクセスを成立させる。加えて、GPT Actions からの検索・認証・タスク完了・実行までの導線を提供する。
+x402 の HTTP 402 ペイウォールをプロキシで仲介し、スポンサー補助（タスク実行やデータ提供と交換）または直接支払いで上流有料APIへアクセス可能にする。  
+加えて、`/gpt/*` と `/agent|/claude|/openclaw/discovery/*` を通じて AI クライアントからの利用導線を提供する。
 
 ## 主要ドメイン
-- Resource: x402 保護対象の上流リソース
-- Proxy: 402 応答を受けて支払いフローを仲介
-- Sponsor: ユーザー負担分を補助する支払い主体
-- Campaign: スポンサー配信単位（対象・予算・必須タスク・タグ）
-- Sponsored API: サービスキー単位で予算管理される実行対象API
-- Consent: データ共有や連絡などの同意記録
-- GPT Session: GPT Actions 用のセッショントークン
-- Task Preference: ユーザーのタスク嗜好（preferred/neutral/avoided）
+- Resource / Proxy: x402 保護リソースへのアクセス仲介
+- Sponsor / Campaign: 補助条件・予算・タスクを管理する配信単位
+- Sponsored API: API 単位の補助予算付き実行エントリ
+- Task Completion: タスク実行証跡
+- Payment: 補助支払い・実行履歴
+- Consent: 同意記録
+- GPT Session / Task Preference: GPT Apps 連携認証と嗜好フィルタ
+- Agent Discovery: Claude/Openclaw 等向けサービス探索 API
 
 ## 現在の実装フェーズ
-- MVP〜P1拡張フェーズ
-- P0のE2E（402→補助支払い→結果返却）は実装済み
-- GPT Apps統合向けに `/gpt/*` 系APIと嗜好ベース検索が実装済み
+- MVP〜P1 拡張フェーズ
+- P0 E2E（402 → タスク/同意 → 補助支払い → リソース返却）は実装済み
+- GPT Apps と Agent Discovery 向け API が稼働状態
 
 ## アクティブ仕様（.kiro/specs）
-- `gpt-apps-integration`（phase: `tasks-generated`）
-- `smart-service-suggestion`（phase: `tasks-generated`）
-- `autonomous-agent-execution`（phase: `tasks-generated`）
+- `gpt-apps-integration`（`language: ja`, `phase: tasks-generated`）
+- `smart-service-suggestion`（`language: ja`, `phase: tasks-generated`）
+- `autonomous-agent-execution`（`language: ja`, `phase: tasks-generated`）
 
 ## 主な利用者
-- ToB: キャンペーン作成・配信・効果計測を行うスポンサー
-- ToC: GPT等からスポンサー付きサービスを利用するユーザー
+- ToB: キャンペーン設計・配信・費用対効果を管理するスポンサー
+- ToC: GPT/Claude 等からスポンサー付きサービスを利用するユーザー
