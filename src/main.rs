@@ -162,17 +162,30 @@ fn cors_layer_from_env() -> CorsLayer {
         return layer.allow_origin(Any);
     }
 
-    let origins: Vec<HeaderValue> = configured
-        .split(',')
-        .filter_map(normalize_origin)
-        .filter_map(|origin| HeaderValue::from_str(&origin).ok())
-        .collect();
+    let mcp_server_url = std::env::var("MCP_SERVER_URL").ok();
+    let origins: Vec<HeaderValue> =
+        collect_cors_origins(&configured, mcp_server_url.as_deref())
+            .into_iter()
+            .filter_map(|origin| HeaderValue::from_str(&origin).ok())
+            .collect();
 
     if origins.is_empty() {
         layer.allow_origin(Any)
     } else {
         layer.allow_origin(AllowOrigin::list(origins))
     }
+}
+
+fn collect_cors_origins(configured: &str, mcp_server_url: Option<&str>) -> Vec<String> {
+    let mut origins: Vec<String> = configured.split(',').filter_map(normalize_origin).collect();
+
+    if let Some(mcp_origin) = mcp_server_url.and_then(normalize_origin) {
+        origins.push(mcp_origin);
+    }
+
+    origins.sort();
+    origins.dedup();
+    origins
 }
 
 fn normalize_origin(origin: &str) -> Option<String> {

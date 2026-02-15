@@ -16,6 +16,29 @@ fn optional_env(key: &str, default: &str) -> String {
     std::env::var(key).unwrap_or_else(|_| default.to_string())
 }
 
+#[test]
+fn collect_cors_origins_includes_mcp_server_url() {
+    let origins = collect_cors_origins(
+        "http://localhost:5173,https://subsidy-payment.vercel.app",
+        Some("http://localhost:3001/mcp"),
+    );
+
+    assert!(origins.contains(&"http://localhost:5173".to_string()));
+    assert!(origins.contains(&"https://subsidy-payment.vercel.app".to_string()));
+    assert!(origins.contains(&"http://localhost:3001".to_string()));
+}
+
+#[test]
+fn collect_cors_origins_deduplicates_and_normalizes() {
+    let origins = collect_cors_origins(
+        "\"http://localhost:5173/\",http://localhost:5173",
+        Some("http://localhost:5173/path"),
+    );
+
+    assert_eq!(origins.len(), 1);
+    assert_eq!(origins[0], "http://localhost:5173");
+}
+
 fn test_app() -> (Router, SharedState) {
     let state = SharedState {
         inner: Arc::new(RwLock::new(AppState::new())),

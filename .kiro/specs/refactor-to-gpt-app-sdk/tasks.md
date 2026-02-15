@@ -128,7 +128,7 @@ ChatGPT 内でレンダリングされる3つのリッチ UI ウィジェット�
 
 **対応要件**: 5.1, 5.3, 6.1, 6.2, 6.3
 
-- [ ] `src/main.rs` の `cors_layer_from_env()` が参照する環境変数に MCP サーバーの URL（`MCP_SERVER_URL`）を CORS 許可オリジンとして追加する。`.env.example` に `MCP_SERVER_URL` を追記する。既存の `/gpt/*` エンドポイント群、データベーススキーマ、`verify_gpt_api_key` ミドルウェアは変更しない。`cargo test` で既存テストが全て通過することを確認する。
+- [x] `src/main.rs` の `cors_layer_from_env()` が参照する環境変数に MCP サーバーの URL（`MCP_SERVER_URL`）を CORS 許可オリジンとして追加する。`.env.example` に `MCP_SERVER_URL` を追記する。既存の `/gpt/*` エンドポイント群、データベーススキーマ、`verify_gpt_api_key` ミドルウェアは変更しない。`cargo test` で既存テストが全て通過することを確認する。
 
 ---
 
