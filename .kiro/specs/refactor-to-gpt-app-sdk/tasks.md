@@ -138,11 +138,11 @@ ChatGPT 内でレンダリングされる3つのリッチ UI ウィジェット�
 
 ### タスク9.1
 
-- [ ] `mcp-server/__tests__/tools/` に各 MCP ツールのユニットテストを作成する。`BackendClient` をモックし、正常系（正しいレスポンス形式、3パート分離）と異常系（バックエンドエラー、認証エラー、入力バリデーションエラー）をカバーする。Vitest を使用する。
+- [x] `mcp-server/__tests__/tools/` に各 MCP ツールのユニットテストを作成する。`BackendClient` をモックし、正常系（正しいレスポンス形式、3パート分離）と異常系（バックエンドエラー、認証エラー、入力バリデーションエラー）をカバーする。Vitest を使用する。
 
 ### タスク9.2
 
-- [ ] `mcp-server/__tests__/backend-client.test.ts` に BackendClient の統合テストを作成する。fetch をモックして HTTP リクエストのヘッダー（Authorization）、パス、パラメータ変換、エラーハンドリング（4xx/5xx レスポンス、ネットワークエラー）を検証する。
+- [x] `mcp-server/__tests__/backend-client.test.ts` に BackendClient の統合テストを作成する。fetch をモックして HTTP リクエストのヘッダー（Authorization）、パス、パラメータ変換、エラーハンドリング（4xx/5xx レスポンス、ネットワークエラー）を検証する。
 
 ### タスク9.3
 
