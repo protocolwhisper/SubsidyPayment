@@ -1,32 +1,28 @@
-# Project Overview — SubsidyPayment (Payload Exchange Extended)
+# Project Overview — SubsidyPayment
 
-## Purpose
-x402 プロトコルの HTTP 402 Paywall をプロキシ経由でインターセプトし、スポンサーがユーザーのタスク実行やデータ提供と引き換えに支払いを肩代わりする仕組みを提供するプラットフォーム。
+## 目的
+x402 の HTTP 402 ペイウォールをプロキシで扱い、スポンサー補助とユーザータスクを組み合わせて有料APIアクセスを成立させる。加えて、GPT Actions からの検索・認証・タスク完了・実行までの導線を提供する。
 
-## Core Concepts
-- **Resource**: x402 で保護された上流の有料エンドポイント
-- **Proxy**: 402 レスポンスをインターセプトし Paywall とタスクフローを提示
-- **Sponsor**: 支払いを肩代わりするエンティティ（企業、将来的にはエージェントも）
-- **Campaign**: スポンサーが作成する募集単位（ターゲット、目的、予算、タスク、データ要求、同意条件）
-- **Offer**: リソースレベルでのスポンサー条件
-- **Action Plugin**: タスクやデータ収集を追加するための拡張プラグインレイヤー
-- **Consent Vault**: 明示的同意・利用目的・保持期間・連絡許可を管理
+## 主要ドメイン
+- Resource: x402 保護対象の上流リソース
+- Proxy: 402 応答を受けて支払いフローを仲介
+- Sponsor: ユーザー負担分を補助する支払い主体
+- Campaign: スポンサー配信単位（対象・予算・必須タスク・タグ）
+- Sponsored API: サービスキー単位で予算管理される実行対象API
+- Consent: データ共有や連絡などの同意記録
+- GPT Session: GPT Actions 用のセッショントークン
+- Task Preference: ユーザーのタスク嗜好（preferred/neutral/avoided）
 
-## Priority
-- **P0 (Must)**: x402 Proxy → Paywall → Action → Sponsor Payment → Resource Delivery の E2E フロー
-- **P1 (Core)**: Campaign Builder (ToB) + Service Discovery / Profile Vault (ToC)
-- **P2 (Scale)**: 推薦エンジン、不正対策、マルチクライアント SDK、Analytics
+## 現在の実装フェーズ
+- MVP〜P1拡張フェーズ
+- P0のE2E（402→補助支払い→結果返却）は実装済み
+- GPT Apps統合向けに `/gpt/*` 系APIと嗜好ベース検索が実装済み
 
-## Current Phase
-MVP / プロトタイプ段階。P0 の E2E フローが実装済み。P1 拡張フェーズへ移行中。
+## アクティブ仕様（.kiro/specs）
+- `gpt-apps-integration`（phase: `tasks-generated`）
+- `smart-service-suggestion`（phase: `tasks-generated`）
+- `autonomous-agent-execution`（phase: `tasks-generated`）
 
-## Target Users
-- **Sponsors (ToB)**: x402 対応サービスへのアクセスを提供し、ユーザーデータ/タスク完了を取得したい企業
-- **End Users (ToC)**: ChatGPT / Claude / 開発者ツールから x402 リソースにアクセスしたいユーザー
-
-## Milestones
-- M0: E2E フロー + 上流互換性 (P0)
-- M1: サービス検索、スポンサー可視化 (P1 ToC 前半)
-- M2: Campaign Builder Chat、公開、Data Inbox (P1 ToB)
-- M3: Profile Vault + Consent 完成 (P1 運用要件)
-- M4: 通知 + マルチクライアント API/SDK (P1 後半)
+## 主な利用者
+- ToB: キャンペーン作成・配信・効果計測を行うスポンサー
+- ToC: GPT等からスポンサー付きサービスを利用するユーザー

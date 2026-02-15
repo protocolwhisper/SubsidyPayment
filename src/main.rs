@@ -26,9 +26,10 @@ use crate::utils::*;
 use serde::Deserialize;
 
 fn build_gpt_router(state: SharedState) -> Router<SharedState> {
-    let limiter = Arc::new(tokio::sync::Mutex::new(
-        gpt::RateLimiter::new(60, Duration::from_secs(60)),
-    ));
+    let limiter = Arc::new(tokio::sync::Mutex::new(gpt::RateLimiter::new(
+        60,
+        Duration::from_secs(60),
+    )));
 
     Router::new()
         .route("/services", get(gpt::gpt_search_services))
@@ -40,6 +41,10 @@ fn build_gpt_router(state: SharedState) -> Router<SharedState> {
         )
         .route("/services/{service}/run", post(gpt::gpt_run_service))
         .route("/user/status", get(gpt::gpt_user_status))
+        .route(
+            "/preferences",
+            get(gpt::gpt_get_preferences).post(gpt::gpt_set_preferences),
+        )
         .layer(axum::middleware::from_fn_with_state(
             state,
             gpt::verify_gpt_api_key,
@@ -159,7 +164,7 @@ fn cors_layer_from_env() -> CorsLayer {
 
     let origins: Vec<HeaderValue> = configured
         .split(',')
-        .filter_map(|origin| normalize_origin(origin))
+        .filter_map(normalize_origin)
         .filter_map(|origin| HeaderValue::from_str(&origin).ok())
         .collect();
 
@@ -547,7 +552,8 @@ async fn list_campaigns(
     };
 
     let result: ApiResult<(StatusCode, Json<Vec<Campaign>>)> = async {
-        let mut campaigns = load_campaigns_from_db(&state, query.sponsor_wallet_address.as_deref()).await?;
+        let mut campaigns =
+            load_campaigns_from_db(&state, query.sponsor_wallet_address.as_deref()).await?;
         campaigns.sort_by_key(|campaign| campaign.created_at);
         Ok((StatusCode::OK, Json(campaigns)))
     }
@@ -634,10 +640,7 @@ async fn agent_discovery_services(
         let sponsored_apis = load_sponsored_apis_from_db(&state).await?;
 
         let q_filter = params.q.as_ref().map(|q| q.to_lowercase());
-        let capability_filter = params
-            .capability
-            .as_ref()
-            .map(|c| canonical_capability(c));
+        let capability_filter = params.capability.as_ref().map(|c| canonical_capability(c));
         let sponsor_filter = params.sponsor.as_ref().map(|s| s.to_lowercase());
         let max_price_cents = params.max_price_cents;
         let min_budget_remaining_cents = params.min_budget_remaining_cents;
@@ -659,17 +662,17 @@ async fn agent_discovery_services(
             capabilities.dedup();
 
             for capability in capabilities {
-                if let Some(capability_filter) = capability_filter.as_ref() {
-                    if capability != *capability_filter {
-                        continue;
-                    }
+                if let Some(capability_filter) = capability_filter.as_ref()
+                    && capability != *capability_filter
+                {
+                    continue;
                 }
 
                 let sponsor_lower = campaign.sponsor.to_lowercase();
-                if let Some(sponsor_filter) = sponsor_filter.as_ref() {
-                    if !sponsor_lower.contains(sponsor_filter) {
-                        continue;
-                    }
+                if let Some(sponsor_filter) = sponsor_filter.as_ref()
+                    && !sponsor_lower.contains(sponsor_filter)
+                {
+                    continue;
                 }
 
                 let required_task = Some(campaign.required_task.clone());
@@ -689,15 +692,15 @@ async fn agent_discovery_services(
                 }
 
                 let price_cents = inferred_service_price_cents(&capability);
-                if let Some(max_price) = max_price_cents {
-                    if price_cents > max_price {
-                        continue;
-                    }
+                if let Some(max_price) = max_price_cents
+                    && price_cents > max_price
+                {
+                    continue;
                 }
-                if let Some(min_budget_remaining) = min_budget_remaining_cents {
-                    if campaign.budget_remaining_cents < min_budget_remaining {
-                        continue;
-                    }
+                if let Some(min_budget_remaining) = min_budget_remaining_cents
+                    && campaign.budget_remaining_cents < min_budget_remaining
+                {
+                    continue;
                 }
 
                 let relevance_score = if q_filter.is_some() {
@@ -741,17 +744,17 @@ async fn agent_discovery_services(
 
         for api in sponsored_apis.into_iter().filter(|api| api.active) {
             let capability = canonical_capability(&api.service_key);
-            if let Some(capability_filter) = capability_filter.as_ref() {
-                if capability != *capability_filter {
-                    continue;
-                }
+            if let Some(capability_filter) = capability_filter.as_ref()
+                && capability != *capability_filter
+            {
+                continue;
             }
 
             let sponsor_lower = api.sponsor.to_lowercase();
-            if let Some(sponsor_filter) = sponsor_filter.as_ref() {
-                if !sponsor_lower.contains(sponsor_filter) {
-                    continue;
-                }
+            if let Some(sponsor_filter) = sponsor_filter.as_ref()
+                && !sponsor_lower.contains(sponsor_filter)
+            {
+                continue;
             }
 
             let query_match = if let Some(q_filter) = q_filter.as_ref() {
@@ -766,15 +769,15 @@ async fn agent_discovery_services(
                 continue;
             }
 
-            if let Some(max_price) = max_price_cents {
-                if api.price_cents > max_price {
-                    continue;
-                }
+            if let Some(max_price) = max_price_cents
+                && api.price_cents > max_price
+            {
+                continue;
             }
-            if let Some(min_budget_remaining) = min_budget_remaining_cents {
-                if api.budget_remaining_cents < min_budget_remaining {
-                    continue;
-                }
+            if let Some(min_budget_remaining) = min_budget_remaining_cents
+                && api.budget_remaining_cents < min_budget_remaining
+            {
+                continue;
             }
 
             let relevance_score = if q_filter.is_some() {
@@ -850,11 +853,7 @@ async fn agent_discovery_services(
 }
 
 fn canonical_capability(raw: &str) -> String {
-    let normalized = raw
-        .trim()
-        .to_lowercase()
-        .replace('_', "-")
-        .replace(' ', "-");
+    let normalized = raw.trim().to_lowercase().replace(['_', ' '], "-");
 
     match normalized.as_str() {
         "scrape" | "web-scrape" | "web-scraping" => "scraping".to_string(),
@@ -880,7 +879,8 @@ fn build_agent_ranking(
     let relevance_score = relevance_score.clamp(0.0, 1.0);
 
     let ranking_score =
-        (0.45 * subsidy_score + 0.35 * budget_health_score + 0.20 * relevance_score).clamp(0.0, 1.0);
+        (0.45 * subsidy_score + 0.35 * budget_health_score + 0.20 * relevance_score)
+            .clamp(0.0, 1.0);
 
     (
         ranking_score,
@@ -903,7 +903,10 @@ fn inferred_service_price_cents(service: &str) -> u64 {
     }
 }
 
-async fn load_campaigns_from_db(state: &SharedState, sponsor_wallet_address: Option<&str>) -> ApiResult<Vec<Campaign>> {
+async fn load_campaigns_from_db(
+    state: &SharedState,
+    sponsor_wallet_address: Option<&str>,
+) -> ApiResult<Vec<Campaign>> {
     let db = {
         let state = state.inner.read().await;
         state.db.clone()
@@ -1705,13 +1708,13 @@ async fn run_sponsored_api(
             HeaderName::from_static(X402_VERSION_HEADER),
             HeaderValue::from_static("2"),
         );
-        if let Some(settlement_header) = payment_response_header {
-            if let Ok(header_value) = HeaderValue::from_str(&settlement_header) {
-                response.headers_mut().insert(
-                    HeaderName::from_static(PAYMENT_RESPONSE_HEADER),
-                    header_value,
-                );
-            }
+        if let Some(settlement_header) = payment_response_header
+            && let Ok(header_value) = HeaderValue::from_str(&settlement_header)
+        {
+            response.headers_mut().insert(
+                HeaderName::from_static(PAYMENT_RESPONSE_HEADER),
+                header_value,
+            );
         }
 
         Ok(response)

@@ -1,0 +1,22 @@
+{
+  "feature": "smart-service-suggestion",
+  "description": "GPT Apps上でユーザーが予算・意図・タスク嗜好を入力すると、マッチするスポンサー付きサービスをスマートにサジェストし、嗜好に合わないタスクを除外してフィルタリングする機能",
+  "language": "ja",
+  "phase": "tasks-generated",
+  "created_at": "2026-02-14T01:33:00Z",
+  "updated_at": "2026-02-14T01:44:00Z",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  }
+}

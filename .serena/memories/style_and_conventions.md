@@ -1,60 +1,30 @@
 # Style and Conventions
 
-## General
-- Think in English, write project files (docs, specs, requirements) in Japanese (per AGENTS.md)
-- Conventional Commits: `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`
-- Boy Scout Rule: Leave the code better than you found it
+## 全体
+- 思考は英語、プロジェクト内のMarkdownドキュメントは日本語で記述
+- Conventional Commits を使用（`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`）
+- 既存方針（モノリシック構成）を尊重しつつ、変更は小さく安全に行う
 
-## Rust Backend
+## Rustバックエンド
+- `rustfmt` と `clippy` を前提にする
+- エラーは `ApiError` + `ApiResult<T>` で一元化
+- 状態共有は `SharedState`（`Arc<RwLock<AppState>>`）を使う
+- 設定値は `AppConfig::from_env()` 経由で取得し、ハードコードしない
+- DBアクセスは SQLx の生SQLで実装し、型変換は `types.rs` 側で吸収
 
-### Code Style
-- Follow `rustfmt` defaults
-- Follow `clippy` recommendations
-- Edition 2024
+## GPT API 実装規約
+- ルートは `/gpt/*` に集約し、`build_gpt_router()` 内で定義
+- `GPT_ACTIONS_API_KEY` が設定される場合は Bearer 認証必須
+- レート制限は `RateLimiter` ミドルウェアで適用
+- セッションは `gpt_sessions` テーブルで管理し、有効期限を必ず検証
+- 嗜好フィルタは `user_task_preferences` を参照し、`preferred/neutral/avoided` を厳密に扱う
 
-### Patterns
-- **Error handling**: `thiserror`-based `ApiError` enum with `IntoResponse` impl for HTTP status mapping
-- **Type alias**: `ApiResult<T> = Result<T, ApiError>` for all handler return types
-- **State**: `SharedState` wrapping `Arc<RwLock<AppState>>` — shared across all handlers
-- **Config**: `AppConfig::from_env()` reads all config from environment variables with sensible defaults
-- **Metrics**: Prometheus counters/gauges registered in `Metrics` struct
-- **DB**: SQLx with raw SQL queries (not an ORM), using `query_as!` and `query_scalar!` macros
-- **Monolithic structure**: All handlers in `main.rs`, types in `types.rs`, errors in `error.rs`
+## フロントエンド
+- React 18 + TypeScript + Vite
+- 現状は `frontend/src/App.tsx` 中心の単一ファイル構成
+- CSSフレームワークは使わず `styles.css` を利用
 
-### Naming
-- snake_case for functions, variables, modules
-- PascalCase for types, enums, structs
-- SCREAMING_SNAKE_CASE for constants
-- HTTP headers as lowercase constants: `PAYMENT_SIGNATURE_HEADER`, `X402_VERSION_HEADER`
-
-### Error Responses
-- Always return structured JSON errors with descriptive messages
-- Use `ApiError` variants: `NotFound`, `BadRequest`, `Unauthorized`, `Internal`, `PaymentRequired`, etc.
-
-## TypeScript Frontend
-
-### Code Style
-- React 18 with functional components and hooks
-- Single-file architecture: main app logic in `App.tsx`
-- Vite for build tooling
-- No CSS framework — custom CSS in `styles.css`
-- TypeScript strict mode
-
-### Patterns
-- Type definitions at top of `App.tsx` (Campaign, Profile, SponsoredApi, etc.)
-- Constants for configuration (SERVICE_CATEGORIES, TASK_CATEGORIES, KPI_OPTIONS)
-- `fetchJson` utility for API calls
-- State management via `useState` hooks (no external state library)
-
-## Database
-- Raw SQL migrations in `migrations/` directory (sequential numbering: 0001, 0002, ...)
-- PostgreSQL with SQLx
-- UUID v4 for primary keys
-- `created_at` timestamps with `chrono::DateTime<Utc>`
-- JSON columns via `sqlx::types::Json<T>`
-
-## API Design
-- RESTful endpoints
-- JSON request/response bodies
-- CORS configured via `CORS_ALLOW_ORIGINS` env var (defaults to `*`)
-- x402 payment headers: `payment-signature`, `payment-required`, `payment-response`, `x402-version`
+## DB・API
+- マイグレーションは連番SQL（`migrations/0001...`）で追加し、既存番号は変更しない
+- 主要APIは JSON 入出力を維持し、互換性を崩す変更は避ける
+- x402 関連ヘッダー（`payment-signature`, `payment-required`, `payment-response`, `x402-version`）を維持

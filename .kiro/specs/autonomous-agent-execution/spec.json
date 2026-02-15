@@ -1,0 +1,22 @@
+{
+  "feature": "autonomous-agent-execution",
+  "description": "自律型エージェントがユーザーの代わりにタスクを発見・選択・実行し、スポンサー決済によるリソース取得までのフローを自動化する",
+  "language": "ja",
+  "phase": "tasks-generated",
+  "created_at": "2026-02-14T09:00:00Z",
+  "updated_at": "2026-02-14T11:00:00Z",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  }
+}

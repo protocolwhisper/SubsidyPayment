@@ -223,13 +223,13 @@ pub fn build_paid_tool_response(
         HeaderValue::from_static("2"),
     );
 
-    if let Some(payment_response) = payment_response_header {
-        if let Ok(header_value) = HeaderValue::from_str(payment_response) {
-            response.headers_mut().insert(
-                HeaderName::from_static(PAYMENT_RESPONSE_HEADER),
-                header_value,
-            );
-        }
+    if let Some(payment_response) = payment_response_header
+        && let Ok(header_value) = HeaderValue::from_str(payment_response)
+    {
+        response.headers_mut().insert(
+            HeaderName::from_static(PAYMENT_RESPONSE_HEADER),
+            header_value,
+        );
     }
 
     response
