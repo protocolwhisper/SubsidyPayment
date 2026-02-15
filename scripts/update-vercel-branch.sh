@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Vercelのプロジェクト設定でブランチを変更するスクリプト
-# 使用方法: ./update-vercel-branch.sh <VERCEL_TOKEN>
+# 使用方法: ./scripts/update-vercel-branch.sh <VERCEL_TOKEN>
 
 if [ -z "$1" ]; then
-    echo "使用方法: ./update-vercel-branch.sh <VERCEL_TOKEN>"
+    echo "使用方法: ./scripts/update-vercel-branch.sh <VERCEL_TOKEN>"
     echo ""
     echo "Vercelトークンの取得方法:"
     echo "1. https://vercel.com/account/tokens にアクセス"
@@ -52,4 +52,3 @@ echo "✅ プロジェクトのブランチ設定を 'deploy-test' に更新し�
 echo ""
 echo "Vercelダッシュボードで確認してください:"
 echo "https://vercel.com/cruujons-projects/subsidy-payment/settings/git"
-

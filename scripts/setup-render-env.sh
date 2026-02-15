@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Render環境変数設定スクリプト
-# 使用方法: ./setup-render-env.sh
+# 使用方法: ./scripts/setup-render-env.sh
 
 API_KEY="rnd_Yq3HwoS5DRE8bIDUyB6jj1GVeeAl"
 SERVICE_ID="srv-d65pl3esb7us73fb96tg"
@@ -66,4 +66,3 @@ echo "⚠️ 注意: DATABASE_URL は手動で設定する必要があります"
 echo "   1. RenderダッシュボードでPostgreSQLデータベースを作成"
 echo "   2. Internal Database URLをコピー"
 echo "   3. 環境変数 DATABASE_URL に設定"
-
