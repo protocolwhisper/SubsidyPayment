@@ -99,7 +99,10 @@ jobs:
           cache-dependency-path: mcp-server/package-lock.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci --include=optional
+
+      - name: Workaround npm optional deps bug (rollup)
+        run: npm install --no-save @rollup/rollup-linux-x64-gnu
 
       - name: Type check
         continue-on-error: true
@@ -129,8 +132,11 @@ jobs:
           cache-dependency-path: mcp-server/package-lock.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci --include=optional
         working-directory: mcp-server
+
+      - name: Workaround npm optional deps bug (rollup)
+        run: npm --prefix mcp-server install --no-save @rollup/rollup-linux-x64-gnu
 
       - name: Structural tests
         run: npx --prefix mcp-server vitest run tests/

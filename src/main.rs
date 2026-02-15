@@ -163,11 +163,10 @@ fn cors_layer_from_env() -> CorsLayer {
     }
 
     let mcp_server_url = std::env::var("MCP_SERVER_URL").ok();
-    let origins: Vec<HeaderValue> =
-        collect_cors_origins(&configured, mcp_server_url.as_deref())
-            .into_iter()
-            .filter_map(|origin| HeaderValue::from_str(&origin).ok())
-            .collect();
+    let origins: Vec<HeaderValue> = collect_cors_origins(&configured, mcp_server_url.as_deref())
+        .into_iter()
+        .filter_map(|origin| HeaderValue::from_str(&origin).ok())
+        .collect();
 
     if origins.is_empty() {
         layer.allow_origin(Any)
