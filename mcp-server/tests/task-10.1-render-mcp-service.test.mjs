@@ -1,8 +1,11 @@
+import { test } from 'vitest';
+test('task assertions execute', () => {});
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { mcpRoot, repoRoot } from './test-paths.mjs';
 
-const renderYaml = readFileSync(resolve(process.cwd(), 'render.yaml'), 'utf8');
+const renderYaml = readFileSync(resolve(repoRoot, 'render.yaml'), 'utf8');
 
 assert.match(renderYaml, /name:\s*subsidypayment-mcp/, 'render.yaml must define subsidypayment-mcp service');
 assert.match(

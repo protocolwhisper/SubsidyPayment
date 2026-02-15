@@ -1,9 +1,12 @@
+import { test } from 'vitest';
+test('task assertions execute', () => {});
 import { strict as assert } from 'node:assert';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { mcpRoot, repoRoot } from './test-paths.mjs';
 
-const getTaskPath = resolve(process.cwd(), 'mcp-server/src/tools/get-task-details.ts');
-const completeTaskPath = resolve(process.cwd(), 'mcp-server/src/tools/complete-task.ts');
+const getTaskPath = resolve(mcpRoot, 'src/tools/get-task-details.ts');
+const completeTaskPath = resolve(mcpRoot, 'src/tools/complete-task.ts');
 
 assert.ok(existsSync(getTaskPath), 'mcp-server/src/tools/get-task-details.ts is required');
 assert.ok(existsSync(completeTaskPath), 'mcp-server/src/tools/complete-task.ts is required');
@@ -25,7 +28,7 @@ assert.match(completeTaskSrc, /completeTask\(/, 'must call BackendClient.complet
 assert.match(completeTaskSrc, /consent_recorded|can_use_service/, 'complete_task must return completion fields');
 assert.match(completeTaskSrc, /session_token/, 'complete_task must use session_token');
 
-const indexPath = resolve(process.cwd(), 'mcp-server/src/tools/index.ts');
+const indexPath = resolve(mcpRoot, 'src/tools/index.ts');
 const indexSrc = readFileSync(indexPath, 'utf8');
 assert.match(indexSrc, /registerGetTaskDetailsTool/, 'tools/index.ts must include get_task_details registration');
 assert.match(indexSrc, /registerCompleteTaskTool/, 'tools/index.ts must include complete_task registration');

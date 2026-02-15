@@ -1,8 +1,11 @@
+import { test } from 'vitest';
+test('task assertions execute', () => {});
 import { strict as assert } from 'node:assert';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { mcpRoot, repoRoot } from './test-paths.mjs';
 
-const toolPath = resolve(process.cwd(), 'mcp-server/src/tools/authenticate-user.ts');
+const toolPath = resolve(mcpRoot, 'src/tools/authenticate-user.ts');
 assert.ok(existsSync(toolPath), 'mcp-server/src/tools/authenticate-user.ts is required');
 
 const src = readFileSync(toolPath, 'utf8');
@@ -20,7 +23,7 @@ assert.match(src, /_meta\s*:\s*\{[\s\S]*session_token/, 'session_token must be r
 assert.match(src, /mcp\/www_authenticate/, 'must return _meta.mcp/www_authenticate when auth info is missing');
 assert.match(src, /isError\s*:\s*true/, 'auth missing response must be error');
 
-const indexPath = resolve(process.cwd(), 'mcp-server/src/tools/index.ts');
+const indexPath = resolve(mcpRoot, 'src/tools/index.ts');
 const indexSrc = readFileSync(indexPath, 'utf8');
 assert.match(indexSrc, /registerAuthenticateUserTool/, 'tools/index.ts must include authenticate_user registration');
 

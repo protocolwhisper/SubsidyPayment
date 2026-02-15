@@ -1,8 +1,11 @@
+import { test } from 'vitest';
+test('task assertions execute', () => {});
 import { strict as assert } from 'node:assert';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { mcpRoot, repoRoot } from './test-paths.mjs';
 
-const widgetPath = resolve(process.cwd(), 'mcp-server/src/widgets/src/user-dashboard.html');
+const widgetPath = resolve(mcpRoot, 'src/widgets/src/user-dashboard.html');
 assert.ok(existsSync(widgetPath), 'mcp-server/src/widgets/src/user-dashboard.html is required');
 
 const src = readFileSync(widgetPath, 'utf8');

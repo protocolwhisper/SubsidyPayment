@@ -1,8 +1,11 @@
+import { test } from 'vitest';
+test('task assertions execute', () => {});
 import { strict as assert } from 'node:assert';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { mcpRoot, repoRoot } from './test-paths.mjs';
 
-const metadataPath = resolve(process.cwd(), 'mcp-server/app-metadata.json');
+const metadataPath = resolve(mcpRoot, 'app-metadata.json');
 assert.ok(existsSync(metadataPath), 'mcp-server/app-metadata.json is required');
 
 const raw = readFileSync(metadataPath, 'utf8');

@@ -1,8 +1,11 @@
+import { test } from 'vitest';
+test('task assertions execute', () => {});
 import { strict as assert } from 'node:assert';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { mcpRoot, repoRoot } from './test-paths.mjs';
 
-const modulePath = resolve(process.cwd(), 'mcp-server/src/auth/oauth-metadata.ts');
+const modulePath = resolve(mcpRoot, 'src/auth/oauth-metadata.ts');
 assert.ok(existsSync(modulePath), 'mcp-server/src/auth/oauth-metadata.ts is required');
 
 const moduleSrc = readFileSync(modulePath, 'utf8');
@@ -13,7 +16,7 @@ assert.match(moduleSrc, /resource/, 'metadata must include resource');
 assert.match(moduleSrc, /auth0Domain/, 'metadata must use auth0Domain');
 assert.match(moduleSrc, /publicUrl/, 'metadata must use publicUrl');
 
-const mainPath = resolve(process.cwd(), 'mcp-server/src/main.ts');
+const mainPath = resolve(mcpRoot, 'src/main.ts');
 const mainSrc = readFileSync(mainPath, 'utf8');
 assert.match(mainSrc, /\/\.well-known\/oauth-protected-resource/, 'main.ts must expose oauth protected resource endpoint');
 

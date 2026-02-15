@@ -1,8 +1,11 @@
+import { test } from 'vitest';
+test('task assertions execute', () => {});
 import { strict as assert } from 'node:assert';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { mcpRoot, repoRoot } from './test-paths.mjs';
 
-const toolPath = resolve(process.cwd(), 'mcp-server/src/tools/search-services.ts');
+const toolPath = resolve(mcpRoot, 'src/tools/search-services.ts');
 assert.ok(existsSync(toolPath), 'mcp-server/src/tools/search-services.ts is required');
 
 const src = readFileSync(toolPath, 'utf8');
@@ -24,7 +27,7 @@ assert.match(src, /structuredContent\s*:/, 'must return structuredContent');
 assert.match(src, /content\s*:/, 'must return content');
 assert.match(src, /_meta\s*:/, 'must return _meta');
 
-const indexPath = resolve(process.cwd(), 'mcp-server/src/tools/index.ts');
+const indexPath = resolve(mcpRoot, 'src/tools/index.ts');
 const indexSrc = readFileSync(indexPath, 'utf8');
 assert.match(indexSrc, /registerSearchServicesTool/, 'tools/index.ts must include search_services registration');
 

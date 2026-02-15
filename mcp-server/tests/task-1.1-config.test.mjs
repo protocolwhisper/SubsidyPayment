@@ -1,12 +1,15 @@
+import { test } from 'vitest';
+test('task assertions execute', () => {});
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { mcpRoot, repoRoot } from './test-paths.mjs';
 
 function readJson(path) {
   return JSON.parse(readFileSync(path, 'utf8'));
 }
 
-const root = resolve(process.cwd(), 'mcp-server');
+const root = mcpRoot;
 const pkgPath = resolve(root, 'package.json');
 const tsconfigPath = resolve(root, 'tsconfig.json');
 

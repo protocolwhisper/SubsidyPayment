@@ -1,8 +1,11 @@
+import { test } from 'vitest';
+test('task assertions execute', () => {});
 import { strict as assert } from 'node:assert';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { mcpRoot, repoRoot } from './test-paths.mjs';
 
-const guidePath = resolve(process.cwd(), 'mcp-server/docs/migration-guide.md');
+const guidePath = resolve(mcpRoot, 'docs/migration-guide.md');
 assert.ok(existsSync(guidePath), 'mcp-server/docs/migration-guide.md is required');
 
 const guide = readFileSync(guidePath, 'utf8');

@@ -1,8 +1,11 @@
+import { test } from 'vitest';
+test('task assertions execute', () => {});
 import { strict as assert } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { mcpRoot, repoRoot } from './test-paths.mjs';
 
-const srcPath = resolve(process.cwd(), 'mcp-server/src/widgets/index.ts');
+const srcPath = resolve(mcpRoot, 'src/widgets/index.ts');
 const src = readFileSync(srcPath, 'utf8');
 
 assert.match(src, /registerAppResource/, 'must use registerAppResource');

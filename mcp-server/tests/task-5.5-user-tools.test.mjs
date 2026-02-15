@@ -1,10 +1,13 @@
+import { test } from 'vitest';
+test('task assertions execute', () => {});
 import { strict as assert } from 'node:assert';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { mcpRoot, repoRoot } from './test-paths.mjs';
 
-const getUserStatusPath = resolve(process.cwd(), 'mcp-server/src/tools/get-user-status.ts');
-const getPreferencesPath = resolve(process.cwd(), 'mcp-server/src/tools/get-preferences.ts');
-const setPreferencesPath = resolve(process.cwd(), 'mcp-server/src/tools/set-preferences.ts');
+const getUserStatusPath = resolve(mcpRoot, 'src/tools/get-user-status.ts');
+const getPreferencesPath = resolve(mcpRoot, 'src/tools/get-preferences.ts');
+const setPreferencesPath = resolve(mcpRoot, 'src/tools/set-preferences.ts');
 
 assert.ok(existsSync(getUserStatusPath), 'mcp-server/src/tools/get-user-status.ts is required');
 assert.ok(existsSync(getPreferencesPath), 'mcp-server/src/tools/get-preferences.ts is required');
@@ -33,7 +36,7 @@ assert.match(setPreferencesSrc, /preferences:\s*z\.array\(\s*z\.object\(/, 'set_
 assert.match(setPreferencesSrc, /setPreferences\(/, 'must call BackendClient.setPreferences');
 assert.match(setPreferencesSrc, /session_token/, 'set_preferences must use session_token');
 
-const indexPath = resolve(process.cwd(), 'mcp-server/src/tools/index.ts');
+const indexPath = resolve(mcpRoot, 'src/tools/index.ts');
 const indexSrc = readFileSync(indexPath, 'utf8');
 assert.match(indexSrc, /registerSearchServicesTool/, 'registerAllTools must include search_services');
 assert.match(indexSrc, /registerAuthenticateUserTool/, 'registerAllTools must include authenticate_user');

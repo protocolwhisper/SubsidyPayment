@@ -11,12 +11,13 @@ const mocked = vi.hoisted(() => ({
     getPreferences: vi.fn(),
     setPreferences: vi.fn(),
     verifyToken: vi.fn(),
+    BackendClientError: null,
 }));
 vi.mock('@modelcontextprotocol/ext-apps/server', () => ({
     registerAppTool: (...args) => mocked.registerAppTool(...args),
 }));
 vi.mock('../../src/backend-client.ts', () => {
-    class BackendClientError extends Error {
+    class MockBackendClientError extends Error {
         code;
         details;
         constructor(code, message, details) {
@@ -25,6 +26,7 @@ vi.mock('../../src/backend-client.ts', () => {
             this.details = details;
         }
     }
+    mocked.BackendClientError = MockBackendClientError;
     class BackendClient {
         searchServices = mocked.searchServices;
         authenticateUser = mocked.authenticateUser;
@@ -37,20 +39,17 @@ vi.mock('../../src/backend-client.ts', () => {
     }
     return {
         BackendClient,
-        BackendClientError,
+        BackendClientError: MockBackendClientError,
     };
 });
-vi.mock('../../src/auth/token-verifier.ts', async () => {
-    const actual = await vi.importActual('../../src/auth/token-verifier.ts');
+vi.mock('../../src/auth/token-verifier.ts', () => {
     class TokenVerifier {
         verify = mocked.verifyToken;
     }
     return {
-        ...actual,
         TokenVerifier,
     };
 });
-import { BackendClientError } from '../../src/backend-client.ts';
 import { registerAllTools } from '../../src/tools/index.ts';
 const config = {
     rustBackendUrl: 'http://localhost:3000',
@@ -125,7 +124,7 @@ describe('MCP tools unit tests (task 9.1)', () => {
     });
     it('returns backend error for search_services failure', async () => {
         registerAndCaptureTools();
-        mocked.searchServices.mockRejectedValue(new BackendClientError('backend_error', 'backend failed'));
+        mocked.searchServices.mockRejectedValue(new mocked.BackendClientError('backend_error', 'backend failed'));
         const { handler } = getRegistered('search_services');
         const result = await handler({ q: 'design' }, {});
         expect(result.isError).toBe(true);

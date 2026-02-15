@@ -1,12 +1,14 @@
+import { test } from 'vitest';
+test('task assertions execute', () => {});
 import { strict as assert } from 'node:assert';
 import { existsSync, readFileSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { mcpRoot, repoRoot } from './test-paths.mjs';
 
-const repoRoot = process.cwd();
-const configPath = resolve(repoRoot, 'mcp-server/src/config.ts');
-const loggerPath = resolve(repoRoot, 'mcp-server/src/logger.ts');
+const configPath = resolve(mcpRoot, 'src/config.ts');
+const loggerPath = resolve(mcpRoot, 'src/logger.ts');
 const envExamplePath = resolve(repoRoot, '.env.example');
 
 assert.ok(existsSync(configPath), 'mcp-server/src/config.ts is required');

@@ -1,8 +1,11 @@
+import { test } from 'vitest';
+test('task assertions execute', () => {});
 import { strict as assert } from 'node:assert';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { mcpRoot, repoRoot } from './test-paths.mjs';
 
-const verifierPath = resolve(process.cwd(), 'mcp-server/src/auth/token-verifier.ts');
+const verifierPath = resolve(mcpRoot, 'src/auth/token-verifier.ts');
 assert.ok(existsSync(verifierPath), 'mcp-server/src/auth/token-verifier.ts is required');
 
 const src = readFileSync(verifierPath, 'utf8');
@@ -20,7 +23,7 @@ assert.match(src, /audience/, 'audience verification must be implemented');
 assert.match(src, /issuer/, 'issuer verification must be implemented');
 assert.match(src, /return\s+null/, 'verification failures must return null');
 
-const packageJsonPath = resolve(process.cwd(), 'mcp-server/package.json');
+const packageJsonPath = resolve(mcpRoot, 'package.json');
 const packageJson = readFileSync(packageJsonPath, 'utf8');
 assert.match(packageJson, /"jsonwebtoken"\s*:/, 'package.json must include jsonwebtoken dependency');
 assert.match(packageJson, /"jwks-rsa"\s*:/, 'package.json must include jwks-rsa dependency');

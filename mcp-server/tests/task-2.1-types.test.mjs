@@ -1,8 +1,11 @@
+import { test } from 'vitest';
+test('task assertions execute', () => {});
 import { strict as assert } from 'node:assert';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { mcpRoot, repoRoot } from './test-paths.mjs';
 
-const filePath = resolve(process.cwd(), 'mcp-server/src/types.ts');
+const filePath = resolve(mcpRoot, 'src/types.ts');
 assert.ok(existsSync(filePath), 'mcp-server/src/types.ts is required');
 
 const src = readFileSync(filePath, 'utf8');
