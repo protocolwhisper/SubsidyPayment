@@ -16,6 +16,12 @@ fn optional_env(key: &str, default: &str) -> String {
     std::env::var(key).unwrap_or_else(|_| default.to_string())
 }
 
+fn has_live_testnet_env() -> bool {
+    std::env::var("TESTNET_PAYMENT_SIGNATURE_DESIGN").is_ok()
+        && std::env::var("X402_PAY_TO").is_ok()
+        && std::env::var("X402_ASSET").is_ok()
+}
+
 #[test]
 fn collect_cors_origins_includes_mcp_server_url() {
     let origins = collect_cors_origins(
@@ -177,6 +183,13 @@ async fn testnet_invalid_payment_signature_rejected() {
 
 #[tokio::test]
 async fn testnet_payment_signature_unlocks_tool() {
+    if !has_live_testnet_env() {
+        eprintln!(
+            "skipping live testnet test: set TESTNET_PAYMENT_SIGNATURE_DESIGN, X402_PAY_TO, and X402_ASSET"
+        );
+        return;
+    }
+
     let (app, state) = test_app();
     configure_live_x402_from_env(&state).await;
     let signature = required_env("TESTNET_PAYMENT_SIGNATURE_DESIGN");
@@ -4178,6 +4191,13 @@ async fn gpt_e2e_flow_search_auth_task_complete_run_status() {
 
 #[tokio::test]
 async fn testnet_payment_signature_service_mismatch_is_rejected() {
+    if !has_live_testnet_env() {
+        eprintln!(
+            "skipping live testnet test: set TESTNET_PAYMENT_SIGNATURE_DESIGN, X402_PAY_TO, and X402_ASSET"
+        );
+        return;
+    }
+
     let (app, state) = test_app();
     configure_live_x402_from_env(&state).await;
     let signature = required_env("TESTNET_PAYMENT_SIGNATURE_DESIGN");
