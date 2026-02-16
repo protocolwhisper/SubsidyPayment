@@ -1834,7 +1834,7 @@ async fn sponsor_dashboard(
         // Load campaign from database
         let campaign_row = sqlx::query_as::<_, CampaignRow>(
             r#"
-            select id, name, sponsor, target_roles, target_tools, required_task,
+            select id, name, sponsor, sponsor_wallet_address, target_roles, target_tools, required_task,
                 subsidy_per_call_cents, budget_total_cents, budget_remaining_cents,
                 query_urls, active, created_at
             from campaigns
