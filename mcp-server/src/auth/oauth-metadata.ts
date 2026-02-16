@@ -24,6 +24,10 @@ export function buildOAuthProtectedResourceMetadata(config: BackendConfig) {
 
 export function oauthProtectedResourceHandler(config: BackendConfig) {
   return (_req: any, res: any) => {
+    if (!config.auth0Domain) {
+      res.status(404).end();
+      return;
+    }
     res.json(buildOAuthProtectedResourceMetadata(config));
   };
 }
@@ -32,12 +36,7 @@ export function oauthAuthorizationServerRedirectHandler(config: BackendConfig) {
   return (_req: any, res: any) => {
     const issuer = normalizeAuth0Issuer(config.auth0Domain);
     if (!issuer) {
-      res.status(503).json({
-        error: {
-          code: 'auth_server_not_configured',
-          message: 'AUTH0_DOMAIN is not configured',
-        },
-      });
+      res.status(404).end();
       return;
     }
 
