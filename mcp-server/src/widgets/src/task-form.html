@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -129,7 +129,7 @@
 
       function buildDynamicFields() {
         if (!Array.isArray(requiredFields) || requiredFields.length === 0) {
-          return `<div class="field"><label for="details">詳細</label><textarea id="details" rows="4"></textarea></div>`;
+          return `<div class="field"><label for="details">Details</label><textarea id="details" rows="4"></textarea></div>`;
         }
 
         return requiredFields
@@ -164,7 +164,7 @@
 
         if (!consent.data_sharing_agreed || !consent.purpose_acknowledged || !consent.contact_permission) {
           const err = root.querySelector('.error');
-          if (err) err.textContent = '3つの同意チェックがすべて必要です。';
+          if (err) err.textContent = 'All three consent checkboxes are required.';
           return;
         }
 
@@ -182,8 +182,8 @@
         if (already_completed) {
           root.innerHTML = `
             <section class="panel done">
-              <h2>タスク完了済み</h2>
-              <p>このタスクはすでに完了しています。</p>
+              <h2>Task Already Completed</h2>
+              <p>This task has already been completed.</p>
             </section>
           `;
           notifyWidgetHeight(app);
@@ -192,17 +192,17 @@
 
         root.innerHTML = `
           <section class="panel">
-            <h2>タスク入力フォーム</h2>
+            <h2>Task Input Form</h2>
             <p class="desc">${task_description}</p>
             <form id="task-form">
               ${buildDynamicFields()}
               <div class="checks">
-                <label><input type="checkbox" name="data_sharing_agreed" /> データ共有に同意する</label>
-                <label><input type="checkbox" name="purpose_acknowledged" /> 利用目的を理解した</label>
-                <label><input type="checkbox" name="contact_permission" /> 連絡を許可する</label>
+                <label><input type="checkbox" name="data_sharing_agreed" /> I agree to data sharing</label>
+                <label><input type="checkbox" name="purpose_acknowledged" /> I understand the usage purpose</label>
+                <label><input type="checkbox" name="contact_permission" /> I allow follow-up contact</label>
               </div>
               <p class="error"></p>
-              <button type="submit">送信する</button>
+              <button type="submit">Submit</button>
             </form>
           </section>
         `;

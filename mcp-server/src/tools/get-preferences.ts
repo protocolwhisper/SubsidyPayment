@@ -12,7 +12,7 @@ const getPreferencesInputSchema = z.object({
 
 function unauthorizedSessionResponse(publicUrl: string) {
   return {
-    content: [{ type: 'text' as const, text: 'このアクションを実行するにはログインが必要です。' }],
+    content: [{ type: 'text' as const, text: 'Login is required to perform this action.' }],
     _meta: {
       'mcp/www_authenticate': [
         `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`,
@@ -58,8 +58,8 @@ export function registerGetPreferencesTool(server: McpServer, config: BackendCon
     server,
     'get_preferences',
     {
-      title: '設定取得',
-      description: 'ユーザーのタスク設定を取得する。',
+      title: 'Get Preferences',
+      description: 'Fetch the user task preference settings.',
       inputSchema: getPreferencesInputSchema.shape,
       annotations: {
         readOnlyHint: true,
@@ -70,8 +70,8 @@ export function registerGetPreferencesTool(server: McpServer, config: BackendCon
         securitySchemes: config.authEnabled
           ? [{ type: 'oauth2', scopes: ['user.read'] }]
           : [{ type: 'noauth' }],
-        'openai/toolInvocation/invoking': '設定を取得中...',
-        'openai/toolInvocation/invoked': '設定を取得しました',
+        'openai/toolInvocation/invoking': 'Fetching preferences...',
+        'openai/toolInvocation/invoked': 'Preferences fetched',
       },
     },
     async (input, context: any) => {
@@ -111,7 +111,7 @@ export function registerGetPreferencesTool(server: McpServer, config: BackendCon
         }
 
         return {
-          content: [{ type: 'text' as const, text: '設定取得中に予期しないエラーが発生しました。' }],
+          content: [{ type: 'text' as const, text: 'An unexpected error occurred while fetching preferences.' }],
           _meta: { code: 'unexpected_error' },
           isError: true,
         };

@@ -12,7 +12,7 @@ const getUserStatusInputSchema = z.object({
 
 function unauthorizedSessionResponse(publicUrl: string) {
   return {
-    content: [{ type: 'text' as const, text: 'このアクションを実行するにはログインが必要です。' }],
+    content: [{ type: 'text' as const, text: 'Login is required to perform this action.' }],
     _meta: {
       'mcp/www_authenticate': [
         `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`,
@@ -58,8 +58,8 @@ export function registerGetUserStatusTool(server: McpServer, config: BackendConf
     server,
     'get_user_status',
     {
-      title: 'ユーザー状態確認',
-      description: 'ユーザーの登録状態、完了済みタスク、利用可能サービスを確認する。',
+      title: 'Get User Status',
+      description: 'Check registration status, completed tasks, and available services for the user.',
       inputSchema: getUserStatusInputSchema.shape,
       annotations: {
         readOnlyHint: true,
@@ -71,8 +71,8 @@ export function registerGetUserStatusTool(server: McpServer, config: BackendConf
           ? [{ type: 'oauth2', scopes: ['user.read'] }]
           : [{ type: 'noauth' }],
         ui: { resourceUri: 'ui://widget/user-dashboard.html' },
-        'openai/toolInvocation/invoking': 'ステータスを確認中...',
-        'openai/toolInvocation/invoked': 'ステータスを取得しました',
+        'openai/toolInvocation/invoking': 'Fetching user status...',
+        'openai/toolInvocation/invoked': 'User status fetched',
       },
     },
     async (input, context: any) => {
@@ -113,7 +113,7 @@ export function registerGetUserStatusTool(server: McpServer, config: BackendConf
         }
 
         return {
-          content: [{ type: 'text' as const, text: 'ユーザー状態取得中に予期しないエラーが発生しました。' }],
+          content: [{ type: 'text' as const, text: 'An unexpected error occurred while fetching user status.' }],
           _meta: { code: 'unexpected_error' },
           isError: true,
         };

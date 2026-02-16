@@ -14,7 +14,7 @@ const runServiceInputSchema = z.object({
 
 function unauthorizedSessionResponse(publicUrl: string) {
   return {
-    content: [{ type: 'text' as const, text: 'このアクションを実行するにはログインが必要です。' }],
+    content: [{ type: 'text' as const, text: 'Login is required to perform this action.' }],
     _meta: {
       'mcp/www_authenticate': [
         `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`,
@@ -60,8 +60,8 @@ export function registerRunServiceTool(server: McpServer, config: BackendConfig)
     server,
     'run_service',
     {
-      title: 'サービス実行',
-      description: 'スポンサー支払い付きでサービスを実行する。',
+      title: 'Run Service',
+      description: 'Execute a service with sponsor-backed payment.',
       inputSchema: runServiceInputSchema.shape,
       annotations: {
         readOnlyHint: false,
@@ -72,8 +72,8 @@ export function registerRunServiceTool(server: McpServer, config: BackendConfig)
         securitySchemes: config.authEnabled
           ? [{ type: 'oauth2', scopes: ['services.execute'] }]
           : [{ type: 'noauth' }],
-        'openai/toolInvocation/invoking': 'サービスを実行中...',
-        'openai/toolInvocation/invoked': 'サービスの実行が完了しました',
+        'openai/toolInvocation/invoking': 'Running service...',
+        'openai/toolInvocation/invoked': 'Service run completed',
       },
     },
     async (input, context: any) => {
@@ -119,7 +119,7 @@ export function registerRunServiceTool(server: McpServer, config: BackendConfig)
         }
 
         return {
-          content: [{ type: 'text' as const, text: 'サービス実行中に予期しないエラーが発生しました。' }],
+          content: [{ type: 'text' as const, text: 'An unexpected error occurred while running the service.' }],
           _meta: { code: 'unexpected_error' },
           isError: true,
         };

@@ -16,7 +16,7 @@ const authenticateUserInputSchema = z.object({
 
 function unauthorizedAuthResponse(publicUrl: string) {
   return {
-    content: [{ type: 'text' as const, text: 'このアクションを実行するにはログインが必要です。' }],
+    content: [{ type: 'text' as const, text: 'Login is required to perform this action.' }],
     _meta: {
       'mcp/www_authenticate': [
         `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`,
@@ -64,8 +64,8 @@ export function registerAuthenticateUserTool(server: McpServer, config: BackendC
     server,
     'authenticate_user',
     {
-      title: 'ユーザー認証',
-      description: 'OAuthトークン情報を使ってユーザーを認証・登録します。',
+      title: 'Authenticate User',
+      description: 'Authenticate and register a user using OAuth token details.',
       inputSchema: authenticateUserInputSchema.shape,
       annotations: {
         readOnlyHint: false,
@@ -76,8 +76,8 @@ export function registerAuthenticateUserTool(server: McpServer, config: BackendC
         securitySchemes: config.authEnabled
           ? [{ type: 'oauth2', scopes: ['user.write'] }]
           : [{ type: 'noauth' }],
-        'openai/toolInvocation/invoking': 'ユーザーを認証中...',
-        'openai/toolInvocation/invoked': '認証が完了しました',
+        'openai/toolInvocation/invoking': 'Authenticating user...',
+        'openai/toolInvocation/invoked': 'Authentication complete',
       },
     },
     async (input, context) => {
@@ -98,7 +98,7 @@ export function registerAuthenticateUserTool(server: McpServer, config: BackendC
         return config.authEnabled
           ? unauthorizedAuthResponse(config.publicUrl)
           : {
-              content: [{ type: 'text' as const, text: '認証が無効です。emailフィールドを指定してください。' }],
+              content: [{ type: 'text' as const, text: 'Auth is disabled. Please provide the email field.' }],
               isError: true,
             };
       }
@@ -132,7 +132,7 @@ export function registerAuthenticateUserTool(server: McpServer, config: BackendC
         }
 
         return {
-          content: [{ type: 'text' as const, text: '認証中に予期しないエラーが発生しました。' }],
+          content: [{ type: 'text' as const, text: 'An unexpected error occurred during authentication.' }],
           _meta: { code: 'unexpected_error' },
           isError: true,
         };

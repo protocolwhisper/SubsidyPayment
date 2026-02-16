@@ -35,8 +35,8 @@ export function registerSearchServicesTool(server: McpServer, config: BackendCon
     server,
     'search_services',
     {
-      title: 'サービス検索',
-      description: '利用可能なスポンサー付きサービスを検索する。',
+      title: 'Search Services',
+      description: 'Search available sponsored services.',
       inputSchema: searchServicesInputSchema.shape,
       annotations: {
         readOnlyHint: true,
@@ -46,8 +46,8 @@ export function registerSearchServicesTool(server: McpServer, config: BackendCon
       _meta: {
         securitySchemes: [{ type: 'noauth' }],
         ui: { resourceUri: 'ui://widget/services-list.html' },
-        'openai/toolInvocation/invoking': 'サービスを検索中...',
-        'openai/toolInvocation/invoked': 'サービスが見つかりました',
+        'openai/toolInvocation/invoking': 'Searching services...',
+        'openai/toolInvocation/invoked': 'Services found',
       },
     },
     async (input: SearchServicesParams) => {
@@ -64,7 +64,7 @@ export function registerSearchServicesTool(server: McpServer, config: BackendCon
         }
 
         return {
-          content: [{ type: 'text' as const, text: 'サービス検索中に予期しないエラーが発生しました。' }],
+          content: [{ type: 'text' as const, text: 'An unexpected error occurred while searching services.' }],
           _meta: { code: 'unexpected_error' },
           isError: true,
         };

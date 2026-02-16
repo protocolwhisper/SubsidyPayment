@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -124,7 +124,7 @@
 
       function renderCompletedTasks() {
         if (completed_tasks.length === 0) {
-          return '<p class="meta">完了済みタスクはありません。</p>';
+          return '<p class="meta">No completed tasks yet.</p>';
         }
 
         const rows = completed_tasks
@@ -143,9 +143,9 @@
           <table>
             <thead>
               <tr>
-                <th>キャンペーン</th>
-                <th>タスク</th>
-                <th>完了日</th>
+                <th>Campaign</th>
+                <th>Task</th>
+                <th>Completed At</th>
               </tr>
             </thead>
             <tbody>${rows}</tbody>
@@ -155,7 +155,7 @@
 
       function renderServices() {
         if (available_services.length === 0) {
-          return '<p class="meta">利用可能サービスはありません。</p>';
+          return '<p class="meta">No available services.</p>';
         }
 
         return available_services
@@ -163,9 +163,9 @@
             (item, idx) => `
             <article class="service">
               <div><strong>${item.service ?? '-'}</strong></div>
-              <div class="meta">スポンサー: ${item.sponsor ?? '-'}</div>
+              <div class="meta">Sponsor: ${item.sponsor ?? '-'}</div>
               <div class="${item.ready ? 'ready' : 'not-ready'}">${item.ready ? 'ready' : 'not ready'}</div>
-              <button data-run-index="${idx}" ${item.ready ? '' : 'disabled'}>実行</button>
+              <button data-run-index="${idx}" ${item.ready ? '' : 'disabled'}>Run</button>
             </article>
           `
           )
@@ -174,22 +174,22 @@
 
       async function handleRunService(item) {
         await callTool('run_service', { service: item.service, input: '' });
-        await sendFollowUpMessage('サービス実行を開始しました。結果を確認します。');
+        await sendFollowUpMessage('Service execution started. I will check the result.');
       }
 
       function render() {
         if (!root) return;
         root.innerHTML = `
           <section class="panel">
-            <h2>ユーザー情報</h2>
+            <h2>User Info</h2>
             <p class="meta">email: ${email}</p>
           </section>
           <section class="panel">
-            <h2>完了済みタスク</h2>
+            <h2>Completed Tasks</h2>
             ${renderCompletedTasks()}
           </section>
           <section class="panel">
-            <h2>利用可能サービス</h2>
+            <h2>Available Services</h2>
             ${renderServices()}
           </section>
         `;

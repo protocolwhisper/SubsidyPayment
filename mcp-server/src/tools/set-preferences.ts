@@ -18,7 +18,7 @@ const setPreferencesInputSchema = z.object({
 
 function unauthorizedSessionResponse(publicUrl: string) {
   return {
-    content: [{ type: 'text' as const, text: 'このアクションを実行するにはログインが必要です。' }],
+    content: [{ type: 'text' as const, text: 'Login is required to perform this action.' }],
     _meta: {
       'mcp/www_authenticate': [
         `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`,
@@ -64,8 +64,8 @@ export function registerSetPreferencesTool(server: McpServer, config: BackendCon
     server,
     'set_preferences',
     {
-      title: '設定変更',
-      description: 'ユーザーのタスク設定を更新する。',
+      title: 'Set Preferences',
+      description: 'Update the user task preference settings.',
       inputSchema: setPreferencesInputSchema.shape,
       annotations: {
         readOnlyHint: false,
@@ -76,8 +76,8 @@ export function registerSetPreferencesTool(server: McpServer, config: BackendCon
         securitySchemes: config.authEnabled
           ? [{ type: 'oauth2', scopes: ['user.write'] }]
           : [{ type: 'noauth' }],
-        'openai/toolInvocation/invoking': '設定を更新中...',
-        'openai/toolInvocation/invoked': '設定を更新しました',
+        'openai/toolInvocation/invoking': 'Updating preferences...',
+        'openai/toolInvocation/invoked': 'Preferences updated',
       },
     },
     async (input, context: any) => {
@@ -120,7 +120,7 @@ export function registerSetPreferencesTool(server: McpServer, config: BackendCon
         }
 
         return {
-          content: [{ type: 'text' as const, text: '設定更新中に予期しないエラーが発生しました。' }],
+          content: [{ type: 'text' as const, text: 'An unexpected error occurred while updating preferences.' }],
           _meta: { code: 'unexpected_error' },
           isError: true,
         };

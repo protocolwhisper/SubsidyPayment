@@ -21,7 +21,7 @@ const completeTaskInputSchema = z.object({
 
 function unauthorizedSessionResponse(publicUrl: string) {
   return {
-    content: [{ type: 'text' as const, text: 'このアクションを実行するにはログインが必要です。' }],
+    content: [{ type: 'text' as const, text: 'Login is required to perform this action.' }],
     _meta: {
       'mcp/www_authenticate': [
         `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`,
@@ -67,8 +67,8 @@ export function registerCompleteTaskTool(server: McpServer, config: BackendConfi
     server,
     'complete_task',
     {
-      title: 'タスク完了',
-      description: 'タスク完了情報と同意情報を記録する。',
+      title: 'Complete Task',
+      description: 'Record task completion details and consent data.',
       inputSchema: completeTaskInputSchema.shape,
       annotations: {
         readOnlyHint: false,
@@ -79,8 +79,8 @@ export function registerCompleteTaskTool(server: McpServer, config: BackendConfi
         securitySchemes: config.authEnabled
           ? [{ type: 'oauth2', scopes: ['tasks.write'] }]
           : [{ type: 'noauth' }],
-        'openai/toolInvocation/invoking': 'タスクを記録中...',
-        'openai/toolInvocation/invoked': 'タスクが完了しました',
+        'openai/toolInvocation/invoking': 'Recording task completion...',
+        'openai/toolInvocation/invoked': 'Task completed',
       },
     },
     async (input, context: any) => {
@@ -129,7 +129,7 @@ export function registerCompleteTaskTool(server: McpServer, config: BackendConfi
         }
 
         return {
-          content: [{ type: 'text' as const, text: 'タスク完了記録中に予期しないエラーが発生しました。' }],
+          content: [{ type: 'text' as const, text: 'An unexpected error occurred while recording task completion.' }],
           _meta: { code: 'unexpected_error' },
           isError: true,
         };

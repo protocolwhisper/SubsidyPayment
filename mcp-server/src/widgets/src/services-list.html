@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -115,7 +115,7 @@
 
       function formatYen(cents) {
         const yen = Math.floor((Number(cents) || 0) / 100);
-        return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(yen);
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'JPY' }).format(yen);
       }
 
       async function setWidgetState(nextState) {
@@ -136,7 +136,7 @@
         if (!root) return;
 
         if (!Array.isArray(services) || services.length === 0) {
-          root.innerHTML = `<p class="heading">利用可能なサービス</p><div class="empty">条件に一致するサービスがありません。</div>`;
+          root.innerHTML = `<p class="heading">Available Services</p><div class="empty">No services match the current criteria.</div>`;
           notifyWidgetHeight(app);
           return;
         }
@@ -148,9 +148,9 @@
             return `
               <button class="card ${selectedClass}" data-campaign-id="${service.service_id}">
                 <p class="title">${service.name ?? '-'}</p>
-                <div class="meta">スポンサー: ${service.sponsor ?? '-'}</div>
-                <div class="meta">補助金額: ${formatYen(service.subsidy_amount_cents)}</div>
-                <div class="meta">関連度: ${service.relevance_score ?? '-'}</div>
+                <div class="meta">Sponsor: ${service.sponsor ?? '-'}</div>
+                <div class="meta">Subsidy Amount: ${formatYen(service.subsidy_amount_cents)}</div>
+                <div class="meta">Relevance: ${service.relevance_score ?? '-'}</div>
                 <div class="tags">
                   ${categories.map((tag) => `<span class="tag">${tag}</span>`).join('')}
                 </div>
@@ -159,7 +159,7 @@
           })
           .join('');
 
-        root.innerHTML = `<p class="heading">利用可能なサービス</p><div class="cards">${cards}</div>`;
+        root.innerHTML = `<p class="heading">Available Services</p><div class="cards">${cards}</div>`;
 
         for (const button of root.querySelectorAll('.card')) {
           button.addEventListener('click', () => {

@@ -13,7 +13,7 @@ const getTaskDetailsInputSchema = z.object({
 
 function unauthorizedSessionResponse(publicUrl: string) {
   return {
-    content: [{ type: 'text' as const, text: 'このアクションを実行するにはログインが必要です。' }],
+    content: [{ type: 'text' as const, text: 'Login is required to perform this action.' }],
     _meta: {
       'mcp/www_authenticate': [
         `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`,
@@ -59,8 +59,8 @@ export function registerGetTaskDetailsTool(server: McpServer, config: BackendCon
     server,
     'get_task_details',
     {
-      title: 'タスク詳細取得',
-      description: 'キャンペーンの必要タスク詳細を取得する。',
+      title: 'Get Task Details',
+      description: 'Get required task details for a campaign.',
       inputSchema: getTaskDetailsInputSchema.shape,
       annotations: {
         readOnlyHint: true,
@@ -72,8 +72,8 @@ export function registerGetTaskDetailsTool(server: McpServer, config: BackendCon
           ? [{ type: 'oauth2', scopes: ['tasks.read'] }]
           : [{ type: 'noauth' }],
         ui: { resourceUri: 'ui://widget/task-form.html' },
-        'openai/toolInvocation/invoking': 'タスク情報を取得中...',
-        'openai/toolInvocation/invoked': 'タスク情報を取得しました',
+        'openai/toolInvocation/invoking': 'Fetching task details...',
+        'openai/toolInvocation/invoked': 'Task details fetched',
       },
     },
     async (input, context: any) => {
@@ -118,7 +118,7 @@ export function registerGetTaskDetailsTool(server: McpServer, config: BackendCon
         }
 
         return {
-          content: [{ type: 'text' as const, text: 'タスク情報取得中に予期しないエラーが発生しました。' }],
+          content: [{ type: 'text' as const, text: 'An unexpected error occurred while fetching task details.' }],
           _meta: { code: 'unexpected_error' },
           isError: true,
         };
