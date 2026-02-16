@@ -192,5 +192,6 @@ Completion Criteria (Minimum)
 - M2: Campaign Builder Chat, publishing, Data Inbox (P1 ToB)
 - M3: Profile Vault + Consent completion (P1 operational requirements)
 - M4: Notifications and multi-client API / SDK (P1 latter half)
+- M5: Improve natural language
 
 ---
