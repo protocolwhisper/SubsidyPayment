@@ -43,7 +43,7 @@ export function createApp() {
   app.get('/.well-known/oauth-protected-resource', oauthProtectedResourceHandler(config));
   app.get('/.well-known/oauth-authorization-server', oauthAuthorizationServerRedirectHandler(config));
 
-  app.post('/mcp', async (req, res) => {
+  app.all('/mcp', async (req, res) => {
     try {
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
