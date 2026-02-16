@@ -110,6 +110,7 @@ fn build_app(state: SharedState, agent_discovery_limit_per_min: u32) -> Router {
     )));
 
     Router::new()
+        .route("/", get(health))
         .route("/health", get(health))
         .route("/profiles", post(create_profile).get(list_profiles))
         .route("/register", post(register_user))
