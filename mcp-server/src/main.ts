@@ -43,7 +43,7 @@ export function createApp() {
   app.get('/.well-known/oauth-protected-resource', oauthProtectedResourceHandler(config));
   app.get('/.well-known/oauth-authorization-server', oauthAuthorizationServerRedirectHandler(config));
 
-  app.post('/mcp', async (req, res) => {
+  const mcpHandler: express.RequestHandler = async (req, res) => {
     try {
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
@@ -61,7 +61,11 @@ export function createApp() {
         },
       });
     }
-  });
+  };
+
+  app.get('/mcp', mcpHandler);
+  app.post('/mcp', mcpHandler);
+  app.delete('/mcp', mcpHandler);
 
   return { app, config };
 }
