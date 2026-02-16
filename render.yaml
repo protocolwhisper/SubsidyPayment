@@ -24,8 +24,9 @@ services:
   - type: web
     name: subsidypayment-mcp
     env: node
-    buildCommand: cd mcp-server && npm ci --include=optional && npm run build
-    startCommand: cd mcp-server && npm start
+    rootDir: mcp-server
+    buildCommand: npm ci --include=optional && npm run build
+    startCommand: npm start
     envVars:
       - key: RUST_BACKEND_URL
         sync: false
