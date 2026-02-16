@@ -62,14 +62,14 @@ export function registerRunServiceTool(server: McpServer, config: BackendConfig)
     {
       title: 'サービス実行',
       description: 'スポンサー支払い付きでサービスを実行する。',
-      inputSchema: runServiceInputSchema,
+      inputSchema: runServiceInputSchema.shape,
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
         openWorldHint: true,
       },
-      securitySchemes: [{ type: 'oauth2', scopes: ['services.execute'] }],
       _meta: {
+        securitySchemes: [{ type: 'oauth2', scopes: ['services.execute'] }],
         'openai/toolInvocation/invoking': 'サービスを実行中...',
         'openai/toolInvocation/invoked': 'サービスの実行が完了しました',
       },

@@ -60,14 +60,14 @@ export function registerGetPreferencesTool(server: McpServer, config: BackendCon
     {
       title: '設定取得',
       description: 'ユーザーのタスク設定を取得する。',
-      inputSchema: getPreferencesInputSchema,
+      inputSchema: getPreferencesInputSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
         openWorldHint: false,
       },
-      securitySchemes: [{ type: 'oauth2', scopes: ['user.read'] }],
       _meta: {
+        securitySchemes: [{ type: 'oauth2', scopes: ['user.read'] }],
         'openai/toolInvocation/invoking': '設定を取得中...',
         'openai/toolInvocation/invoked': '設定を取得しました',
       },

@@ -37,14 +37,14 @@ export function registerSearchServicesTool(server: McpServer, config: BackendCon
     {
       title: 'サービス検索',
       description: '利用可能なスポンサー付きサービスを検索する。',
-      inputSchema: searchServicesInputSchema,
+      inputSchema: searchServicesInputSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
         openWorldHint: false,
       },
-      securitySchemes: [{ type: 'noauth' }],
       _meta: {
+        securitySchemes: [{ type: 'noauth' }],
         ui: { resourceUri: 'ui://widget/services-list.html' },
         'openai/toolInvocation/invoking': 'サービスを検索中...',
         'openai/toolInvocation/invoked': 'サービスが見つかりました',

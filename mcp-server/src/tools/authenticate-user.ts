@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { BackendClient, BackendClientError } from '../backend-client.ts';
 import { TokenVerifier } from '../auth/token-verifier.ts';
 import type { BackendConfig } from '../config.ts';
-import type { AuthenticateUserParams } from '../types.ts';
+
 
 const authenticateUserInputSchema = z.object({
   email: z.string().email().optional(),
@@ -26,7 +26,7 @@ function unauthorizedAuthResponse(publicUrl: string) {
   };
 }
 
-function resolveOAuthEmail(input: AuthenticateUserParams, context: any): string | null {
+function resolveOAuthEmail(input: { email?: string }, context: any): string | null {
   const authEmail = context?.auth?.email ?? context?._meta?.auth?.email ?? null;
   if (typeof authEmail === 'string' && authEmail.length > 0) {
     return authEmail;
@@ -66,19 +66,19 @@ export function registerAuthenticateUserTool(server: McpServer, config: BackendC
     {
       title: 'ユーザー認証',
       description: 'OAuthトークン情報を使ってユーザーを認証・登録します。',
-      inputSchema: authenticateUserInputSchema,
+      inputSchema: authenticateUserInputSchema.shape,
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
         openWorldHint: false,
       },
-      securitySchemes: [{ type: 'oauth2', scopes: ['user.write'] }],
       _meta: {
+        securitySchemes: [{ type: 'oauth2', scopes: ['user.write'] }],
         'openai/toolInvocation/invoking': 'ユーザーを認証中...',
         'openai/toolInvocation/invoked': '認証が完了しました',
       },
     },
-    async (input: AuthenticateUserParams, context: any) => {
+    async (input, context) => {
       const bearerToken = resolveBearerToken(context);
       const authInfo = bearerToken ? await verifier.verify(bearerToken) : null;
       if (!authInfo) {

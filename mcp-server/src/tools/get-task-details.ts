@@ -61,14 +61,14 @@ export function registerGetTaskDetailsTool(server: McpServer, config: BackendCon
     {
       title: 'タスク詳細取得',
       description: 'キャンペーンの必要タスク詳細を取得する。',
-      inputSchema: getTaskDetailsInputSchema,
+      inputSchema: getTaskDetailsInputSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
         openWorldHint: false,
       },
-      securitySchemes: [{ type: 'oauth2', scopes: ['tasks.read'] }],
       _meta: {
+        securitySchemes: [{ type: 'oauth2', scopes: ['tasks.read'] }],
         ui: { resourceUri: 'ui://widget/task-form.html' },
         'openai/toolInvocation/invoking': 'タスク情報を取得中...',
         'openai/toolInvocation/invoked': 'タスク情報を取得しました',

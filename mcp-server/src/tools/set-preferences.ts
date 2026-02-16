@@ -66,14 +66,14 @@ export function registerSetPreferencesTool(server: McpServer, config: BackendCon
     {
       title: '設定変更',
       description: 'ユーザーのタスク設定を更新する。',
-      inputSchema: setPreferencesInputSchema,
+      inputSchema: setPreferencesInputSchema.shape,
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
         openWorldHint: false,
       },
-      securitySchemes: [{ type: 'oauth2', scopes: ['user.write'] }],
       _meta: {
+        securitySchemes: [{ type: 'oauth2', scopes: ['user.write'] }],
         'openai/toolInvocation/invoking': '設定を更新中...',
         'openai/toolInvocation/invoked': '設定を更新しました',
       },

@@ -60,14 +60,14 @@ export function registerGetUserStatusTool(server: McpServer, config: BackendConf
     {
       title: 'ユーザー状態確認',
       description: 'ユーザーの登録状態、完了済みタスク、利用可能サービスを確認する。',
-      inputSchema: getUserStatusInputSchema,
+      inputSchema: getUserStatusInputSchema.shape,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
         openWorldHint: false,
       },
-      securitySchemes: [{ type: 'oauth2', scopes: ['user.read'] }],
       _meta: {
+        securitySchemes: [{ type: 'oauth2', scopes: ['user.read'] }],
         ui: { resourceUri: 'ui://widget/user-dashboard.html' },
         'openai/toolInvocation/invoking': 'ステータスを確認中...',
         'openai/toolInvocation/invoked': 'ステータスを取得しました',

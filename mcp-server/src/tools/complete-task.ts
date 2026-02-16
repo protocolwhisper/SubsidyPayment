@@ -69,14 +69,14 @@ export function registerCompleteTaskTool(server: McpServer, config: BackendConfi
     {
       title: 'タスク完了',
       description: 'タスク完了情報と同意情報を記録する。',
-      inputSchema: completeTaskInputSchema,
+      inputSchema: completeTaskInputSchema.shape,
       annotations: {
         readOnlyHint: false,
         destructiveHint: false,
         openWorldHint: false,
       },
-      securitySchemes: [{ type: 'oauth2', scopes: ['tasks.write'] }],
       _meta: {
+        securitySchemes: [{ type: 'oauth2', scopes: ['tasks.write'] }],
         'openai/toolInvocation/invoking': 'タスクを記録中...',
         'openai/toolInvocation/invoked': 'タスクが完了しました',
       },
