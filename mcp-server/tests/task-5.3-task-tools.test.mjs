@@ -17,12 +17,12 @@ const completeTaskSrc = readFileSync(completeTaskPath, 'utf8');
 assert.match(getTaskSrc, /registerAppTool\(\s*server\s*,\s*['"]get_task_details['"]/, 'must register get_task_details');
 assert.match(getTaskSrc, /readOnlyHint:\s*true/, 'get_task_details must be readOnly');
 assert.match(getTaskSrc, /resourceUri:\s*['"]ui:\/\/widget\/task-form\.html['"]/, 'get_task_details must bind task-form widget');
-assert.match(getTaskSrc, /securitySchemes:\s*\[\s*\{\s*type:\s*['"]oauth2['"]/, 'get_task_details must require oauth2');
+assert.match(getTaskSrc, /securitySchemes:[\s\S]*type:\s*['"]oauth2['"]/, 'get_task_details must require oauth2');
 assert.match(getTaskSrc, /getTaskDetails\(/, 'must call BackendClient.getTaskDetails');
 assert.match(getTaskSrc, /session_token/, 'get_task_details must use session_token');
 
 assert.match(completeTaskSrc, /registerAppTool\(\s*server\s*,\s*['"]complete_task['"]/, 'must register complete_task');
-assert.match(completeTaskSrc, /securitySchemes:\s*\[\s*\{\s*type:\s*['"]oauth2['"]/, 'complete_task must require oauth2');
+assert.match(completeTaskSrc, /securitySchemes:[\s\S]*type:\s*['"]oauth2['"]/, 'complete_task must require oauth2');
 assert.match(completeTaskSrc, /consent:\s*z\.object\(/, 'complete_task must validate consent object');
 assert.match(completeTaskSrc, /completeTask\(/, 'must call BackendClient.completeTask');
 assert.match(completeTaskSrc, /consent_recorded|can_use_service/, 'complete_task must return completion fields');

@@ -48,6 +48,7 @@ const config = {
     publicUrl: 'http://localhost:3001',
     port: 3001,
     logLevel: 'info',
+    authEnabled: true,
 };
 function registerTools() {
     mocked.registerAppTool.mockImplementation((_server, name, _def, handler) => {

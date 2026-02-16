@@ -9,9 +9,10 @@ MCP サーバーの E2E フロー（サービス検索 → 認証 → タスク�
 1. `mcp-server/.env` を用意し、以下を設定する。
    - `RUST_BACKEND_URL`
    - `MCP_INTERNAL_API_KEY`
-   - `AUTH0_DOMAIN`
-   - `AUTH0_AUDIENCE`
+   - `AUTH0_DOMAIN`（OAuth有効時のみ必須）
+   - `AUTH0_AUDIENCE`（OAuth有効時のみ必須）
    - `PUBLIC_URL`（ngrok URL）
+   - `AUTH_ENABLED`（OAuth認証のON/OFF切替。省略時は `AUTH0_DOMAIN` と `AUTH0_AUDIENCE` の有無で自動判定）
 2. Rust バックエンドを起動する。
 3. MCP サーバーを起動する。
    - `cd mcp-server`
@@ -19,6 +20,40 @@ MCP サーバーの E2E フロー（サービス検索 → 認証 → タスク�
 4. ngrok トンネルを作成する。
    - `ngrok http 3001`
 5. ngrok の公開 URL を `PUBLIC_URL` に反映し、MCP サーバーを再起動する。
+
+### AUTH_ENABLED の判定ロジック
+
+| `AUTH_ENABLED` | `AUTH0_DOMAIN` + `AUTH0_AUDIENCE` | 結果 |
+|---|---|---|
+| `true` | 任意 | OAuth **有効** |
+| `false` / `0` / `no` | 任意 | OAuth **無効** |
+| 未設定 | 両方あり | OAuth **有効** |
+| 未設定 | どちらか欠落 | OAuth **無効** |
+
+## 2b. 認証OFF（MVPモード）での簡易テスト
+
+Auth0 の設定なしで MCP ツールの動作確認を行いたい場合は、認証を無効化して起動する。
+
+```bash
+cd mcp-server
+AUTH_ENABLED=false npm run dev
+```
+
+起動ログに `OAuth authentication is DISABLED (MVP mode)` が表示されることを確認する。
+
+### 認証OFFモードでの E2E フロー
+
+```
+1. search_services(q: "翻訳")                        → サービス一覧（認証不要）
+2. authenticate_user(email: "test@example.com")       → session_token 取得（OAuth不要、email必須）
+3. get_task_details(campaign_id, session_token)        → タスク詳細（JWT検証スキップ）
+4. complete_task(campaign_id, session_token, ...)      → タスク完了記録
+5. run_service(service, input, session_token)          → サービス実行
+```
+
+**注意**: 認証OFFモードでも `session_token` は引き続き必要です（`authenticate_user` で取得）。
+
+---
 
 ## 3. ChatGPT 開発者モード設定
 

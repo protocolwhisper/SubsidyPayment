@@ -11,7 +11,7 @@ assert.ok(existsSync(toolPath), 'mcp-server/src/tools/authenticate-user.ts is re
 const src = readFileSync(toolPath, 'utf8');
 
 assert.match(src, /registerAppTool\(\s*server\s*,\s*['"]authenticate_user['"]/, 'must register authenticate_user tool');
-assert.match(src, /securitySchemes:\s*\[\s*\{\s*type:\s*['"]oauth2['"]/, 'oauth2 security scheme is required');
+assert.match(src, /securitySchemes:[\s\S]*type:\s*['"]oauth2['"]/, 'oauth2 security scheme is required');
 assert.match(src, /openai\/toolInvocation\/invoking/, 'invoking message is required');
 assert.match(src, /openai\/toolInvocation\/invoked/, 'invoked message is required');
 

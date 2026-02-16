@@ -67,16 +67,20 @@ export function registerGetPreferencesTool(server: McpServer, config: BackendCon
         openWorldHint: false,
       },
       _meta: {
-        securitySchemes: [{ type: 'oauth2', scopes: ['user.read'] }],
+        securitySchemes: config.authEnabled
+          ? [{ type: 'oauth2', scopes: ['user.read'] }]
+          : [{ type: 'noauth' }],
         'openai/toolInvocation/invoking': '設定を取得中...',
         'openai/toolInvocation/invoked': '設定を取得しました',
       },
     },
     async (input, context: any) => {
-      const bearerToken = resolveBearerToken(context);
-      const authInfo = bearerToken ? await verifier.verify(bearerToken) : null;
-      if (!authInfo) {
-        return unauthorizedSessionResponse(config.publicUrl);
+      if (config.authEnabled) {
+        const bearerToken = resolveBearerToken(context);
+        const authInfo = bearerToken ? await verifier.verify(bearerToken) : null;
+        if (!authInfo) {
+          return unauthorizedSessionResponse(config.publicUrl);
+        }
       }
 
       const sessionToken = resolveSessionToken(input, context);

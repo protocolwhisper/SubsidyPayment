@@ -12,7 +12,7 @@ const src = readFileSync(toolPath, 'utf8');
 
 assert.match(src, /registerAppTool\(\s*server\s*,\s*['"]run_service['"]/, 'must register run_service tool');
 assert.match(src, /openWorldHint:\s*true/, 'run_service must set openWorldHint: true');
-assert.match(src, /securitySchemes:\s*\[\s*\{\s*type:\s*['"]oauth2['"]/, 'run_service must require oauth2');
+assert.match(src, /securitySchemes:[\s\S]*type:\s*['"]oauth2['"]/, 'run_service must require oauth2');
 assert.match(src, /runService\(/, 'must call BackendClient.runService');
 
 assert.match(src, /session_token/, 'run_service must use session_token');

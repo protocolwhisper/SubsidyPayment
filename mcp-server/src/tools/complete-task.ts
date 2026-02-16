@@ -76,16 +76,20 @@ export function registerCompleteTaskTool(server: McpServer, config: BackendConfi
         openWorldHint: false,
       },
       _meta: {
-        securitySchemes: [{ type: 'oauth2', scopes: ['tasks.write'] }],
+        securitySchemes: config.authEnabled
+          ? [{ type: 'oauth2', scopes: ['tasks.write'] }]
+          : [{ type: 'noauth' }],
         'openai/toolInvocation/invoking': 'タスクを記録中...',
         'openai/toolInvocation/invoked': 'タスクが完了しました',
       },
     },
     async (input, context: any) => {
-      const bearerToken = resolveBearerToken(context);
-      const authInfo = bearerToken ? await verifier.verify(bearerToken) : null;
-      if (!authInfo) {
-        return unauthorizedSessionResponse(config.publicUrl);
+      if (config.authEnabled) {
+        const bearerToken = resolveBearerToken(context);
+        const authInfo = bearerToken ? await verifier.verify(bearerToken) : null;
+        if (!authInfo) {
+          return unauthorizedSessionResponse(config.publicUrl);
+        }
       }
 
       const sessionToken = resolveSessionToken(input, context);

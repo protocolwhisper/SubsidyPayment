@@ -62,6 +62,33 @@
 | `SPONSORED_API_CREATE_PRICE_CENTS` | Sponsored API 作成価格 |
 | `SPONSORED_API_TIMEOUT_SECS` | Sponsored API タイムアウト |
 
+## MCP サーバー
+
+| 項目 | 技術 | バージョン |
+|---|---|---|
+| **ランタイム** | Node.js | 22+ |
+| **言語** | TypeScript | 5.x |
+| **フレームワーク** | Express | 4.x |
+| **MCP SDK** | @modelcontextprotocol/sdk | — |
+| **認証** | Auth0 JWT (jwks-rsa) | — |
+| **ログ** | pino | — |
+| **バリデーション** | Zod | — |
+| **ビルド** | esbuild + Vite (ウィジェット) | — |
+| **テスト** | Vitest | 3.x |
+
+### MCP サーバー環境変数
+
+| 変数名 | 用途 | デフォルト |
+|---|---|---|
+| `RUST_BACKEND_URL` | Rust バックエンド URL | `http://localhost:3000` |
+| `MCP_INTERNAL_API_KEY` | バックエンド通信用 API キー | — |
+| `AUTH0_DOMAIN` | Auth0 テナントドメイン | — |
+| `AUTH0_AUDIENCE` | Auth0 API オーディエンス | — |
+| `PUBLIC_URL` | MCP サーバー公開 URL | `http://localhost:3001` |
+| `PORT` | MCP サーバーポート | `3001` |
+| `LOG_LEVEL` | ログレベル | `info` |
+| `AUTH_ENABLED` | OAuth 認証トグル (`true`/`false`)。未設定時は AUTH0_DOMAIN と AUTH0_AUDIENCE が両方あれば有効、なければ無効 | 自動判定 |
+
 ## 開発コマンド
 
 ```bash
@@ -71,11 +98,20 @@ cargo run
 # フロントエンド起動
 cd frontend && npm run dev
 
+# MCP サーバー起動
+cd mcp-server && npm run dev
+
+# MCP サーバー起動（認証OFF / MVPモード）
+cd mcp-server && AUTH_ENABLED=false npm run dev
+
 # PostgreSQL 起動 (Docker)
 docker compose -f docker-compose.postgres.yml up -d
 
-# テスト
+# テスト（バックエンド）
 cargo test
+
+# テスト（MCP サーバー）
+cd mcp-server && npm test
 
 # ドキュメント
 cd docs && npx gitbook serve

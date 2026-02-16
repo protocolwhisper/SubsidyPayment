@@ -73,21 +73,34 @@ export function registerAuthenticateUserTool(server: McpServer, config: BackendC
         openWorldHint: false,
       },
       _meta: {
-        securitySchemes: [{ type: 'oauth2', scopes: ['user.write'] }],
+        securitySchemes: config.authEnabled
+          ? [{ type: 'oauth2', scopes: ['user.write'] }]
+          : [{ type: 'noauth' }],
         'openai/toolInvocation/invoking': 'ユーザーを認証中...',
         'openai/toolInvocation/invoked': '認証が完了しました',
       },
     },
     async (input, context) => {
-      const bearerToken = resolveBearerToken(context);
-      const authInfo = bearerToken ? await verifier.verify(bearerToken) : null;
-      if (!authInfo) {
-        return unauthorizedAuthResponse(config.publicUrl);
+      let oauthEmail: string | null = null;
+
+      if (config.authEnabled) {
+        const bearerToken = resolveBearerToken(context);
+        const authInfo = bearerToken ? await verifier.verify(bearerToken) : null;
+        if (!authInfo) {
+          return unauthorizedAuthResponse(config.publicUrl);
+        }
+        oauthEmail = authInfo.email ?? resolveOAuthEmail(input, context);
+      } else {
+        oauthEmail = resolveOAuthEmail(input, context);
       }
 
-      const oauthEmail = authInfo.email ?? resolveOAuthEmail(input, context);
       if (!oauthEmail) {
-        return unauthorizedAuthResponse(config.publicUrl);
+        return config.authEnabled
+          ? unauthorizedAuthResponse(config.publicUrl)
+          : {
+              content: [{ type: 'text' as const, text: '認証が無効です。emailフィールドを指定してください。' }],
+              isError: true,
+            };
       }
 
       try {

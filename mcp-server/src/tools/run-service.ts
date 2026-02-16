@@ -69,16 +69,20 @@ export function registerRunServiceTool(server: McpServer, config: BackendConfig)
         openWorldHint: true,
       },
       _meta: {
-        securitySchemes: [{ type: 'oauth2', scopes: ['services.execute'] }],
+        securitySchemes: config.authEnabled
+          ? [{ type: 'oauth2', scopes: ['services.execute'] }]
+          : [{ type: 'noauth' }],
         'openai/toolInvocation/invoking': 'サービスを実行中...',
         'openai/toolInvocation/invoked': 'サービスの実行が完了しました',
       },
     },
     async (input, context: any) => {
-      const bearerToken = resolveBearerToken(context);
-      const authInfo = bearerToken ? await verifier.verify(bearerToken) : null;
-      if (!authInfo) {
-        return unauthorizedSessionResponse(config.publicUrl);
+      if (config.authEnabled) {
+        const bearerToken = resolveBearerToken(context);
+        const authInfo = bearerToken ? await verifier.verify(bearerToken) : null;
+        if (!authInfo) {
+          return unauthorizedSessionResponse(config.publicUrl);
+        }
       }
 
       const sessionToken = resolveSessionToken(input, context);

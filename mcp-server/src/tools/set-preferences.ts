@@ -73,16 +73,20 @@ export function registerSetPreferencesTool(server: McpServer, config: BackendCon
         openWorldHint: false,
       },
       _meta: {
-        securitySchemes: [{ type: 'oauth2', scopes: ['user.write'] }],
+        securitySchemes: config.authEnabled
+          ? [{ type: 'oauth2', scopes: ['user.write'] }]
+          : [{ type: 'noauth' }],
         'openai/toolInvocation/invoking': '設定を更新中...',
         'openai/toolInvocation/invoked': '設定を更新しました',
       },
     },
     async (input, context: any) => {
-      const bearerToken = resolveBearerToken(context);
-      const authInfo = bearerToken ? await verifier.verify(bearerToken) : null;
-      if (!authInfo) {
-        return unauthorizedSessionResponse(config.publicUrl);
+      if (config.authEnabled) {
+        const bearerToken = resolveBearerToken(context);
+        const authInfo = bearerToken ? await verifier.verify(bearerToken) : null;
+        if (!authInfo) {
+          return unauthorizedSessionResponse(config.publicUrl);
+        }
       }
 
       const sessionToken = resolveSessionToken(input, context);

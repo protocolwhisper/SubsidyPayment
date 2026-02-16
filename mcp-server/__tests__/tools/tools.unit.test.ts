@@ -73,6 +73,7 @@ const config = {
   publicUrl: 'http://localhost:3001',
   port: 3001,
   logLevel: 'info',
+  authEnabled: true,
 };
 
 function registerAndCaptureTools() {

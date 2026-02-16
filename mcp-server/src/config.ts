@@ -6,12 +6,21 @@ export interface BackendConfig {
   publicUrl: string;
   port: number;
   logLevel: string;
+  authEnabled: boolean;
 }
 
 function parsePort(value: string | undefined): number {
   if (!value) return 3001;
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 3001;
+}
+
+function resolveAuthEnabled(env: NodeJS.ProcessEnv): boolean {
+  const explicit = env.AUTH_ENABLED;
+  if (explicit !== undefined) {
+    return !['false', '0', 'no'].includes(explicit.toLowerCase());
+  }
+  return !!(env.AUTH0_DOMAIN && env.AUTH0_AUDIENCE);
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): BackendConfig {
@@ -23,5 +32,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): BackendConfig 
     publicUrl: env.PUBLIC_URL || 'http://localhost:3001',
     port: parsePort(env.PORT),
     logLevel: env.LOG_LEVEL || 'info',
+    authEnabled: resolveAuthEnabled(env),
   };
 }

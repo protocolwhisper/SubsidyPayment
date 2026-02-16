@@ -74,5 +74,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const { app, config } = createApp();
   app.listen(config.port, () => {
     logger.info({ port: config.port }, 'MCP server started');
+    logger.info(
+      { authEnabled: config.authEnabled },
+      config.authEnabled
+        ? 'OAuth authentication is ENABLED (Auth0)'
+        : 'OAuth authentication is DISABLED (MVP mode)',
+    );
   });
 }

@@ -24,7 +24,7 @@ export function buildOAuthProtectedResourceMetadata(config: BackendConfig) {
 
 export function oauthProtectedResourceHandler(config: BackendConfig) {
   return (_req: any, res: any) => {
-    if (!config.auth0Domain) {
+    if (!config.authEnabled || !config.auth0Domain) {
       res.status(404).end();
       return;
     }
@@ -35,7 +35,7 @@ export function oauthProtectedResourceHandler(config: BackendConfig) {
 export function oauthAuthorizationServerRedirectHandler(config: BackendConfig) {
   return (_req: any, res: any) => {
     const issuer = normalizeAuth0Issuer(config.auth0Domain);
-    if (!issuer) {
+    if (!config.authEnabled || !issuer) {
       res.status(404).end();
       return;
     }

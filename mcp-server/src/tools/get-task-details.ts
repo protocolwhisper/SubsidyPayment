@@ -68,17 +68,21 @@ export function registerGetTaskDetailsTool(server: McpServer, config: BackendCon
         openWorldHint: false,
       },
       _meta: {
-        securitySchemes: [{ type: 'oauth2', scopes: ['tasks.read'] }],
+        securitySchemes: config.authEnabled
+          ? [{ type: 'oauth2', scopes: ['tasks.read'] }]
+          : [{ type: 'noauth' }],
         ui: { resourceUri: 'ui://widget/task-form.html' },
         'openai/toolInvocation/invoking': 'タスク情報を取得中...',
         'openai/toolInvocation/invoked': 'タスク情報を取得しました',
       },
     },
     async (input, context: any) => {
-      const bearerToken = resolveBearerToken(context);
-      const authInfo = bearerToken ? await verifier.verify(bearerToken) : null;
-      if (!authInfo) {
-        return unauthorizedSessionResponse(config.publicUrl);
+      if (config.authEnabled) {
+        const bearerToken = resolveBearerToken(context);
+        const authInfo = bearerToken ? await verifier.verify(bearerToken) : null;
+        if (!authInfo) {
+          return unauthorizedSessionResponse(config.publicUrl);
+        }
       }
 
       const sessionToken = resolveSessionToken(input, context);

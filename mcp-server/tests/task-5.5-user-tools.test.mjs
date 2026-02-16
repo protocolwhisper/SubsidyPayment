@@ -20,18 +20,18 @@ const setPreferencesSrc = readFileSync(setPreferencesPath, 'utf8');
 assert.match(getUserStatusSrc, /registerAppTool\(\s*server\s*,\s*['"]get_user_status['"]/, 'must register get_user_status');
 assert.match(getUserStatusSrc, /readOnlyHint:\s*true/, 'get_user_status must set readOnlyHint: true');
 assert.match(getUserStatusSrc, /resourceUri:\s*['"]ui:\/\/widget\/user-dashboard\.html['"]/, 'get_user_status must bind user-dashboard widget');
-assert.match(getUserStatusSrc, /securitySchemes:\s*\[\s*\{\s*type:\s*['"]oauth2['"]/, 'get_user_status must require oauth2');
+assert.match(getUserStatusSrc, /securitySchemes:[\s\S]*type:\s*['"]oauth2['"]/, 'get_user_status must require oauth2');
 assert.match(getUserStatusSrc, /getUserStatus\(/, 'must call BackendClient.getUserStatus');
 assert.match(getUserStatusSrc, /session_token/, 'get_user_status must use session_token');
 
 assert.match(getPreferencesSrc, /registerAppTool\(\s*server\s*,\s*['"]get_preferences['"]/, 'must register get_preferences');
 assert.match(getPreferencesSrc, /readOnlyHint:\s*true/, 'get_preferences must set readOnlyHint: true');
-assert.match(getPreferencesSrc, /securitySchemes:\s*\[\s*\{\s*type:\s*['"]oauth2['"]/, 'get_preferences must require oauth2');
+assert.match(getPreferencesSrc, /securitySchemes:[\s\S]*type:\s*['"]oauth2['"]/, 'get_preferences must require oauth2');
 assert.match(getPreferencesSrc, /getPreferences\(/, 'must call BackendClient.getPreferences');
 assert.match(getPreferencesSrc, /session_token/, 'get_preferences must use session_token');
 
 assert.match(setPreferencesSrc, /registerAppTool\(\s*server\s*,\s*['"]set_preferences['"]/, 'must register set_preferences');
-assert.match(setPreferencesSrc, /securitySchemes:\s*\[\s*\{\s*type:\s*['"]oauth2['"]/, 'set_preferences must require oauth2');
+assert.match(setPreferencesSrc, /securitySchemes:[\s\S]*type:\s*['"]oauth2['"]/, 'set_preferences must require oauth2');
 assert.match(setPreferencesSrc, /preferences:\s*z\.array\(\s*z\.object\(/, 'set_preferences must validate preferences array');
 assert.match(setPreferencesSrc, /setPreferences\(/, 'must call BackendClient.setPreferences');
 assert.match(setPreferencesSrc, /session_token/, 'set_preferences must use session_token');

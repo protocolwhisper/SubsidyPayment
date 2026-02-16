@@ -67,17 +67,21 @@ export function registerGetUserStatusTool(server: McpServer, config: BackendConf
         openWorldHint: false,
       },
       _meta: {
-        securitySchemes: [{ type: 'oauth2', scopes: ['user.read'] }],
+        securitySchemes: config.authEnabled
+          ? [{ type: 'oauth2', scopes: ['user.read'] }]
+          : [{ type: 'noauth' }],
         ui: { resourceUri: 'ui://widget/user-dashboard.html' },
         'openai/toolInvocation/invoking': 'ステータスを確認中...',
         'openai/toolInvocation/invoked': 'ステータスを取得しました',
       },
     },
     async (input, context: any) => {
-      const bearerToken = resolveBearerToken(context);
-      const authInfo = bearerToken ? await verifier.verify(bearerToken) : null;
-      if (!authInfo) {
-        return unauthorizedSessionResponse(config.publicUrl);
+      if (config.authEnabled) {
+        const bearerToken = resolveBearerToken(context);
+        const authInfo = bearerToken ? await verifier.verify(bearerToken) : null;
+        if (!authInfo) {
+          return unauthorizedSessionResponse(config.publicUrl);
+        }
       }
 
       const sessionToken = resolveSessionToken(input, context);
