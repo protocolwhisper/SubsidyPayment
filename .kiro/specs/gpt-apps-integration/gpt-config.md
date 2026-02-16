@@ -119,41 +119,80 @@
 
 ---
 
-## 4. GPT Builder 設定手順
+## 4. Render デプロイ手順
 
-### 4.1 Custom GPT の作成
+### 4.1 Render でのサービス作成
 
-1. [ChatGPT](https://chat.openai.com) にアクセスし、左サイドバーの「Explore GPTs」→「Create」を選択
+1. [Render Dashboard](https://dashboard.render.com) にアクセス
+2. 「New +」→「Blueprint」を選択し、GitHub リポジトリ `cruujon/SubsidyPayment` を接続
+3. ブランチは `deploy-test` を選択（`render.yaml` で `branch: deploy-test` が指定済み）
+4. Blueprint が `payloadexchange-backend` サービスを自動検出するので「Apply」
+
+### 4.2 PostgreSQL データベースの作成
+
+1. Render Dashboard で「New +」→「PostgreSQL」を選択
+2. Name: `subsidypayment-db`、Plan: Free を選択して作成
+3. 作成後、「Internal Database URL」をコピー
+
+### 4.3 環境変数の設定
+
+`payloadexchange-backend` サービスの Environment 設定で以下を設定:
+
+| 変数名 | 値 | 説明 |
+|---|---|---|
+| `DATABASE_URL` | (上記でコピーした Internal Database URL) | PostgreSQL 接続文字列 |
+| `PUBLIC_BASE_URL` | `https://payloadexchange-backend.onrender.com` | Render が割り当てた公開 URL |
+| `GPT_ACTIONS_API_KEY` | (ランダムな安全な文字列を生成) | GPT Actions 認証用 API キー |
+| `CORS_ALLOW_ORIGINS` | `https://chatgpt.com,https://chat.openai.com` | ChatGPT からのリクエストを許可 |
+
+> **GPT_ACTIONS_API_KEY の生成**: `openssl rand -base64 32` などで安全なランダム文字列を生成してください。この値は GPT Builder の認証設定にも使います。
+
+### 4.4 デプロイの確認
+
+1. 環境変数を保存すると自動デプロイが開始される
+2. デプロイ完了後、以下の URL にアクセスして動作確認:
+   - ヘルスチェック: `https://<PUBLIC_BASE_URL>/health` → `{"message":"ok"}`
+   - OpenAPI スキーマ: `https://<PUBLIC_BASE_URL>/.well-known/openapi.yaml` → YAML が返る
+   - プライバシーポリシー: `https://<PUBLIC_BASE_URL>/privacy` → HTML ページが表示
+
+---
+
+## 5. GPT Builder 設定手順
+
+### 5.1 Custom GPT の作成
+
+1. [ChatGPT](https://chatgpt.com) にアクセスし、左サイドバーの「Explore GPTs」→「Create」を選択
 2. 「Configure」タブに切り替え
 
-### 4.2 基本設定
+### 5.2 基本設定
 
 1. **Name**: `SubsidyPayment アシスタント`
 2. **Description**: `スポンサー付き x402 サービスの検索・タスク実行・支払いを支援します`
 3. **Instructions**: 上記セクション 2 のシステムプロンプトを貼り付け
 4. **Conversation starters**: 上記セクション 3 の 4 つを入力
 
-### 4.3 Actions の設定
+### 5.3 Actions の設定
 
 1. 「Actions」セクションで「Create new action」をクリック
 2. 「Import from URL」に `https://<PUBLIC_BASE_URL>/.well-known/openapi.yaml` を入力
-3. スキーマがインポートされ、6 つの Action（searchServices, authenticateUser, getTaskDetails, completeTask, runService, getUserStatus）が表示されることを確認
+3. スキーマがインポートされ、Actions（searchServices, authenticateUser, getTaskDetails, completeTask, runService, getUserStatus, getPreferences, setPreferences）が表示されることを確認
 4. 「Authentication」で「API Key」を選択し、以下を設定:
    - **Auth Type**: Bearer
-   - **API Key**: 環境変数 `GPT_ACTIONS_API_KEY` に設定した値を入力
+   - **API Key**: Render に設定した `GPT_ACTIONS_API_KEY` と同じ値を入力
 
-### 4.4 プライバシーポリシー
+### 5.4 プライバシーポリシー
 
 1. 「Additional Settings」の「Privacy policy」に `https://<PUBLIC_BASE_URL>/privacy` を入力
 
-### 4.5 公開設定
+### 5.5 公開設定
 
 1. 初期フェーズでは「Only people with a link」を選択（GPT Store 公開は後日）
 2. 「Save」をクリックして GPT を保存
+3. 共有リンクを取得し、テスターに配布
 
 ---
 
-## 5. 要件カバレッジ
+## 6. 要件カバレッジ
 
 | 要件ID | 要件名 | 対応箇所 |
 |---|---|---|

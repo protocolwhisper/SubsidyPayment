@@ -11,8 +11,15 @@ services:
         sync: false
       - key: RUST_LOG
         value: info
+      - key: GPT_ACTIONS_API_KEY
+        sync: false
+      - key: CORS_ALLOW_ORIGINS
+        sync: false
+      - key: AGENT_DISCOVERY_API_KEY
+        sync: false
     healthCheckPath: /health
     plan: free
+    branch: deploy-test
 
   - type: web
     name: subsidypayment-mcp
