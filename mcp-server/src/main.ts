@@ -29,13 +29,16 @@ export function createApp() {
     })
   );
 
-  app.get('/health', (_req, res) => {
+  const healthHandler = (_req: express.Request, res: express.Response) => {
     res.json({
       status: 'ok',
       version: process.env.npm_package_version ?? '0.1.0',
       uptime: process.uptime(),
     });
-  });
+  };
+
+  app.get('/', healthHandler);
+  app.get('/health', healthHandler);
 
   app.get('/.well-known/oauth-protected-resource', oauthProtectedResourceHandler(config));
   app.get('/.well-known/oauth-authorization-server', oauthAuthorizationServerRedirectHandler(config));
