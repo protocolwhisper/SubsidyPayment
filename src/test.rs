@@ -3517,11 +3517,17 @@ async fn gpt_builder_served_schema_matches_source_file() {
     let body = to_bytes(response.into_body(), 1_000_000).await.unwrap();
     let served = String::from_utf8_lossy(&body);
     let source = include_str!("../openapi.yaml");
+    // serve_openapi_yaml replaces the placeholder URL with PUBLIC_BASE_URL
+    // (defaults to DEFAULT_PUBLIC_BASE_URL when env var is unset)
+    let expected = source.replace(
+        "https://subsidypayment.example.com",
+        crate::types::DEFAULT_PUBLIC_BASE_URL,
+    );
 
     assert_eq!(
         served.trim(),
-        source.trim(),
-        "Served OpenAPI schema must exactly match openapi.yaml source file"
+        expected.trim(),
+        "Served OpenAPI schema must match openapi.yaml with URL substitution applied"
     );
 }
 
