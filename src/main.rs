@@ -336,14 +336,14 @@ async fn create_profile(
             tools_used: payload.tools_used,
             attributes: payload.attributes,
             created_at: Utc::now(),
-            source: None,
+            source: Some("web".to_string()),
         };
 
         let inserted = sqlx::query_as::<_, UserProfile>(
             r#"
-            insert into users (id, email, region, roles, tools_used, attributes, created_at)
-            values ($1, $2, $3, $4, $5, $6, $7)
-            returning id, email, region, roles, tools_used, attributes, created_at
+            insert into users (id, email, region, roles, tools_used, attributes, created_at, source)
+            values ($1, $2, $3, $4, $5, $6, $7, $8)
+            returning id, email, region, roles, tools_used, attributes, created_at, source
             "#,
         )
         .bind(profile.id)
@@ -353,6 +353,7 @@ async fn create_profile(
         .bind(profile.tools_used)
         .bind(DbJson(profile.attributes))
         .bind(profile.created_at)
+        .bind(profile.source)
         .fetch_one(&db)
         .await
         .map_err(|err| ApiError::database(StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
@@ -379,7 +380,7 @@ async fn list_profiles(State(state): State<SharedState>) -> Response {
 
         let profiles = sqlx::query_as::<_, UserProfile>(
             r#"
-            select id, email, region, roles, tools_used, attributes, created_at
+            select id, email, region, roles, tools_used, attributes, created_at, source
             from users
             order by created_at desc
             "#,
@@ -427,14 +428,14 @@ async fn register_user(
             tools_used: payload.tools_used,
             attributes: payload.attributes,
             created_at: Utc::now(),
-            source: None,
+            source: Some("web".to_string()),
         };
 
         let inserted = sqlx::query_as::<_, UserProfile>(
             r#"
-            insert into users (id, email, region, roles, tools_used, attributes, created_at)
-            values ($1, $2, $3, $4, $5, $6, $7)
-            returning id, email, region, roles, tools_used, attributes, created_at
+            insert into users (id, email, region, roles, tools_used, attributes, created_at, source)
+            values ($1, $2, $3, $4, $5, $6, $7, $8)
+            returning id, email, region, roles, tools_used, attributes, created_at, source
             "#,
         )
         .bind(profile.id)
@@ -444,6 +445,7 @@ async fn register_user(
         .bind(profile.tools_used)
         .bind(DbJson(profile.attributes))
         .bind(profile.created_at)
+        .bind(profile.source)
         .fetch_one(&db)
         .await
         .map_err(|err| ApiError::database(StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
