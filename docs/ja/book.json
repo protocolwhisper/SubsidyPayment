@@ -1,0 +1,27 @@
+{
+  "title": "PayloadExchange ドキュメント",
+  "description": "AIエージェント開発者とスポンサーをつなぐマーケットプレイス",
+  "author": "PayloadExchange",
+  "language": "ja",
+  "root": "./",
+  "structure": {
+    "readme": "README.md",
+    "summary": "SUMMARY.md"
+  },
+  "styles": {
+    "website": "styles/website.css"
+  },
+  "plugins": [
+    "theme-default",
+    "lunr",
+    "highlight",
+    "fontsettings"
+  ],
+  "pluginsConfig": {
+    "fontsettings": {
+      "theme": "night",
+      "family": "sans",
+      "size": 2
+    }
+  }
+}
