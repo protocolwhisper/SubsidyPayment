@@ -113,7 +113,7 @@ describe('MCP tools unit tests (task 9.1)', () => {
     registerAndCaptureTools();
 
     expect(mocked.registrations.size).toBe(8);
-    expect(getRegistered('search_services').definition.securitySchemes).toEqual([{ type: 'noauth' }]);
+    expect(getRegistered('search_services').definition._meta.securitySchemes).toEqual([{ type: 'noauth' }]);
 
     const oauthTools = [
       'authenticate_user',
@@ -126,7 +126,7 @@ describe('MCP tools unit tests (task 9.1)', () => {
     ];
 
     for (const name of oauthTools) {
-      const security = getRegistered(name).definition.securitySchemes;
+      const security = getRegistered(name).definition._meta.securitySchemes;
       expect(Array.isArray(security)).toBe(true);
       expect(security[0].type).toBe('oauth2');
     }

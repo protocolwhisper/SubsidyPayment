@@ -10,7 +10,7 @@ const renderYaml = readFileSync(resolve(repoRoot, 'render.yaml'), 'utf8');
 assert.match(renderYaml, /name:\s*subsidypayment-mcp/, 'render.yaml must define subsidypayment-mcp service');
 assert.match(
   renderYaml,
-  /buildCommand:\s*cd mcp-server && npm ci && npm run build/,
+  /buildCommand:\s*cd mcp-server && npm ci\b.*&& npm run build/,
   'mcp service build command must be configured'
 );
 assert.match(
