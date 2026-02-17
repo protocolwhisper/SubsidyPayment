@@ -70,6 +70,23 @@ export interface GptRunServiceResponse {
   message: string;
 }
 
+export interface ProxyRunServiceResponse {
+  service: string;
+  output: string;
+  payment_mode: "sponsored" | "user_direct";
+  sponsored_by: string | null;
+  tx_hash: string | null;
+}
+
+export interface PaymentRequiredResponse {
+  service: string;
+  amount_cents: number;
+  accepted_header: string;
+  payment_required: string;
+  message: string;
+  next_step: string;
+}
+
 export interface GptUserStatusResponse {
   user_id: string;
   email: string;
@@ -179,6 +196,11 @@ export interface CompleteTaskInput {
 export interface RunServiceInput {
   service: string;
   session_token: string;
+  input: string;
+}
+
+export interface ProxyRunInput {
+  user_id: string;
   input: string;
 }
 

@@ -5,6 +5,9 @@ import type {
   CompleteTaskInput,
   GetPreferencesParams,
   GetUserRecordParams,
+  PaymentRequiredResponse,
+  ProxyRunInput,
+  ProxyRunServiceResponse,
   GetTaskDetailsParams,
   GetUserStatusParams,
   GptAuthResponse,
@@ -93,6 +96,13 @@ export class BackendClient {
     });
   }
 
+  async runProxyService(service: string, payload: ProxyRunInput): Promise<ProxyRunServiceResponse> {
+    return this.request<ProxyRunServiceResponse>(`/proxy/${encodeURIComponent(service)}/run`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
   async getUserStatus(sessionToken: string): Promise<GptUserStatusResponse> {
     const params: GetUserStatusParams = { session_token: sessionToken };
     return this.request<GptUserStatusResponse>(
@@ -163,8 +173,16 @@ export class BackendClient {
   }
 
   private async safeParseError(response: Response): Promise<{ code: string; message: string; details?: unknown }> {
+    let parsedBody: unknown = null;
+
     try {
-      const body = (await response.json()) as BackendErrorResponse;
+      parsedBody = await response.json();
+    } catch {
+      // ignore parse error
+    }
+
+    if (parsedBody) {
+      const body = parsedBody as BackendErrorResponse;
       if (body?.error?.code && body?.error?.message) {
         return {
           code: body.error.code,
@@ -172,13 +190,33 @@ export class BackendClient {
           details: body.error.details,
         };
       }
-    } catch {
-      // ignore parse error
+    }
+
+    if (response.status === 402 && this.isPaymentRequiredResponse(parsedBody)) {
+      const payment = parsedBody as PaymentRequiredResponse;
+      return {
+        code: 'payment_required',
+        message: payment.message || 'payment required',
+        details: payment,
+      };
     }
 
     return {
       code: 'backend_error',
       message: `Rust backend request failed with status ${response.status}`,
     };
+  }
+
+  private isPaymentRequiredResponse(value: unknown): value is PaymentRequiredResponse {
+    if (!value || typeof value !== 'object') return false;
+    const candidate = value as Record<string, unknown>;
+    return (
+      typeof candidate.service === 'string' &&
+      typeof candidate.amount_cents === 'number' &&
+      typeof candidate.accepted_header === 'string' &&
+      typeof candidate.payment_required === 'string' &&
+      typeof candidate.message === 'string' &&
+      typeof candidate.next_step === 'string'
+    );
   }
 }

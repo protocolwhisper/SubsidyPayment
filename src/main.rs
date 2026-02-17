@@ -1266,6 +1266,10 @@ async fn run_proxy(
     let mut match_with_task: Option<Campaign> = None;
 
     for campaign in campaigns {
+        if !campaign.target_tools.iter().any(|tool| tool == &service) {
+            continue;
+        }
+
         if !user_matches_campaign(&user, &campaign) {
             continue;
         }
@@ -1291,28 +1295,37 @@ async fn run_proxy(
     }
 
     if let Some(campaign) = match_with_task {
-        let new_remaining = campaign.budget_remaining_cents.saturating_sub(price);
-        let still_active = new_remaining >= price && new_remaining > 0;
-
-        // Update campaign budget in database
         let budget_update = sqlx::query(
-            r#"
-            update campaigns
-            set budget_remaining_cents = $1, active = $2
-            where id = $3
-            "#,
+            "UPDATE campaigns
+             SET budget_remaining_cents = budget_remaining_cents - $1,
+                 active = (budget_remaining_cents - $1) >= $1 AND (budget_remaining_cents - $1) > 0
+             WHERE id = $2
+               AND active = true
+               AND budget_remaining_cents >= $1",
         )
-        .bind(new_remaining as i64)
-        .bind(still_active)
+        .bind(price as i64)
         .bind(campaign.id)
         .execute(&db)
         .await
         .map_err(|err| ApiError::database(StatusCode::INTERNAL_SERVER_ERROR, err.to_string()));
-        if let Err(err) = budget_update {
+        let budget_update = match budget_update {
+            Ok(result) => result,
+            Err(err) => {
+                return respond(
+                    &metrics,
+                    "/proxy/:service/run",
+                    Err::<Response, ApiError>(err),
+                );
+            }
+        };
+
+        if budget_update.rows_affected() == 0 {
             return respond(
                 &metrics,
                 "/proxy/:service/run",
-                Err::<Response, ApiError>(err),
+                Err::<Response, ApiError>(ApiError::precondition(
+                    "Sponsor budget is no longer sufficient for this service call.",
+                )),
             );
         }
 

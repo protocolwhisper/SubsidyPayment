@@ -7,6 +7,7 @@ const mocked = vi.hoisted(() => ({
     getTaskDetails: vi.fn(),
     completeTask: vi.fn(),
     runService: vi.fn(),
+    runProxyService: vi.fn(),
     getUserStatus: vi.fn(),
     getUserRecord: vi.fn(),
     getPreferences: vi.fn(),
@@ -34,6 +35,7 @@ vi.mock('../../src/backend-client.ts', () => {
         getTaskDetails = mocked.getTaskDetails;
         completeTask = mocked.completeTask;
         runService = mocked.runService;
+        runProxyService = mocked.runProxyService;
         getUserStatus = mocked.getUserStatus;
         getUserRecord = mocked.getUserRecord;
         getPreferences = mocked.getPreferences;
@@ -85,6 +87,7 @@ describe('MCP tools unit tests (task 9.1)', () => {
         mocked.getTaskDetails.mockReset();
         mocked.completeTask.mockReset();
         mocked.runService.mockReset();
+        mocked.runProxyService.mockReset();
         mocked.getUserStatus.mockReset();
         mocked.getUserRecord.mockReset();
         mocked.getPreferences.mockReset();

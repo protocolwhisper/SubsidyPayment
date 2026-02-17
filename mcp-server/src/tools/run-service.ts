@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { TokenVerifier } from '../auth/token-verifier.ts';
 import { BackendClient, BackendClientError } from '../backend-client.ts';
 import type { BackendConfig } from '../config.ts';
+import type { PaymentRequiredResponse } from '../types.ts';
 import { resolveOrCreateNoAuthSessionToken } from './session-manager.ts';
 
 const runServiceInputSchema = z.object({
@@ -12,6 +13,8 @@ const runServiceInputSchema = z.object({
   input: z.string(),
   session_token: z.string().optional(),
 });
+
+const DIRECT_PAYMENT_SENTINEL = '__pay_direct__';
 
 function unauthorizedSessionResponse(publicUrl: string) {
   return {
@@ -37,6 +40,153 @@ function resolveBearerToken(context: any): string | null {
   return null;
 }
 
+function parsePaymentRequired(details: unknown): PaymentRequiredResponse | null {
+  if (!details || typeof details !== 'object') return null;
+  const candidate = details as Record<string, unknown>;
+  if (
+    typeof candidate.service !== 'string' ||
+    typeof candidate.amount_cents !== 'number' ||
+    typeof candidate.accepted_header !== 'string' ||
+    typeof candidate.payment_required !== 'string' ||
+    typeof candidate.message !== 'string' ||
+    typeof candidate.next_step !== 'string'
+  ) {
+    return null;
+  }
+
+  return {
+    service: candidate.service,
+    amount_cents: candidate.amount_cents,
+    accepted_header: candidate.accepted_header,
+    payment_required: candidate.payment_required,
+    message: candidate.message,
+    next_step: candidate.next_step,
+  };
+}
+
+function isTaskRequiredMessage(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return normalized.includes('complete the required task') || normalized.includes('complete sponsor task');
+}
+
+function isNoSponsorMessage(message: string): boolean {
+  return message.toLowerCase().includes('no sponsored campaign found');
+}
+
+function serviceExecutedResult(response: {
+  service: string;
+  payment_mode: 'sponsored' | 'user_direct';
+  sponsored_by: string | null;
+  tx_hash: string | null;
+  message: string;
+  output: string;
+}) {
+  return {
+    structuredContent: {
+      mode: 'service_executed',
+      service: response.service,
+      payment_mode: response.payment_mode,
+      sponsored_by: response.sponsored_by,
+      tx_hash: response.tx_hash,
+      message: response.message,
+    },
+    content: [{ type: 'text' as const, text: response.message }],
+    _meta: {
+      output: response.output,
+    },
+  };
+}
+
+function paymentRequiredResult(payment: PaymentRequiredResponse) {
+  return {
+    structuredContent: {
+      mode: 'payment_required',
+      service: payment.service,
+      amount_cents: payment.amount_cents,
+      accepted_header: payment.accepted_header,
+      payment_required: payment.payment_required,
+      next_step: payment.next_step,
+      payment_mode: 'user_direct',
+    },
+    content: [{ type: 'text' as const, text: `x402 payment required. ${payment.next_step}` }],
+    _meta: {
+      payment_required: payment,
+    },
+  };
+}
+
+async function directPayFallbackResult(
+  client: BackendClient,
+  service: string,
+  inputPayload: string,
+  sessionToken: string
+) {
+  const status = await client.getUserStatus(sessionToken);
+
+  try {
+    const response = await client.runProxyService(service, {
+      user_id: status.user_id,
+      input: inputPayload.trim().toLowerCase() === DIRECT_PAYMENT_SENTINEL ? 'direct-pay-request' : inputPayload,
+    });
+
+    return {
+      structuredContent: {
+        mode: 'service_executed',
+        service: response.service,
+        payment_mode: response.payment_mode,
+        sponsored_by: response.sponsored_by,
+        tx_hash: response.tx_hash,
+        message: 'Service executed through proxy.',
+      },
+      content: [{ type: 'text' as const, text: 'Service executed through proxy.' }],
+      _meta: {
+        output: response.output,
+      },
+    };
+  } catch (error) {
+    if (error instanceof BackendClientError && error.code === 'payment_required') {
+      const payment = parsePaymentRequired(error.details);
+      if (payment) return paymentRequiredResult(payment);
+    }
+    throw error;
+  }
+}
+
+async function taskRequiredResult(client: BackendClient, service: string, sessionToken: string) {
+  const searchResponse = await client.searchServices({
+    q: service,
+    session_token: sessionToken,
+  });
+  const campaign = searchResponse.services.find((item) => item.service_type === 'campaign' && item.active);
+  if (!campaign) return null;
+
+  const task = await client.getTaskDetails(campaign.service_id, sessionToken);
+  return {
+    structuredContent: {
+      mode: 'task_required',
+      service,
+      campaign_id: task.campaign_id,
+      campaign_name: task.campaign_name,
+      sponsor: task.sponsor,
+      required_task: task.required_task,
+      task_description: task.task_description,
+      task_input_format: task.task_input_format,
+      subsidy_amount_cents: task.subsidy_amount_cents,
+      task_options: ['Enter email', 'Answer survey', 'Signup / Hackathon'],
+      payment_mode: 'sponsored',
+    },
+    content: [
+      {
+        type: 'text' as const,
+        text: `Free option available. Complete '${task.required_task}' to unlock sponsor coverage, or switch to direct x402 payment.`,
+      },
+    ],
+    _meta: {
+      full_response: task,
+    },
+  };
+}
+
 export function registerRunServiceTool(server: McpServer, config: BackendConfig): void {
   const client = new BackendClient(config);
   const verifier = new TokenVerifier({
@@ -60,6 +210,7 @@ export function registerRunServiceTool(server: McpServer, config: BackendConfig)
         securitySchemes: config.authEnabled
           ? [{ type: 'oauth2', scopes: ['services.execute'] }]
           : [{ type: 'noauth' }],
+        ui: { resourceUri: 'ui://widget/service-access.html' },
         'openai/toolInvocation/invoking': 'Running service...',
         'openai/toolInvocation/invoked': 'Service run completed',
       },
@@ -73,32 +224,64 @@ export function registerRunServiceTool(server: McpServer, config: BackendConfig)
         }
       }
 
-      try {
-        const sessionToken = await resolveOrCreateNoAuthSessionToken(client, config, input, context);
-        if (!sessionToken) {
-          return unauthorizedSessionResponse(config.publicUrl);
-        }
+      const sessionToken = await resolveOrCreateNoAuthSessionToken(client, config, input, context);
+      if (!sessionToken) {
+        return unauthorizedSessionResponse(config.publicUrl);
+      }
 
+      if (input.input.trim().toLowerCase() === DIRECT_PAYMENT_SENTINEL) {
+        try {
+          return await directPayFallbackResult(client, input.service, input.input, sessionToken);
+        } catch (error) {
+          if (error instanceof BackendClientError) {
+            return {
+              content: [{ type: 'text' as const, text: error.message }],
+              _meta: { code: error.code, details: error.details },
+              isError: true,
+            };
+          }
+          return {
+            content: [{ type: 'text' as const, text: 'An unexpected error occurred while preparing direct payment.' }],
+            _meta: { code: 'unexpected_error' },
+            isError: true,
+          };
+        }
+      }
+
+      try {
         const response = await client.runService(input.service, {
           service: input.service,
           session_token: sessionToken,
           input: input.input,
         });
 
-        return {
-          structuredContent: {
-            service: response.service,
-            payment_mode: response.payment_mode,
-            sponsored_by: response.sponsored_by,
-            tx_hash: response.tx_hash,
-          },
-          content: [{ type: 'text' as const, text: response.message }],
-          _meta: {
-            output: response.output,
-          },
-        };
+        return serviceExecutedResult(response);
       } catch (error) {
         if (error instanceof BackendClientError) {
+          if (error.code === 'payment_required') {
+            const payment = parsePaymentRequired(error.details);
+            if (payment) return paymentRequiredResult(payment);
+          }
+
+          if (error.code === 'precondition_required') {
+            if (isTaskRequiredMessage(error.message)) {
+              try {
+                const taskResult = await taskRequiredResult(client, input.service, sessionToken);
+                if (taskResult) return taskResult;
+              } catch {
+                // fall through to backend error
+              }
+            }
+
+            if (isNoSponsorMessage(error.message)) {
+              try {
+                return await directPayFallbackResult(client, input.service, input.input, sessionToken);
+              } catch {
+                // fall through to backend error
+              }
+            }
+          }
+
           return {
             content: [{ type: 'text' as const, text: error.message }],
             _meta: { code: error.code, details: error.details },

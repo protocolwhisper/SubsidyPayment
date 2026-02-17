@@ -21,6 +21,7 @@ export default defineConfig({
       input: {
         'services-list': resolve(__dirname, 'src/widgets/src/services-list.html'),
         'task-form': resolve(__dirname, 'src/widgets/src/task-form.html'),
+        'service-access': resolve(__dirname, 'src/widgets/src/service-access.html'),
         'user-dashboard': resolve(__dirname, 'src/widgets/src/user-dashboard.html'),
       },
       output: {
