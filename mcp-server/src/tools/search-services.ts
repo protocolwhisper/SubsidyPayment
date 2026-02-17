@@ -14,14 +14,21 @@ const searchServicesInputSchema = z.object({
 });
 
 function toSearchServicesResult(response: GptSearchResponse) {
+  const services = response.services.filter((service) => service.service_type === 'campaign');
+  const totalCount = services.length;
+  const message =
+    totalCount === 0
+      ? 'No campaign-backed sponsored services found. Please create or activate a sponsor campaign first.'
+      : `Found ${totalCount} campaign-backed sponsored service(s).`;
+
   return {
     structuredContent: {
-      services: response.services,
-      total_count: response.total_count,
+      services,
+      total_count: totalCount,
       applied_filters: response.applied_filters,
       available_categories: response.available_categories,
     },
-    content: [{ type: 'text' as const, text: response.message }],
+    content: [{ type: 'text' as const, text: message }],
     _meta: {
       full_response: response,
     },

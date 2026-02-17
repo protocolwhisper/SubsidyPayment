@@ -126,8 +126,25 @@
         return app?.callTool?.(name, input);
       }
 
+      function resolvePrimaryServiceKey(service) {
+        if (Array.isArray(service?.category) && service.category.length > 0) {
+          const first = service.category[0];
+          if (typeof first === 'string' && first.trim().length > 0) {
+            return first.trim();
+          }
+        }
+        if (typeof service?.name === 'string' && service.name.trim().length > 0) {
+          return service.name.trim().toLowerCase().replace(/\s+/g, '-');
+        }
+        return '';
+      }
+
       async function onSelect(service) {
-        const nextState = { selectedServiceId: service.service_id };
+        const nextState = {
+          selectedServiceId: service.service_id,
+          selectedServiceKey: resolvePrimaryServiceKey(service),
+          selectedServiceName: service.name ?? '',
+        };
         await setWidgetState(nextState);
         await callTool('get_task_details', { campaign_id: service.service_id });
       }

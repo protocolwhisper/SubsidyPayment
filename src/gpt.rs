@@ -11,6 +11,7 @@ use tokio::sync::Mutex;
 use uuid::Uuid;
 
 use chrono::Utc;
+use serde_json::json;
 
 use crate::error::{ApiError, ApiResult};
 use crate::types::{
@@ -19,9 +20,10 @@ use crate::types::{
     GptPreferencesParams, GptPreferencesResponse, GptRunServiceRequest, GptRunServiceResponse,
     GptSearchParams, GptSearchResponse, GptServiceItem, GptSetPreferencesRequest,
     GptSetPreferencesResponse, GptTaskInputFormat, GptTaskParams, GptTaskResponse,
-    GptUserStatusParams, GptUserStatusResponse, SharedState, TaskPreference, UserProfile,
+    GptUserStatusParams, GptUserStatusResponse, SharedState, SponsoredApi,
+    SponsoredApiRow as FullSponsoredApiRow, TaskPreference, UserProfile,
 };
-use crate::utils::respond;
+use crate::utils::{call_upstream, respond};
 
 pub struct RateLimiter {
     tokens: u32,
@@ -168,7 +170,7 @@ pub async fn gpt_search_services(
     }
 
     // Query sponsored_apis (active=true)
-    let api_rows = sqlx::query_as::<_, SponsoredApiRow>(
+    let api_rows = sqlx::query_as::<_, SearchSponsoredApiRow>(
         "SELECT id, name, sponsor, service_key, price_cents, active \
          FROM sponsored_apis WHERE active = true"
     )
@@ -502,7 +504,7 @@ pub fn calculate_score(
 }
 
 #[derive(sqlx::FromRow)]
-struct SponsoredApiRow {
+struct SearchSponsoredApiRow {
     id: Uuid,
     name: String,
     sponsor: String,
@@ -777,14 +779,30 @@ pub async fn gpt_run_service(
 ) -> Response {
     let metrics = { state.inner.read().await.metrics.clone() };
     let result: ApiResult<Json<GptRunServiceResponse>> = async {
-    let (db, price) = {
+    let (db, price, http, sponsored_api_timeout_secs) = {
         let s = state.inner.read().await;
         let db = s.db.clone().ok_or_else(|| ApiError::internal("database not configured"))?;
         let price = s.service_price(&service);
-        (db, price)
+        let http = s.http.clone();
+        let sponsored_api_timeout_secs = s.config.sponsored_api_timeout_secs;
+        (db, price, http, sponsored_api_timeout_secs)
     };
 
     let user_id = resolve_session(&db, payload.session_token).await?;
+
+    if payload.input.trim().eq_ignore_ascii_case("__pay_direct__") {
+        let message = format!(
+            "Direct payment selected. To continue without subsidy, call POST /proxy/{service}/run with your PAYMENT-SIGNATURE header."
+        );
+        return Ok(Json(GptRunServiceResponse {
+            service,
+            output: "Direct payment requested.".to_string(),
+            payment_mode: "user_direct".to_string(),
+            sponsored_by: None,
+            tx_hash: None,
+            message,
+        }));
+    }
 
     // Load user profile
     let user = sqlx::query_as::<_, UserProfile>(
@@ -886,10 +904,52 @@ pub async fn gpt_run_service(
         .await
         .map_err(|e| ApiError::internal(format!("payment insert failed: {e}")))?;
 
-        let output = format!(
-            "Executed '{}' task for user {} with input: {}",
-            service, user_id, payload.input
-        );
+        let maybe_sponsored_api = sqlx::query_as::<_, FullSponsoredApiRow>(
+            r#"
+            select id, name, sponsor, description, upstream_url, upstream_method,
+                upstream_headers, price_cents, budget_total_cents, budget_remaining_cents,
+                active, service_key, created_at
+            from sponsored_apis
+            where service_key = $1 and active = true
+            order by created_at desc
+            limit 1
+            "#,
+        )
+        .bind(&service)
+        .fetch_optional(&db)
+        .await
+        .map_err(|e| ApiError::internal(format!("sponsored api lookup failed: {e}")))?
+        .map(|row| {
+            SponsoredApi::try_from(row)
+                .map_err(|e| ApiError::internal(format!("sponsored api parse failed: {e}")))
+        })
+        .transpose()?;
+
+        let upstream_payload: serde_json::Value = if payload.input.trim().is_empty() {
+            json!({})
+        } else {
+            serde_json::from_str(&payload.input)
+                .unwrap_or_else(|_| json!({ "input": payload.input.clone() }))
+        };
+
+        let (output, message) = if let Some(api) = maybe_sponsored_api {
+            let (upstream_status, upstream_body) =
+                call_upstream(&http, &api, upstream_payload, sponsored_api_timeout_secs).await?;
+            (
+                format!(
+                    "upstream_status={upstream_status}; upstream_body={upstream_body}"
+                ),
+                "Service executed successfully. This call was sponsored and routed to the upstream API.".to_string(),
+            )
+        } else {
+            (
+                format!(
+                    "Executed '{}' task for user {} with input: {}",
+                    service, user_id, payload.input
+                ),
+                "Service executed successfully. This call was sponsored.".to_string(),
+            )
+        };
 
         return Ok(Json(GptRunServiceResponse {
             service,
@@ -897,7 +957,7 @@ pub async fn gpt_run_service(
             payment_mode: "sponsored".to_string(),
             sponsored_by: Some(campaign.sponsor),
             tx_hash: Some(tx_hash),
-            message: "Service executed successfully. This call was sponsored.".to_string(),
+            message,
         }));
     }
 

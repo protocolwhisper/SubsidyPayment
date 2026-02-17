@@ -87,6 +87,29 @@
         font-size: 13px;
       }
 
+      .task-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 8px 0 12px 0;
+      }
+
+      .task-option {
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text);
+        border-radius: 999px;
+        padding: 8px 10px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .task-option.selected {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: #fff;
+      }
+
       button[type='submit'] {
         border: 1px solid var(--accent);
         background: var(--accent);
@@ -106,6 +129,19 @@
         color: var(--danger);
         font-size: 12px;
       }
+
+      .alt-actions {
+        margin-top: 10px;
+      }
+
+      .alt-actions button {
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--muted);
+        border-radius: 8px;
+        padding: 8px 10px;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body>
@@ -113,21 +149,97 @@
     <script type="module">
       import { initWidget, notifyWidgetHeight } from './common.ts';
 
-      const { app, toolOutput } = initWidget();
+      const { app, toolOutput, widgetState } = initWidget();
       const root = document.getElementById('app');
       const data = toolOutput?.structuredContent ?? {};
       const task_input_format = data.task_input_format ?? {};
-      const requiredFields = task_input_format?.required_fields ?? [];
       const already_completed = Boolean(data.already_completed);
       const task_description = data.task_description ?? '';
       const campaign_id = data.campaign_id ?? '';
       const required_task = data.required_task ?? '';
+      const selectedServiceKey = typeof widgetState?.selectedServiceKey === 'string' ? widgetState.selectedServiceKey : '';
+      const taskType = typeof task_input_format?.task_type === 'string' && task_input_format.task_type.length > 0 ? task_input_format.task_type : 'survey';
+      const taskInstructions =
+        typeof task_input_format?.instructions === 'string'
+          ? task_input_format.instructions
+          : 'Please provide the required information.';
+      const campaignRequiredFields = Array.isArray(task_input_format?.required_fields)
+        ? task_input_format.required_fields
+        : [];
+
+      const defaultTaskOptions = [
+        {
+          id: taskType,
+          title: `Campaign Task (${taskType})`,
+          required_fields: campaignRequiredFields,
+          description: taskInstructions,
+        },
+        {
+          id: 'share_email',
+          title: 'Share Email',
+          required_fields: ['email'],
+          description: 'Share your email address with the sponsor.',
+        },
+        {
+          id: 'survey',
+          title: 'Complete Survey',
+          required_fields: ['email', 'region', 'survey_response'],
+          description: 'Answer a short sponsor survey.',
+        },
+        {
+          id: 'signup',
+          title: 'Signup / Hackathon',
+          required_fields: ['email', 'signup_proof_url'],
+          description: 'Submit signup proof for sponsor service or hackathon.',
+        },
+      ];
+
+      const taskOptions = [];
+      const seenOptionIds = new Set();
+      for (const option of defaultTaskOptions) {
+        if (seenOptionIds.has(option.id)) continue;
+        seenOptionIds.add(option.id);
+        taskOptions.push(option);
+      }
+
+      let selectedTaskOptionId =
+        typeof widgetState?.selectedTaskOptionId === 'string' && taskOptions.some((option) => option.id === widgetState.selectedTaskOptionId)
+          ? widgetState.selectedTaskOptionId
+          : taskOptions[0]?.id ?? 'survey';
 
       async function callTool(name, input) {
         return app?.callTool?.(name, input);
       }
 
+      async function setWidgetState(nextState) {
+        return app?.setWidgetState?.(nextState);
+      }
+
+      function selectedTaskOption() {
+        return taskOptions.find((option) => option.id === selectedTaskOptionId) ?? taskOptions[0] ?? null;
+      }
+
+      function buildTaskOptions() {
+        if (taskOptions.length === 0) {
+          return '<p class="desc">No task options available.</p>';
+        }
+
+        return `
+          <div class="task-options">
+            ${taskOptions
+              .map((option) => {
+                const selectedClass = option.id === selectedTaskOptionId ? 'selected' : '';
+                return `<button type="button" class="task-option ${selectedClass}" data-task-option="${option.id}">${option.title}</button>`;
+              })
+              .join('')}
+          </div>
+          <p class="desc">${selectedTaskOption()?.description ?? ''}</p>
+        `;
+      }
+
       function buildDynamicFields() {
+        const option = selectedTaskOption();
+        const requiredFields = Array.isArray(option?.required_fields) ? option.required_fields : [];
         if (!Array.isArray(requiredFields) || requiredFields.length === 0) {
           return `<div class="field"><label for="details">Details</label><textarea id="details" rows="4"></textarea></div>`;
         }
@@ -148,6 +260,7 @@
         event.preventDefault();
         const form = event.currentTarget;
         const formData = new FormData(form);
+        const option = selectedTaskOption();
 
         const detailsPayload = {};
         for (const key of formData.keys()) {
@@ -155,6 +268,8 @@
             detailsPayload[key] = formData.get(key);
           }
         }
+        detailsPayload._task_option = option?.id ?? null;
+        detailsPayload._task_option_label = option?.title ?? null;
 
         const consent = {
           data_sharing_agreed: formData.get('data_sharing_agreed') === 'on',
@@ -170,9 +285,30 @@
 
         await callTool('complete_task', {
           campaign_id,
-          task_name: required_task,
+          task_name: required_task || option?.id || 'task',
           details: JSON.stringify(detailsPayload),
           consent,
+        });
+      }
+
+      async function onSelectTaskOption(nextOptionId) {
+        selectedTaskOptionId = nextOptionId;
+        await setWidgetState({
+          ...(widgetState ?? {}),
+          selectedTaskOptionId: nextOptionId,
+        });
+        render();
+      }
+
+      async function onDirectPayment() {
+        if (!selectedServiceKey) {
+          const err = root.querySelector('.error');
+          if (err) err.textContent = 'No selected service key found. Select a service first.';
+          return;
+        }
+        await callTool('run_service', {
+          service: selectedServiceKey,
+          input: '__pay_direct__',
         });
       }
 
@@ -195,6 +331,7 @@
             <h2>Task Input Form</h2>
             <p class="desc">${task_description}</p>
             <form id="task-form">
+              ${buildTaskOptions()}
               ${buildDynamicFields()}
               <div class="checks">
                 <label><input type="checkbox" name="data_sharing_agreed" /> I agree to data sharing</label>
@@ -203,9 +340,24 @@
               </div>
               <p class="error"></p>
               <button type="submit">Submit</button>
+              <div class="alt-actions">
+                <button type="button" id="direct-payment">Use direct payment instead</button>
+              </div>
             </form>
           </section>
         `;
+
+        for (const button of root.querySelectorAll('button[data-task-option]')) {
+          button.addEventListener('click', () => {
+            const optionId = button.getAttribute('data-task-option');
+            if (optionId) {
+              onSelectTaskOption(optionId);
+            }
+          });
+        }
+
+        const directButton = root.querySelector('#direct-payment');
+        directButton?.addEventListener('click', onDirectPayment);
 
         const form = root.querySelector('#task-form');
         form?.addEventListener('submit', onSubmit);
