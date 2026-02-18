@@ -196,7 +196,9 @@ paths:
           required: false
           schema:
             type: string
-          description: Filter by service category (e.g. design, scraping)
+          description: >
+            Filter by service category or intent phrase (e.g. design, scraping,
+            crypto trading research). Natural-language phrases are mapped to relevant service keys.
         - name: max_budget_cents
           in: query
           required: false

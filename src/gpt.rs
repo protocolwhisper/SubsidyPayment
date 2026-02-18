@@ -235,11 +235,34 @@ pub async fn gpt_search_services(
         });
     }
 
-    // Filter by category (match against category/target_tools)
+    // Filter by category (supports exact key, keyword phrase, and inferred service-key mapping)
     if let Some(ref category) = params.category {
         let cat_lower = category.to_lowercase();
+        let normalized_category = normalize_service_key(&cat_lower);
+        let category_tokens = tokenize_intent_text(category);
+        let inferred_service_keys_from_category = infer_intent_service_keys(category);
+        let is_natural_language_category = category.contains(' ')
+            || category_tokens.len() >= 2
+            || !inferred_service_keys_from_category.is_empty();
+
         services.retain(|s| {
-            s.category.iter().any(|c| c.to_lowercase() == cat_lower)
+            let exact_match = s
+                .category
+                .iter()
+                .map(|c| normalize_service_key(c))
+                .any(|c| c == normalized_category);
+
+            if exact_match {
+                return true;
+            }
+
+            if !is_natural_language_category {
+                return false;
+            }
+
+            service_contains_text(s, &cat_lower)
+                || service_contains_any_token(s, &category_tokens)
+                || service_matches_inferred_keys(s, &inferred_service_keys_from_category)
         });
     }
 
