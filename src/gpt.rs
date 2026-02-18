@@ -5,7 +5,7 @@ use axum::{
     response::Response,
 };
 use sqlx::PgPool;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
@@ -17,15 +17,17 @@ use serde_json::json;
 use crate::error::{ApiError, ApiResult};
 use crate::types::{
     AppliedFilters, Campaign, CampaignRow as FullCampaignRow, GptAuthRequest, GptAuthResponse,
-    GptAvailableService, GptCompleteTaskRequest, GptCompleteTaskResponse, GptCompletedTaskSummary,
-    GptPreferencesParams, GptPreferencesResponse, GptRunServiceRequest, GptRunServiceResponse,
-    GptSearchParams, GptSearchResponse, GptServiceItem, GptSetPreferencesRequest,
-    GptSetPreferencesResponse, GptTaskInputFormat, GptTaskParams, GptTaskResponse,
-    GptUserRecordEntry, GptUserRecordParams, GptUserRecordResponse, GptUserRecordSponsorSummary,
-    GptUserStatusParams, GptUserStatusResponse, SharedState, SponsoredApi,
-    SponsoredApiRow as FullSponsoredApiRow, TaskPreference, UserProfile,
+    GptAvailableService, GptCandidateService, GptCandidateServiceOffer, GptCompleteTaskRequest,
+    GptCompleteTaskResponse, GptCompletedTaskSummary, GptPreferencesParams, GptPreferencesResponse,
+    GptRunServiceRequest, GptRunServiceResponse, GptSearchParams, GptSearchResponse,
+    GptServiceItem, GptSetPreferencesRequest, GptSetPreferencesResponse, GptTaskInputFormat,
+    GptTaskParams, GptTaskResponse, GptUserRecordEntry, GptUserRecordParams, GptUserRecordResponse,
+    GptUserRecordSponsorSummary, GptUserStatusParams, GptUserStatusResponse, SharedState,
+    SponsoredApi, SponsoredApiRow as FullSponsoredApiRow, TaskPreference, UserProfile,
 };
-use crate::utils::{build_marketplace_catalog_from_gpt_services, call_upstream, respond};
+use crate::utils::{
+    build_marketplace_catalog_from_gpt_services, call_upstream, respond, service_display_name,
+};
 
 pub struct RateLimiter {
     tokens: u32,
@@ -195,12 +197,41 @@ pub async fn gpt_search_services(
         });
     }
 
-    // Filter by q (keyword search on name/sponsor)
+    let q_tokens = params
+        .q
+        .as_deref()
+        .map(tokenize_intent_text)
+        .unwrap_or_default();
+    let inferred_service_keys_from_q = params
+        .q
+        .as_deref()
+        .map(infer_intent_service_keys)
+        .unwrap_or_default();
+    let intent_tokens = params
+        .intent
+        .as_deref()
+        .map(tokenize_intent_text)
+        .unwrap_or_default();
+    let inferred_service_keys_from_intent = params
+        .intent
+        .as_deref()
+        .map(infer_intent_service_keys)
+        .unwrap_or_default();
+
+    // Filter by q (keyword search / natural-language intent)
     if let Some(ref q) = params.q {
         let q_lower = q.to_lowercase();
+        let is_natural_language_query =
+            q.contains(' ') || q_tokens.len() >= 3 || !inferred_service_keys_from_q.is_empty();
+
         services.retain(|s| {
-            s.name.to_lowercase().contains(&q_lower)
-                || s.sponsor.to_lowercase().contains(&q_lower)
+            if !is_natural_language_query {
+                return service_contains_text(s, &q_lower);
+            }
+
+            service_contains_text(s, &q_lower)
+                || service_contains_any_token(s, &q_tokens)
+                || service_matches_inferred_keys(s, &inferred_service_keys_from_q)
         });
     }
 
@@ -234,9 +265,13 @@ pub async fn gpt_search_services(
     };
 
     if let Some(ref intent) = params.intent {
-        let keywords: Vec<&str> = intent.split_whitespace().collect();
-        if !keywords.is_empty() {
-            services.retain(|s| matches_intent(s, &keywords));
+        let keywords = tokenize_intent_text(intent);
+        if !keywords.is_empty() || !inferred_service_keys_from_intent.is_empty() {
+            let keywords_ref: Vec<&str> = keywords.iter().map(|k| k.as_str()).collect();
+            services.retain(|s| {
+                matches_intent(s, &keywords_ref)
+                    || service_matches_inferred_keys(s, &inferred_service_keys_from_intent)
+            });
         }
     }
 
@@ -324,6 +359,13 @@ pub async fn gpt_search_services(
     };
 
     let (service_catalog, sponsor_catalog) = build_marketplace_catalog_from_gpt_services(&services);
+    let candidate_services = build_candidate_services(
+        &services,
+        &q_tokens,
+        &intent_tokens,
+        &inferred_service_keys_from_q,
+        &inferred_service_keys_from_intent,
+    );
     let total_count = services.len();
     let message = if total_count == 0 {
         if preferences_applied && budget_applied {
@@ -339,6 +381,12 @@ pub async fn gpt_search_services(
         } else {
             "No services found matching your criteria.".to_string()
         }
+    } else if !candidate_services.is_empty() {
+        format!(
+            "Found {} sponsored service offer(s) across {} candidate service(s).",
+            total_count,
+            candidate_services.len()
+        )
     } else {
         format!("Found {} service(s) matching your criteria.", total_count)
     };
@@ -347,6 +395,7 @@ pub async fn gpt_search_services(
         services,
         total_count,
         message,
+        candidate_services,
         service_catalog,
         sponsor_catalog,
         applied_filters,
@@ -388,6 +437,263 @@ pub fn matches_intent(service: &GptServiceItem, keywords: &[&str]) -> bool {
                 .iter()
                 .any(|t| t.to_lowercase().contains(&kw_lower))
     })
+}
+
+fn service_contains_text(service: &GptServiceItem, text_lower: &str) -> bool {
+    service.name.to_lowercase().contains(text_lower)
+        || service.sponsor.to_lowercase().contains(text_lower)
+        || service
+            .required_task
+            .as_ref()
+            .map(|rt| rt.to_lowercase().contains(text_lower))
+            .unwrap_or(false)
+        || service
+            .category
+            .iter()
+            .any(|c| c.to_lowercase().contains(text_lower))
+        || service
+            .tags
+            .iter()
+            .any(|t| t.to_lowercase().contains(text_lower))
+}
+
+fn service_contains_any_token(service: &GptServiceItem, tokens: &[String]) -> bool {
+    tokens
+        .iter()
+        .any(|token| service_contains_text(service, token))
+}
+
+fn service_matches_inferred_keys(
+    service: &GptServiceItem,
+    inferred_keys: &BTreeSet<String>,
+) -> bool {
+    if inferred_keys.is_empty() {
+        return false;
+    }
+    service
+        .category
+        .iter()
+        .map(|k| normalize_service_key(k))
+        .any(|k| inferred_keys.contains(&k))
+}
+
+fn tokenize_intent_text(text: &str) -> Vec<String> {
+    let stopwords = [
+        "i", "want", "to", "for", "my", "the", "a", "an", "and", "or", "with", "via", "by", "of",
+        "on", "in", "from", "using", "use", "help", "me", "please",
+    ];
+
+    text.to_lowercase()
+        .split(|c: char| !c.is_ascii_alphanumeric() && c != '-')
+        .filter(|token| token.len() >= 2 && !stopwords.contains(token))
+        .map(|token| token.to_string())
+        .collect()
+}
+
+fn normalize_service_key(raw: &str) -> String {
+    raw.trim().to_lowercase().replace(['_', ' '], "-")
+}
+
+fn infer_intent_service_keys(text: &str) -> BTreeSet<String> {
+    let t = text.to_lowercase();
+    let mut keys = BTreeSet::new();
+
+    if contains_any(
+        &t,
+        &[
+            "design", "visual", "logo", "brand", "creative", "image", "graphic",
+        ],
+    ) {
+        keys.extend(
+            [
+                "figma",
+                "canva",
+                "gamma",
+                "dall-e",
+                "midjourney",
+                "framer-ai",
+                "looka",
+            ]
+            .iter()
+            .map(|s| s.to_string()),
+        );
+    }
+
+    if contains_any(
+        &t,
+        &[
+            "trade", "trading", "crypto", "research", "market", "alpha", "token",
+        ],
+    ) {
+        keys.extend(
+            ["coinmarketcap", "defillama", "coingecko", "nansen"]
+                .iter()
+                .map(|s| s.to_string()),
+        );
+    }
+
+    if contains_any(&t, &["rpc", "node", "onchain", "web3 infra", "indexer"]) {
+        keys.extend(
+            ["quicknode", "alchemy", "infura", "the-graph"]
+                .iter()
+                .map(|s| s.to_string()),
+        );
+    }
+
+    if contains_any(&t, &["post", "tweet", "sns", "social", "ugc", "content"]) {
+        keys.extend(["x-api", "canva", "figma"].iter().map(|s| s.to_string()));
+    }
+
+    if contains_any(
+        &t,
+        &["deploy", "hosting", "backend", "database", "db", "ship"],
+    ) {
+        keys.extend(
+            ["render", "railway", "neon", "supabase", "vercel"]
+                .iter()
+                .map(|s| s.to_string()),
+        );
+    }
+
+    // Direct service name hints.
+    for direct in [
+        "figma",
+        "canva",
+        "gamma",
+        "dall-e",
+        "midjourney",
+        "framer",
+        "looka",
+        "coinmarketcap",
+        "defillama",
+        "coingecko",
+        "nansen",
+        "quicknode",
+        "alchemy",
+        "infura",
+        "the graph",
+        "render",
+        "neon",
+        "railway",
+        "supabase",
+        "vercel",
+        "browserbase",
+        "firecrawl",
+        "hugging face",
+        "thirdweb",
+        "pinata",
+        "moralis",
+        "neynar",
+        "x api",
+        "claude code",
+    ] {
+        if t.contains(direct) {
+            keys.insert(normalize_service_key(direct));
+        }
+    }
+
+    keys
+}
+
+fn contains_any(text: &str, words: &[&str]) -> bool {
+    words.iter().any(|w| text.contains(w))
+}
+
+fn build_candidate_services(
+    services: &[GptServiceItem],
+    q_tokens: &[String],
+    intent_tokens: &[String],
+    inferred_from_q: &BTreeSet<String>,
+    inferred_from_intent: &BTreeSet<String>,
+) -> Vec<GptCandidateService> {
+    let mut grouped: BTreeMap<String, Vec<GptCandidateServiceOffer>> = BTreeMap::new();
+    let mut dedupe: BTreeSet<(String, Uuid)> = BTreeSet::new();
+
+    for service in services {
+        if service.service_type != "campaign" {
+            continue;
+        }
+
+        for key in &service.category {
+            let normalized_key = normalize_service_key(key);
+            if normalized_key.is_empty() {
+                continue;
+            }
+
+            if !dedupe.insert((normalized_key.clone(), service.service_id)) {
+                continue;
+            }
+
+            grouped
+                .entry(normalized_key)
+                .or_default()
+                .push(GptCandidateServiceOffer {
+                    campaign_id: service.service_id,
+                    campaign_name: service.name.clone(),
+                    sponsor: service.sponsor.clone(),
+                    required_task: service.required_task.clone(),
+                    subsidy_amount_cents: service.subsidy_amount_cents,
+                });
+        }
+    }
+
+    let inferred_all: BTreeSet<String> = inferred_from_q
+        .iter()
+        .chain(inferred_from_intent.iter())
+        .cloned()
+        .collect();
+    let token_set: BTreeSet<String> = q_tokens
+        .iter()
+        .chain(intent_tokens.iter())
+        .map(|t| normalize_service_key(t))
+        .collect();
+
+    let mut candidates: Vec<(f64, GptCandidateService)> = grouped
+        .into_iter()
+        .map(|(service_key, mut offers)| {
+            offers.sort_by(|a, b| b.subsidy_amount_cents.cmp(&a.subsidy_amount_cents));
+
+            let offer_count = offers.len();
+            let service_key_match = inferred_all.contains(&service_key);
+            let token_match = token_set.contains(&service_key);
+            let best_subsidy = offers
+                .first()
+                .map(|o| o.subsidy_amount_cents as f64)
+                .unwrap_or(0.0);
+
+            let score = (if service_key_match { 100.0 } else { 0.0 })
+                + (if token_match { 20.0 } else { 0.0 })
+                + offer_count as f64
+                + (best_subsidy / 100.0);
+
+            let reason = if service_key_match {
+                "Matched your request intent.".to_string()
+            } else if token_match {
+                "Matched your request keywords.".to_string()
+            } else {
+                "Relevant sponsored option.".to_string()
+            };
+
+            (
+                score,
+                GptCandidateService {
+                    service_key: service_key.clone(),
+                    display_name: service_display_name(&service_key),
+                    reason,
+                    offer_count,
+                    offers,
+                },
+            )
+        })
+        .collect();
+
+    candidates.sort_by(|(score_a, a), (score_b, b)| {
+        score_b
+            .total_cmp(score_a)
+            .then_with(|| a.display_name.cmp(&b.display_name))
+    });
+
+    candidates.into_iter().map(|(_, c)| c).take(12).collect()
 }
 
 /// タグ未設定時に target_tools + required_task からデフォルトタグを推定する (要件 5.3)

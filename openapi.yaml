@@ -232,6 +232,10 @@ paths:
                     type: integer
                   message:
                     type: string
+                  candidate_services:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/GptCandidateService"
                   service_catalog:
                     type: array
                     items:
@@ -817,6 +821,36 @@ components:
           type: number
           format: double
           nullable: true
+    GptCandidateService:
+      type: object
+      properties:
+        service_key:
+          type: string
+        display_name:
+          type: string
+        reason:
+          type: string
+        offer_count:
+          type: integer
+        offers:
+          type: array
+          items:
+            $ref: "#/components/schemas/GptCandidateServiceOffer"
+    GptCandidateServiceOffer:
+      type: object
+      properties:
+        campaign_id:
+          type: string
+          format: uuid
+        campaign_name:
+          type: string
+        sponsor:
+          type: string
+        required_task:
+          type: string
+          nullable: true
+        subsidy_amount_cents:
+          type: integer
   securitySchemes:
     ApiKeyAuth:
       type: http
