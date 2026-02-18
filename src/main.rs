@@ -848,6 +848,8 @@ async fn agent_discovery_services(
 
         let total_count = services.len();
         services.truncate(limit);
+        let (service_catalog, sponsor_catalog) =
+            build_marketplace_catalog_from_agent_services(&services);
 
         let message = if total_count == 0 {
             "No services found for the provided filters.".to_string()
@@ -866,6 +868,8 @@ async fn agent_discovery_services(
                 services,
                 total_count,
                 message,
+                service_catalog,
+                sponsor_catalog,
             }),
         ))
     }

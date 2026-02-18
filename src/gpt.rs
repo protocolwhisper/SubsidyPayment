@@ -25,7 +25,7 @@ use crate::types::{
     GptUserStatusParams, GptUserStatusResponse, SharedState, SponsoredApi,
     SponsoredApiRow as FullSponsoredApiRow, TaskPreference, UserProfile,
 };
-use crate::utils::{call_upstream, respond};
+use crate::utils::{build_marketplace_catalog_from_gpt_services, call_upstream, respond};
 
 pub struct RateLimiter {
     tokens: u32,
@@ -323,6 +323,7 @@ pub async fn gpt_search_services(
         None
     };
 
+    let (service_catalog, sponsor_catalog) = build_marketplace_catalog_from_gpt_services(&services);
     let total_count = services.len();
     let message = if total_count == 0 {
         if preferences_applied && budget_applied {
@@ -346,6 +347,8 @@ pub async fn gpt_search_services(
         services,
         total_count,
         message,
+        service_catalog,
+        sponsor_catalog,
         applied_filters,
         available_categories,
     }))

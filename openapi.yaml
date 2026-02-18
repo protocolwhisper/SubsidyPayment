@@ -232,6 +232,14 @@ paths:
                     type: integer
                   message:
                     type: string
+                  service_catalog:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ServiceCatalogItem"
+                  sponsor_catalog:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/SponsorCatalogItem"
                   applied_filters:
                     type: object
                     nullable: true
@@ -677,6 +685,50 @@ components:
           type: integer
         message:
           type: string
+        service_catalog:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServiceCatalogItem"
+        sponsor_catalog:
+          type: array
+          items:
+            $ref: "#/components/schemas/SponsorCatalogItem"
+    ServiceCatalogItem:
+      type: object
+      properties:
+        service_key:
+          type: string
+        display_name:
+          type: string
+        sponsor_count:
+          type: integer
+        sponsor_names:
+          type: array
+          items:
+            type: string
+        offer_count:
+          type: integer
+        min_subsidy_cents:
+          type: integer
+        max_subsidy_cents:
+          type: integer
+    SponsorCatalogItem:
+      type: object
+      properties:
+        sponsor_name:
+          type: string
+        sponsor_archetype:
+          type: string
+        service_keys:
+          type: array
+          items:
+            type: string
+        required_tasks:
+          type: array
+          items:
+            type: string
+        offer_count:
+          type: integer
     AgentServiceMetadata:
       type: object
       properties:
