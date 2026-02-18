@@ -359,7 +359,7 @@ fn finalize_marketplace_catalog(
     let services = service_catalog
         .into_iter()
         .map(|(service_key, agg)| ServiceCatalogItem {
-            display_name: display_name_for_service_key(&service_key),
+            display_name: service_display_name(&service_key),
             sponsor_count: agg.sponsor_names.len(),
             sponsor_names: agg.sponsor_names.into_iter().collect(),
             offer_count: agg.offer_count,
@@ -391,7 +391,7 @@ fn normalize_service_key(raw: &str) -> String {
     raw.trim().to_lowercase().replace(['_', ' '], "-")
 }
 
-fn display_name_for_service_key(service_key: &str) -> String {
+pub fn service_display_name(service_key: &str) -> String {
     match normalize_service_key(service_key).as_str() {
         "claude" | "claude-code" => "Claude Code".to_string(),
         "coinmarketcap" => "CoinMarketCap".to_string(),

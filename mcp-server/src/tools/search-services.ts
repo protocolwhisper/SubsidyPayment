@@ -15,6 +15,7 @@ const searchServicesInputSchema = z.object({
 
 function toSearchServicesResult(response: GptSearchResponse) {
   const services = response.services.filter((service) => service.service_type === 'campaign');
+  const candidateServices = response.candidate_services ?? [];
   const serviceCatalog = response.service_catalog ?? [];
   const sponsorCatalog = response.sponsor_catalog ?? [];
   const totalCount = services.length;
@@ -27,6 +28,7 @@ function toSearchServicesResult(response: GptSearchResponse) {
     structuredContent: {
       services,
       total_count: totalCount,
+      candidate_services: candidateServices,
       service_catalog: serviceCatalog,
       sponsor_catalog: sponsorCatalog,
       applied_filters: response.applied_filters,

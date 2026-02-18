@@ -2,10 +2,27 @@ export interface GptSearchResponse {
   services: GptServiceItem[];
   total_count: number;
   message: string;
+  candidate_services?: GptCandidateService[];
   service_catalog?: ServiceCatalogItem[];
   sponsor_catalog?: SponsorCatalogItem[];
   applied_filters?: AppliedFilters;
   available_categories?: string[];
+}
+
+export interface GptCandidateService {
+  service_key: string;
+  display_name: string;
+  reason: string;
+  offer_count: number;
+  offers: GptCandidateServiceOffer[];
+}
+
+export interface GptCandidateServiceOffer {
+  campaign_id: string;
+  campaign_name: string;
+  sponsor: string;
+  required_task: string | null;
+  subsidy_amount_cents: number;
 }
 
 export interface ServiceCatalogItem {

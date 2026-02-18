@@ -87,6 +87,62 @@
         gap: 10px;
       }
 
+      .candidate-services {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .candidate-card {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface);
+        padding: 12px;
+      }
+
+      .candidate-title {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .candidate-reason {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .offer-list {
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .offer-row {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px;
+      }
+
+      .offer-meta {
+        margin: 2px 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .use-service-btn {
+        margin-top: 6px;
+        border: 1px solid var(--accent);
+        background: var(--accent-soft);
+        color: var(--text);
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
       .card {
         width: 100%;
         text-align: left;
@@ -146,6 +202,7 @@
       const root = document.getElementById('app');
       const selectedServiceId = widgetState.selectedServiceId ?? null;
       const services = toolOutput?.structuredContent?.services ?? [];
+      const candidateServices = toolOutput?.structuredContent?.candidate_services ?? [];
       const serviceCatalog = toolOutput?.structuredContent?.service_catalog ?? [];
       const sponsorCatalog = toolOutput?.structuredContent?.sponsor_catalog ?? [];
 
@@ -217,21 +274,70 @@
         `;
       }
 
-      async function onSelect(service) {
+      function findServiceByCampaignId(campaignId) {
+        if (!campaignId) return null;
+        return services.find((item) => item.service_id === campaignId) ?? null;
+      }
+
+      async function onSelect(service, preferredServiceKey = null) {
+        const selectedServiceKey =
+          (typeof preferredServiceKey === 'string' && preferredServiceKey.trim().length > 0)
+            ? preferredServiceKey.trim()
+            : resolvePrimaryServiceKey(service);
         const nextState = {
           selectedServiceId: service.service_id,
-          selectedServiceKey: resolvePrimaryServiceKey(service),
+          selectedServiceKey,
           selectedServiceName: service.name ?? '',
         };
         await setWidgetState(nextState);
         await callTool('get_task_details', { campaign_id: service.service_id });
       }
 
+      function renderCandidateServices() {
+        if (!Array.isArray(candidateServices) || candidateServices.length === 0) {
+          return '';
+        }
+
+        const cards = candidateServices
+          .map((candidate) => {
+            const offers = Array.isArray(candidate.offers) ? candidate.offers : [];
+            const rows = offers
+              .map((offer) => {
+                return `
+                  <div class="offer-row">
+                    <div class="offer-meta"><strong>Sponsor:</strong> ${offer.sponsor ?? '-'}</div>
+                    <div class="offer-meta"><strong>Required Task:</strong> ${offer.required_task ?? 'None'}</div>
+                    <div class="offer-meta"><strong>Subsidy:</strong> ${formatYen(offer.subsidy_amount_cents)}</div>
+                    <button
+                      class="use-service-btn"
+                      data-campaign-id="${offer.campaign_id}"
+                      data-service-key="${candidate.service_key ?? ''}"
+                    >
+                      Use This Service
+                    </button>
+                  </div>
+                `;
+              })
+              .join('');
+
+            return `
+              <section class="candidate-card">
+                <p class="candidate-title">${candidate.display_name ?? toDisplayLabel(candidate.service_key)}</p>
+                <div class="candidate-reason">${candidate.reason ?? 'Relevant option for your request.'}</div>
+                <div class="offer-list">${rows}</div>
+              </section>
+            `;
+          })
+          .join('');
+
+        return `<p class="heading">Suggested Services For Your Request</p><div class="candidate-services">${cards}</div>`;
+      }
+
       function renderCards() {
         if (!root) return;
 
         if (!Array.isArray(services) || services.length === 0) {
-          root.innerHTML = `<p class="heading">Available Services</p>${renderSummaryPanels()}<div class="empty">No services match the current criteria.</div>`;
+          root.innerHTML = `${renderCandidateServices()}<p class="heading">Available Services</p>${renderSummaryPanels()}<div class="empty">No services match the current criteria.</div>`;
           notifyWidgetHeight(app);
           return;
         }
@@ -257,12 +363,23 @@
           })
           .join('');
 
-        root.innerHTML = `<p class="heading">Available Services</p>${renderSummaryPanels()}<div class="cards">${cards}</div>`;
+        root.innerHTML = `${renderCandidateServices()}<p class="heading">Available Services</p>${renderSummaryPanels()}<div class="cards">${cards}</div>`;
+
+        for (const button of root.querySelectorAll('.use-service-btn')) {
+          button.addEventListener('click', () => {
+            const campaignId = button.getAttribute('data-campaign-id');
+            const serviceKey = button.getAttribute('data-service-key') ?? '';
+            const service = findServiceByCampaignId(campaignId);
+            if (service) {
+              onSelect(service, serviceKey);
+            }
+          });
+        }
 
         for (const button of root.querySelectorAll('.card')) {
           button.addEventListener('click', () => {
             const campaignId = button.getAttribute('data-campaign-id');
-            const service = services.find((item) => item.service_id === campaignId);
+            const service = findServiceByCampaignId(campaignId);
             if (service) {
               onSelect(service);
             }

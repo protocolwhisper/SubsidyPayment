@@ -674,6 +674,8 @@ pub struct GptSearchResponse {
     pub total_count: usize,
     pub message: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub candidate_services: Vec<GptCandidateService>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub service_catalog: Vec<ServiceCatalogItem>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub sponsor_catalog: Vec<SponsorCatalogItem>,
@@ -681,6 +683,24 @@ pub struct GptSearchResponse {
     pub applied_filters: Option<AppliedFilters>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub available_categories: Option<Vec<String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GptCandidateService {
+    pub service_key: String,
+    pub display_name: String,
+    pub reason: String,
+    pub offer_count: usize,
+    pub offers: Vec<GptCandidateServiceOffer>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GptCandidateServiceOffer {
+    pub campaign_id: Uuid,
+    pub campaign_name: String,
+    pub sponsor: String,
+    pub required_task: Option<String>,
+    pub subsidy_amount_cents: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
