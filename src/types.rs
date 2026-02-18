@@ -607,6 +607,26 @@ pub struct AgentRankingSignals {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServiceCatalogItem {
+    pub service_key: String,
+    pub display_name: String,
+    pub sponsor_count: usize,
+    pub sponsor_names: Vec<String>,
+    pub offer_count: usize,
+    pub min_subsidy_cents: u64,
+    pub max_subsidy_cents: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SponsorCatalogItem {
+    pub sponsor_name: String,
+    pub sponsor_archetype: String,
+    pub service_keys: Vec<String>,
+    pub required_tasks: Vec<String>,
+    pub offer_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentServiceMetadata {
     pub source: AgentServiceSource,
     pub service_id: Uuid,
@@ -631,6 +651,10 @@ pub struct AgentDiscoveryResponse {
     pub services: Vec<AgentServiceMetadata>,
     pub total_count: usize,
     pub message: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub service_catalog: Vec<ServiceCatalogItem>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sponsor_catalog: Vec<SponsorCatalogItem>,
 }
 
 // --- GPT Apps types (Components 2-7) ---
@@ -649,6 +673,10 @@ pub struct GptSearchResponse {
     pub services: Vec<GptServiceItem>,
     pub total_count: usize,
     pub message: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub service_catalog: Vec<ServiceCatalogItem>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub sponsor_catalog: Vec<SponsorCatalogItem>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub applied_filters: Option<AppliedFilters>,
     #[serde(skip_serializing_if = "Option::is_none")]

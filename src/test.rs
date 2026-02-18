@@ -390,6 +390,8 @@ fn gpt_types_exist_and_are_constructible() {
         services: vec![],
         total_count: 0,
         message: "No services found".into(),
+        service_catalog: vec![],
+        sponsor_catalog: vec![],
         applied_filters: None,
         available_categories: None,
     };
@@ -4345,6 +4347,8 @@ fn gpt_search_response_supports_applied_filters_and_categories() {
         services: vec![],
         total_count: 0,
         message: "test".into(),
+        service_catalog: vec![],
+        sponsor_catalog: vec![],
         applied_filters: Some(AppliedFilters {
             budget: Some(500),
             intent: Some("screenshot".into()),
@@ -4374,6 +4378,8 @@ fn gpt_search_response_supports_applied_filters_and_categories() {
         services: vec![],
         total_count: 0,
         message: "test".into(),
+        service_catalog: vec![],
+        sponsor_catalog: vec![],
         applied_filters: None,
         available_categories: None,
     };

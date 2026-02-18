@@ -2,8 +2,28 @@ export interface GptSearchResponse {
   services: GptServiceItem[];
   total_count: number;
   message: string;
+  service_catalog?: ServiceCatalogItem[];
+  sponsor_catalog?: SponsorCatalogItem[];
   applied_filters?: AppliedFilters;
   available_categories?: string[];
+}
+
+export interface ServiceCatalogItem {
+  service_key: string;
+  display_name: string;
+  sponsor_count: number;
+  sponsor_names: string[];
+  offer_count: number;
+  min_subsidy_cents: number;
+  max_subsidy_cents: number;
+}
+
+export interface SponsorCatalogItem {
+  sponsor_name: string;
+  sponsor_archetype: string;
+  service_keys: string[];
+  required_tasks: string[];
+  offer_count: number;
 }
 
 export interface GptServiceItem {

@@ -47,6 +47,40 @@
         font-weight: 700;
       }
 
+      .summary-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .summary-panel {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface);
+        padding: 10px;
+      }
+
+      .summary-title {
+        margin: 0 0 8px 0;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--muted);
+      }
+
+      .chip-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .chip {
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 3px 8px;
+        font-size: 12px;
+      }
+
       .cards {
         display: grid;
         grid-template-columns: 1fr;
@@ -112,6 +146,8 @@
       const root = document.getElementById('app');
       const selectedServiceId = widgetState.selectedServiceId ?? null;
       const services = toolOutput?.structuredContent?.services ?? [];
+      const serviceCatalog = toolOutput?.structuredContent?.service_catalog ?? [];
+      const sponsorCatalog = toolOutput?.structuredContent?.sponsor_catalog ?? [];
 
       function formatYen(cents) {
         const yen = Math.floor((Number(cents) || 0) / 100);
@@ -139,6 +175,48 @@
         return '';
       }
 
+      function toDisplayLabel(value) {
+        if (typeof value !== 'string' || value.trim().length === 0) return '-';
+        return value
+          .trim()
+          .split(/[-_\s]+/)
+          .filter(Boolean)
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' ');
+      }
+
+      function renderSummaryPanels() {
+        const serviceChips = Array.isArray(serviceCatalog)
+          ? serviceCatalog.map(
+              (item) =>
+                `<span class="chip">${item.display_name ?? toDisplayLabel(item.service_key)} (${item.sponsor_count ?? 0} sponsor)</span>`
+            )
+          : [];
+        const sponsorChips = Array.isArray(sponsorCatalog)
+          ? sponsorCatalog.map(
+              (item) =>
+                `<span class="chip">${item.sponsor_name ?? '-'} (${item.sponsor_archetype ?? 'general sponsor'})</span>`
+            )
+          : [];
+
+        return `
+          <div class="summary-grid">
+            <section class="summary-panel">
+              <p class="summary-title">Services Users Actually Use</p>
+              <div class="chip-list">
+                ${serviceChips.length > 0 ? serviceChips.join('') : '<span class="chip">No services found</span>'}
+              </div>
+            </section>
+            <section class="summary-panel">
+              <p class="summary-title">Sponsors Funding Access</p>
+              <div class="chip-list">
+                ${sponsorChips.length > 0 ? sponsorChips.join('') : '<span class="chip">No sponsors found</span>'}
+              </div>
+            </section>
+          </div>
+        `;
+      }
+
       async function onSelect(service) {
         const nextState = {
           selectedServiceId: service.service_id,
@@ -153,7 +231,7 @@
         if (!root) return;
 
         if (!Array.isArray(services) || services.length === 0) {
-          root.innerHTML = `<p class="heading">Available Services</p><div class="empty">No services match the current criteria.</div>`;
+          root.innerHTML = `<p class="heading">Available Services</p>${renderSummaryPanels()}<div class="empty">No services match the current criteria.</div>`;
           notifyWidgetHeight(app);
           return;
         }
@@ -162,11 +240,14 @@
           .map((service) => {
             const categories = Array.isArray(service.category) ? service.category : [];
             const selectedClass = selectedServiceId === service.service_id ? 'selected' : '';
+            const primaryService = resolvePrimaryServiceKey(service);
             return `
               <button class="card ${selectedClass}" data-campaign-id="${service.service_id}">
                 <p class="title">${service.name ?? '-'}</p>
-                <div class="meta">Sponsor: ${service.sponsor ?? '-'}</div>
-                <div class="meta">Subsidy Amount: ${formatYen(service.subsidy_amount_cents)}</div>
+                <div class="meta"><strong>Service:</strong> ${toDisplayLabel(primaryService)}</div>
+                <div class="meta"><strong>Sponsor:</strong> ${service.sponsor ?? '-'}</div>
+                <div class="meta"><strong>Required Task:</strong> ${service.required_task ?? 'None'}</div>
+                <div class="meta"><strong>Subsidy Amount:</strong> ${formatYen(service.subsidy_amount_cents)}</div>
                 <div class="meta">Relevance: ${service.relevance_score ?? '-'}</div>
                 <div class="tags">
                   ${categories.map((tag) => `<span class="tag">${tag}</span>`).join('')}
@@ -176,7 +257,7 @@
           })
           .join('');
 
-        root.innerHTML = `<p class="heading">Available Services</p><div class="cards">${cards}</div>`;
+        root.innerHTML = `<p class="heading">Available Services</p>${renderSummaryPanels()}<div class="cards">${cards}</div>`;
 
         for (const button of root.querySelectorAll('.card')) {
           button.addEventListener('click', () => {

@@ -6,15 +6,19 @@ use axum::{
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use reqwest::{Client, Method};
 use serde_json::Value;
-use std::{collections::HashMap, time::Duration};
+use std::{
+    collections::{BTreeMap, BTreeSet, HashMap},
+    time::Duration,
+};
 use uuid::Uuid;
 
 use crate::error::{ApiError, ApiResult};
 use crate::onchain::{VerifiedX402Payment, verify_and_settle_x402_payment};
 use crate::types::{
-    AppConfig, Campaign, Metrics, PAYMENT_RESPONSE_HEADER, PAYMENT_SIGNATURE_HEADER,
-    PaymentRequired, SPONSORED_API_SERVICE_PREFIX, ServiceRunRequest, ServiceRunResponse,
-    SponsoredApi, UserProfile, X402_VERSION_HEADER, X402PaymentRequirement,
+    AgentServiceMetadata, AppConfig, Campaign, GptServiceItem, Metrics, PAYMENT_RESPONSE_HEADER,
+    PAYMENT_SIGNATURE_HEADER, PaymentRequired, SPONSORED_API_SERVICE_PREFIX, ServiceCatalogItem,
+    ServiceRunRequest, ServiceRunResponse, SponsorCatalogItem, SponsoredApi, UserProfile,
+    X402_VERSION_HEADER, X402PaymentRequirement,
 };
 use sqlx::PgPool;
 
@@ -241,6 +245,274 @@ pub fn mark_request(metrics: &Metrics, endpoint: &str, status: StatusCode) {
         .http_requests_total
         .with_label_values(&[endpoint, status_label.as_str()])
         .inc();
+}
+
+#[derive(Default)]
+struct ServiceCatalogAgg {
+    sponsor_names: BTreeSet<String>,
+    offer_count: usize,
+    min_subsidy_cents: Option<u64>,
+    max_subsidy_cents: Option<u64>,
+}
+
+#[derive(Default)]
+struct SponsorCatalogAgg {
+    service_keys: BTreeSet<String>,
+    required_tasks: BTreeSet<String>,
+    offer_count: usize,
+}
+
+fn apply_catalog_offer(
+    service_catalog: &mut BTreeMap<String, ServiceCatalogAgg>,
+    sponsor_catalog: &mut BTreeMap<String, SponsorCatalogAgg>,
+    service_key: &str,
+    sponsor: &str,
+    subsidy_cents: u64,
+    required_task: Option<&str>,
+) {
+    let normalized_key = normalize_service_key(service_key);
+    if normalized_key.is_empty() {
+        return;
+    }
+
+    let service_entry = service_catalog.entry(normalized_key.clone()).or_default();
+    service_entry.sponsor_names.insert(sponsor.to_string());
+    service_entry.offer_count += 1;
+    service_entry.min_subsidy_cents = Some(
+        service_entry
+            .min_subsidy_cents
+            .map(|v| v.min(subsidy_cents))
+            .unwrap_or(subsidy_cents),
+    );
+    service_entry.max_subsidy_cents = Some(
+        service_entry
+            .max_subsidy_cents
+            .map(|v| v.max(subsidy_cents))
+            .unwrap_or(subsidy_cents),
+    );
+
+    let sponsor_entry = sponsor_catalog.entry(sponsor.to_string()).or_default();
+    sponsor_entry.service_keys.insert(normalized_key);
+    sponsor_entry.offer_count += 1;
+    if let Some(task) = required_task {
+        let task = task.trim();
+        if !task.is_empty() {
+            sponsor_entry.required_tasks.insert(task.to_string());
+        }
+    }
+}
+
+pub fn build_marketplace_catalog_from_gpt_services(
+    services: &[GptServiceItem],
+) -> (Vec<ServiceCatalogItem>, Vec<SponsorCatalogItem>) {
+    let mut service_catalog: BTreeMap<String, ServiceCatalogAgg> = BTreeMap::new();
+    let mut sponsor_catalog: BTreeMap<String, SponsorCatalogAgg> = BTreeMap::new();
+
+    for service in services {
+        let mut keys: Vec<String> = if service.category.is_empty() {
+            vec![service.name.clone()]
+        } else {
+            service.category.clone()
+        };
+        keys.sort();
+        keys.dedup();
+
+        for key in keys {
+            apply_catalog_offer(
+                &mut service_catalog,
+                &mut sponsor_catalog,
+                &key,
+                &service.sponsor,
+                service.subsidy_amount_cents,
+                service.required_task.as_deref(),
+            );
+        }
+    }
+
+    finalize_marketplace_catalog(service_catalog, sponsor_catalog)
+}
+
+pub fn build_marketplace_catalog_from_agent_services(
+    services: &[AgentServiceMetadata],
+) -> (Vec<ServiceCatalogItem>, Vec<SponsorCatalogItem>) {
+    let mut service_catalog: BTreeMap<String, ServiceCatalogAgg> = BTreeMap::new();
+    let mut sponsor_catalog: BTreeMap<String, SponsorCatalogAgg> = BTreeMap::new();
+
+    for service in services {
+        apply_catalog_offer(
+            &mut service_catalog,
+            &mut sponsor_catalog,
+            &service.service_key,
+            &service.sponsor,
+            service.subsidy_cents,
+            service.required_task.as_deref(),
+        );
+    }
+
+    finalize_marketplace_catalog(service_catalog, sponsor_catalog)
+}
+
+fn finalize_marketplace_catalog(
+    service_catalog: BTreeMap<String, ServiceCatalogAgg>,
+    sponsor_catalog: BTreeMap<String, SponsorCatalogAgg>,
+) -> (Vec<ServiceCatalogItem>, Vec<SponsorCatalogItem>) {
+    let services = service_catalog
+        .into_iter()
+        .map(|(service_key, agg)| ServiceCatalogItem {
+            display_name: display_name_for_service_key(&service_key),
+            sponsor_count: agg.sponsor_names.len(),
+            sponsor_names: agg.sponsor_names.into_iter().collect(),
+            offer_count: agg.offer_count,
+            min_subsidy_cents: agg.min_subsidy_cents.unwrap_or(0),
+            max_subsidy_cents: agg.max_subsidy_cents.unwrap_or(0),
+            service_key,
+        })
+        .collect::<Vec<_>>();
+
+    let sponsors = sponsor_catalog
+        .into_iter()
+        .map(|(sponsor_name, agg)| SponsorCatalogItem {
+            sponsor_archetype: infer_sponsor_archetype(
+                &sponsor_name,
+                &agg.required_tasks,
+                &agg.service_keys,
+            ),
+            service_keys: agg.service_keys.into_iter().collect(),
+            required_tasks: agg.required_tasks.into_iter().collect(),
+            offer_count: agg.offer_count,
+            sponsor_name,
+        })
+        .collect::<Vec<_>>();
+
+    (services, sponsors)
+}
+
+fn normalize_service_key(raw: &str) -> String {
+    raw.trim().to_lowercase().replace(['_', ' '], "-")
+}
+
+fn display_name_for_service_key(service_key: &str) -> String {
+    match normalize_service_key(service_key).as_str() {
+        "claude" | "claude-code" => "Claude Code".to_string(),
+        "coinmarketcap" => "CoinMarketCap".to_string(),
+        "nansen" => "Nansen".to_string(),
+        "vercel" => "Vercel".to_string(),
+        "figma" => "Figma".to_string(),
+        "canva" => "Canva".to_string(),
+        "moralis" => "Moralis".to_string(),
+        "alchemy" => "Alchemy".to_string(),
+        "the-graph" | "graph" => "The Graph".to_string(),
+        "infura" => "Infura".to_string(),
+        "x-api" | "xapi" | "twitter-api" => "X API".to_string(),
+        "supabase" => "Supabase".to_string(),
+        "render" => "Render".to_string(),
+        "neon" => "Neon".to_string(),
+        "railway" => "Railway".to_string(),
+        "hugging-face" | "huggingface" => "Hugging Face".to_string(),
+        "midjourney" => "Midjourney".to_string(),
+        "pinata" => "Pinata".to_string(),
+        "coingecko" => "CoinGecko".to_string(),
+        "thirdweb" => "thirdweb".to_string(),
+        "firecrawl" => "Firecrawl".to_string(),
+        "browserbase" => "Browserbase".to_string(),
+        "neynar" => "Neynar".to_string(),
+        "quicknode" => "QuickNode".to_string(),
+        "coinbase" => "Coinbase".to_string(),
+        "api-key" => "API Key".to_string(),
+        other => other
+            .split('-')
+            .filter(|part| !part.is_empty())
+            .map(|part| {
+                let mut chars = part.chars();
+                match chars.next() {
+                    Some(first) => {
+                        let mut out = first.to_ascii_uppercase().to_string();
+                        out.push_str(chars.as_str());
+                        out
+                    }
+                    None => String::new(),
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(" "),
+    }
+}
+
+fn infer_sponsor_archetype(
+    sponsor_name: &str,
+    required_tasks: &BTreeSet<String>,
+    service_keys: &BTreeSet<String>,
+) -> String {
+    let mut context = sponsor_name.to_lowercase();
+    for task in required_tasks {
+        context.push(' ');
+        context.push_str(&task.to_lowercase());
+    }
+    for service in service_keys {
+        context.push(' ');
+        context.push_str(&service.to_lowercase());
+    }
+
+    if contains_any(&context, &["hackathon", "conference", "event signup"]) {
+        return "hackathon/conference provider".to_string();
+    }
+    if contains_any(
+        &context,
+        &[
+            "api key",
+            "sdk",
+            "cli",
+            "github",
+            "pull request",
+            "pr",
+            "bug report",
+        ],
+    ) {
+        return "development company".to_string();
+    }
+    if contains_any(&context, &["hiring", "job", "talent"]) {
+        return "hiring platform".to_string();
+    }
+    if contains_any(&context, &["wallet", "credit card", "card activation"]) {
+        return "wallet or credit-card provider".to_string();
+    }
+    if contains_any(&context, &["exchange", "cex"]) {
+        return "centralized exchange".to_string();
+    }
+    if contains_any(
+        &context,
+        &[
+            "tweet",
+            "post",
+            "sns",
+            "ugc",
+            "video share",
+            "share content",
+        ],
+    ) {
+        return "creator or marketing sponsor".to_string();
+    }
+    if contains_any(&context, &["survey", "questionnaire", "research"]) {
+        return "research or think-tank sponsor".to_string();
+    }
+    if contains_any(&context, &["annotation", "labeling", "label data"]) {
+        return "ai data provider".to_string();
+    }
+    if contains_any(&context, &["onsite", "on-site", "local research", "photo"]) {
+        return "infrastructure company".to_string();
+    }
+    if contains_any(
+        &context,
+        &["store review", "dining", "customer service review"],
+    ) {
+        return "blockchain/chain ecosystem sponsor".to_string();
+    }
+
+    "general sponsor".to_string()
+}
+
+fn contains_any(text: &str, patterns: &[&str]) -> bool {
+    patterns.iter().any(|pattern| text.contains(pattern))
 }
 
 pub fn sponsored_api_service_key(api_id: Uuid) -> String {
