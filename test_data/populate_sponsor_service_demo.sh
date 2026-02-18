@@ -19,13 +19,14 @@ This script creates campaigns for distinct sponsor archetypes:
 - Blockchain/chain companies
 
 Usage:
-  bash test_data/populate_sponsor_service_demo.sh --api-key <BEARER_KEY> [--base-url <URL>]
+  bash test_data/populate_sponsor_service_demo.sh --api-key <BEARER_KEY> [--base-url <URL>] [--run-tag <TAG>]
 
 Or with env vars:
   API_KEY=<BEARER_KEY> BASE_URL=<URL> bash test_data/populate_sponsor_service_demo.sh
 
 Defaults:
   BASE_URL=https://subsidypayment-1k0h.onrender.com
+  RUN_TAG=current timestamp (YYYYMMDDHHMMSS)
 USAGE
 }
 
@@ -36,6 +37,8 @@ fi
 
 BASE_URL="${BASE_URL:-https://subsidypayment-1k0h.onrender.com}"
 API_KEY="${API_KEY:-}"
+RUN_TAG="${RUN_TAG:-}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -45,6 +48,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --base-url)
       BASE_URL="${2:-}"
+      shift 2
+      ;;
+    --run-tag)
+      RUN_TAG="${2:-}"
       shift 2
       ;;
     -h|--help)
@@ -67,7 +74,9 @@ fi
 
 BASE_URL="${BASE_URL%/}"
 AUTH_HEADER="Authorization: Bearer ${API_KEY}"
-RUN_TAG="$(date +%Y%m%d%H%M%S)"
+if [[ -z "$RUN_TAG" ]]; then
+  RUN_TAG="$(date +%Y%m%d%H%M%S)"
+fi
 
 json_request() {
   local method="$1"
@@ -87,6 +96,7 @@ json_request() {
 
 echo "== health =="
 curl -sS "${BASE_URL}/health" | jq .
+echo "== run tag: ${RUN_TAG} =="
 
 CAMPAIGNS_JSON='[
   {
@@ -278,3 +288,7 @@ Demo queries:
 2) curl -sS "${BASE_URL}/gpt/services?q=quicknode" -H "${AUTH_HEADER}" | jq '.services, .service_catalog, .sponsor_catalog'
 3) curl -sS "${BASE_URL}/gpt/services?q=figma" -H "${AUTH_HEADER}" | jq '.services, .service_catalog, .sponsor_catalog'
 NEXT
+
+echo "${RUN_TAG}" > "${SCRIPT_DIR}/.last_demo_run_tag"
+echo
+echo "Saved run tag to: ${SCRIPT_DIR}/.last_demo_run_tag"
