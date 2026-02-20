@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Testing
+coverage/
+.nyc_output/
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+__tests__/
+test/
+tests/
+
+# Development files
+*.md
+!README.md
+.git/
+.gitignore
+.gitattributes
+.github/
+.vscode/
+.idea/
+
+# Environment files
+.env*
+!.env.example
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+*.swp
+*.swo
+*~
+.cache/
+tmp/
+temp/
