@@ -1,29 +1,41 @@
-# Project Overview — SubsidyPayment
+# Project Overview — SubsidyPayment（更新: 2026-02-20）
 
 ## 目的
-x402 の HTTP 402 ペイウォールをプロキシで仲介し、スポンサー補助（タスク実行やデータ提供と交換）または直接支払いで上流有料APIへアクセス可能にする。  
-加えて、`/gpt/*` と `/agent|/claude|/openclaw/discovery/*` を通じて AI クライアントからの利用導線を提供する。
+x402 の HTTP 402 ペイウォールをプロキシで仲介し、
+- スポンサー補助（タスク実行/データ提供との交換）
+- 直接支払い（フォールバック）
+の両方で上流有料APIへアクセス可能にする。
 
-## 主要ドメイン
-- Resource / Proxy: x402 保護リソースへのアクセス仲介
-- Sponsor / Campaign: 補助条件・予算・タスクを管理する配信単位
-- Sponsored API: API 単位の補助予算付き実行エントリ
-- Task Completion: タスク実行証跡
-- Payment: 補助支払い・実行履歴
-- Consent: 同意記録
-- GPT Session / Task Preference: GPT Apps 連携認証と嗜好フィルタ
-- Agent Discovery: Claude/Openclaw 等向けサービス探索 API
+## 現在の主要コンポーネント
+- Rust バックエンド（`src/`）
+  - Core API（`/campaigns`, `/proxy/{service}/run`, `/sponsored-apis` など）
+  - GPT API（`/gpt/services`, `/gpt/auth`, `/gpt/tasks/*`, `/gpt/preferences`）
+  - Agent/Claude/OpenClaw Discovery API（`/agent|/claude|/openclaw/discovery/services`）
+- MCP サーバー（`mcp-server/`）
+  - Streamable HTTP `/mcp`
+  - OAuth メタデータ公開（`.well-known/oauth-*`）
+  - 10ツール + 5ウィジェットを Rust `/gpt/*` と接続
+- Frontend（`frontend/`）
+  - React + Vite のWeb UI（`App.tsx` 中心）
+- サンプル x402 サーバー（`x402server/`）
+  - 動作検証用の別Nodeプロジェクト
 
-## 現在の実装フェーズ
+## ドメイン（現行）
+- Campaign / Sponsored API / Task Completion / Payment / Consent
+- GPT Session / User Task Preferences / GPT Service Runs
+- Sponsor Dashboard / Creator Metrics
+
+## 現在のフェーズ
 - MVP〜P1 拡張フェーズ
-- P0 E2E（402 → タスク/同意 → 補助支払い → リソース返却）は実装済み
-- GPT Apps と Agent Discovery 向け API が稼働状態
+- P0 E2E（402→タスク/同意→補助支払い→リソース返却）は稼働済み
+- GPT Apps 連携と MCP（GPT App SDKベース）実装済み
 
-## アクティブ仕様（.kiro/specs）
-- `gpt-apps-integration`（`language: ja`, `phase: tasks-generated`）
-- `smart-service-suggestion`（`language: ja`, `phase: tasks-generated`）
-- `autonomous-agent-execution`（`language: ja`, `phase: tasks-generated`）
+## .kiro/specs の進捗
+- `gpt-apps-integration`: 33/33 完了
+- `smart-service-suggestion`: 32/32 完了
+- `refactor-to-gpt-app-sdk`: 27/27 完了
+- `autonomous-agent-execution`: 0/41（未着手）
 
-## 主な利用者
-- ToB: キャンペーン設計・配信・費用対効果を管理するスポンサー
-- ToC: GPT/Claude 等からスポンサー付きサービスを利用するユーザー
+## 想定ユーザー
+- ToB: スポンサー（キャンペーン作成・運用・効果測定）
+- ToC: GPT/Claude等からスポンサー付きサービスを利用するユーザー
