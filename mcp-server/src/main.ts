@@ -7,6 +7,7 @@ import {
   oauthProtectedResourceHandler,
 } from './auth/oauth-metadata.ts';
 import { loadConfig } from './config.ts';
+import { loadEnvFromFiles } from './env.ts';
 import { logger } from './logger.ts';
 import { createServer } from './server.ts';
 
@@ -17,6 +18,7 @@ const ALLOWED_ORIGINS = [
 ];
 
 export function createApp() {
+  loadEnvFromFiles();
   const config = loadConfig();
   const app = express();
 

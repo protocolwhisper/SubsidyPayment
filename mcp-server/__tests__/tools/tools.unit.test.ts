@@ -13,6 +13,7 @@ const mocked = vi.hoisted(() => ({
   getUserRecord: vi.fn(),
   getPreferences: vi.fn(),
   setPreferences: vi.fn(),
+  getWeather: vi.fn(),
   verifyToken: vi.fn(),
 }));
 
@@ -66,6 +67,14 @@ vi.mock('../../src/auth/token-verifier.ts', async () => {
   };
 });
 
+vi.mock('../../src/x402/weather-client.ts', () => {
+  class X402WeatherClient {
+    getWeather = mocked.getWeather;
+  }
+
+  return { X402WeatherClient };
+});
+
 import { BackendClientError } from '../../src/backend-client.ts';
 import { registerAllTools } from '../../src/tools/index.ts';
 
@@ -78,6 +87,11 @@ const config = {
   port: 3001,
   logLevel: 'info',
   authEnabled: true,
+  x402WeatherUrl: 'http://localhost:4021/weather',
+  x402FacilitatorUrl: 'https://x402.org/facilitator',
+  x402Network: 'eip155:84532',
+  x402PrivateKey: '0x1234',
+  x402RequestTimeoutMs: 15000,
 };
 
 function registerAndCaptureTools() {
@@ -113,17 +127,20 @@ describe('MCP tools unit tests (task 9.1)', () => {
     mocked.getUserRecord.mockReset();
     mocked.getPreferences.mockReset();
     mocked.setPreferences.mockReset();
+    mocked.getWeather.mockReset();
     mocked.verifyToken.mockReset();
   });
 
-  it('registers all 9 tools with expected security schemes', () => {
+  it('registers all 11 tools with expected security schemes', () => {
     registerAndCaptureTools();
 
-    expect(mocked.registrations.size).toBe(9);
+    expect(mocked.registrations.size).toBe(11);
     expect(getRegistered('search_services').definition._meta.securitySchemes).toEqual([{ type: 'noauth' }]);
+    expect(getRegistered('weather').definition._meta.securitySchemes).toEqual([{ type: 'noauth' }]);
 
     const oauthTools = [
       'authenticate_user',
+      'get_service_tasks',
       'get_task_details',
       'complete_task',
       'run_service',
@@ -247,5 +264,33 @@ describe('MCP tools unit tests (task 9.1)', () => {
         preferences: [{ task_type: 'survey', level: 'invalid-level' }],
       })
     ).toThrow();
+  });
+
+  it('returns 3-part response for weather success', async () => {
+    registerAndCaptureTools();
+    mocked.getWeather.mockResolvedValue({
+      city: 'San Francisco',
+      weather: 'sunny',
+      temperature: 70,
+    });
+
+    const { handler } = getRegistered('weather');
+    const result = await handler({ city: 'San Francisco' }, {});
+
+    expect(result.structuredContent.city).toBe('San Francisco');
+    expect(result.content).toBeDefined();
+    expect(result._meta.report).toBeDefined();
+    expect(result.isError).toBeUndefined();
+  });
+
+  it('returns backend error for weather failure', async () => {
+    registerAndCaptureTools();
+    mocked.getWeather.mockRejectedValue(new BackendClientError('weather_request_failed', 'weather failed'));
+
+    const { handler } = getRegistered('weather');
+    const result = await handler({ city: 'Tokyo' }, {});
+
+    expect(result.isError).toBe(true);
+    expect(result._meta.code).toBe('weather_request_failed');
   });
 });

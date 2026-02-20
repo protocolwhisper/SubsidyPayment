@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Service Tasks Widget</title>
+    <style>
+      :root {
+        --bg: #f5f7fb;
+        --surface: #ffffff;
+        --text: #101828;
+        --muted: #475467;
+        --border: #d0d5dd;
+        --accent: #0f766e;
+        --accent-soft: #ccfbf1;
+        --success: #059669;
+        --success-soft: #d1fae5;
+      }
+
+      body.dark {
+        --bg: #0b1220;
+        --surface: #111827;
+        --text: #f3f4f6;
+        --muted: #cbd5e1;
+        --border: #334155;
+        --accent: #5eead4;
+        --accent-soft: #134e4a;
+        --success: #34d399;
+        --success-soft: #052e16;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+      }
+
+      #app {
+        padding: 12px;
+        max-width: 100%;
+      }
+
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+
+      .header-title {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+      }
+
+      .header-badge {
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        border: 1px solid var(--accent);
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--accent);
+      }
+
+      .total-bar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px;
+        margin-bottom: 12px;
+        border-radius: 10px;
+        background: var(--accent-soft);
+        border: 1px solid var(--accent);
+        font-size: 13px;
+        color: var(--accent);
+        font-weight: 600;
+      }
+
+      .tasks {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .task-card {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface);
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .task-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .task-name {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .task-campaign {
+        margin: 2px 0 0 0;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .task-amount {
+        padding: 4px 10px;
+        border-radius: 8px;
+        background: var(--success-soft);
+        color: var(--success);
+        font-size: 13px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .task-bottom {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .task-sponsor {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .task-tags {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 4px;
+      }
+
+      .tag {
+        padding: 2px 8px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        font-size: 11px;
+      }
+
+      .start-btn {
+        border: none;
+        background: var(--accent);
+        color: white;
+        border-radius: 8px;
+        padding: 6px 14px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      .empty {
+        padding: 20px;
+        border: 1px dashed var(--border);
+        border-radius: 10px;
+        color: var(--muted);
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="app"></main>
+    <script type="module">
+      import { initWidget, notifyWidgetHeight } from './common.ts';
+
+      const { app, toolOutput, widgetState } = initWidget();
+      const root = document.getElementById('app');
+      const structured = toolOutput?.structuredContent ?? {};
+      const tasks = structured.tasks ?? [];
+      const displayName = structured.display_name ?? structured.service_key ?? 'Service';
+      const taskCount = structured.task_count ?? tasks.length;
+      const totalSubsidyCents = structured.total_subsidy_cents ?? 0;
+
+      function formatDollars(cents) {
+        return new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD',
+        }).format((Number(cents) || 0) / 100);
+      }
+
+      async function callTool(name, input) {
+        return app?.callTool?.(name, input);
+      }
+
+      async function onStartTask(campaignId) {
+        await callTool('get_task_details', { campaign_id: campaignId });
+      }
+
+      function render() {
+        if (!root) return;
+
+        if (tasks.length === 0) {
+          root.innerHTML = `
+            <div class="header">
+              <h2 class="header-title">${displayName}</h2>
+            </div>
+            <div class="empty">No subsidized tasks available for this service.</div>
+          `;
+          notifyWidgetHeight(app);
+          return;
+        }
+
+        const totalBar = `
+          <div class="total-bar">
+            Total available subsidy: ${formatDollars(totalSubsidyCents)}
+          </div>
+        `;
+
+        const cards = tasks
+          .map((task) => {
+            const tags = [...(task.category ?? []), ...(task.tags ?? [])];
+            const tagHtml = tags.map((t) => `<span class="tag">${t}</span>`).join('');
+
+            return `
+              <div class="task-card">
+                <div class="task-top">
+                  <div>
+                    <p class="task-name">${task.required_task ?? 'Task'}</p>
+                    <p class="task-campaign">${task.campaign_name ?? ''}</p>
+                  </div>
+                  <div class="task-amount">${formatDollars(task.subsidy_amount_cents)}</div>
+                </div>
+                ${tags.length > 0 ? `<div class="task-tags">${tagHtml}</div>` : ''}
+                <div class="task-bottom">
+                  <span class="task-sponsor">by ${task.sponsor ?? '-'}</span>
+                  <button class="start-btn" data-campaign-id="${task.campaign_id}">Start</button>
+                </div>
+              </div>
+            `;
+          })
+          .join('');
+
+        root.innerHTML = `
+          <div class="header">
+            <h2 class="header-title">${displayName}</h2>
+            <span class="header-badge">${taskCount} task${taskCount !== 1 ? 's' : ''}</span>
+          </div>
+          ${totalBar}
+          <div class="tasks">${cards}</div>
+        `;
+
+        for (const btn of root.querySelectorAll('.start-btn')) {
+          btn.addEventListener('click', () => {
+            const campaignId = btn.getAttribute('data-campaign-id');
+            if (campaignId) {
+              onStartTask(campaignId);
+            }
+          });
+        }
+
+        notifyWidgetHeight(app);
+      }
+
+      render();
+      notifyWidgetHeight(app);
+    </script>
+  </body>
+</html>

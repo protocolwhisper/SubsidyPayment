@@ -95,12 +95,33 @@ export function registerCompleteTaskTool(server: McpServer, config: BackendConfi
         };
 
         const response = await client.completeTask(input.campaign_id, payload);
+
+        // Enrich with campaign metadata for the verification/payment screen
+        let taskName: string | null = input.task_name;
+        let sponsor: string | null = null;
+        let campaignName: string | null = null;
+        let subsidyAmountCents: number | null = null;
+
+        try {
+          const taskDetails = await client.getTaskDetails(input.campaign_id, sessionToken);
+          taskName = taskDetails.required_task ?? taskName;
+          sponsor = taskDetails.sponsor;
+          campaignName = taskDetails.campaign_name;
+          subsidyAmountCents = taskDetails.subsidy_amount_cents;
+        } catch {
+          // Non-critical: proceed with partial data from input
+        }
+
         return {
           structuredContent: {
             task_completion_id: response.task_completion_id,
             campaign_id: response.campaign_id,
             consent_recorded: response.consent_recorded,
             can_use_service: response.can_use_service,
+            task_name: taskName,
+            sponsor,
+            campaign_name: campaignName,
+            subsidy_amount_cents: subsidyAmountCents,
           },
           content: [{ type: 'text' as const, text: response.message }],
           _meta: {
