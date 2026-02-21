@@ -304,9 +304,15 @@ function App() {
   const [showServiceDropdown, setShowServiceDropdown] = useState(false);
   const [dashboardMode, setDashboardMode] = useState<"general" | "user">("general");
   const [dataWarnings, setDataWarnings] = useState<string[]>([]);
+  const [hasMounted, setHasMounted] = useState(false);
   const [currentUserEmail, setCurrentUserEmail] = useState(() => {
     return localStorage.getItem("currentUserEmail") || "";
   });
+
+  // Ensure landing is the only visible view on first paint (avoids navbar/dashboard flash)
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   const apiBaseUrl = useMemo(() => {
     const configured = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
@@ -976,14 +982,14 @@ function App() {
   const taskBreakdownColors = ["#4A9EFF", "#79F8C6", "#F59E0B", "#EF4444", "#8B5CF6"];
 
   return (
-    <div className="dashboard">
+    <div className={`dashboard ${!hasMounted ? "initial-load" : ""}`}>
       <header className={`header ${currentView === "landing" ? "header-landing" : ""}`}>
         <div className="header-left">
           <div className="logo" onClick={() => setCurrentView("landing")} style={{ cursor: "pointer" }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setCurrentView("landing"); } }} aria-label="Go to home">
             <img src={logoImage} alt="SnapFuel" className="logo-icon" />
             <span className="logo-text">SnapFuel</span>
           </div>
-          {!["landing", "login", "signup"].includes(currentView) && (
+          {hasMounted && !["landing", "login", "signup"].includes(currentView) && (
             <nav className="header-nav-tabs">
               <button className={`nav-tab ${currentView === "dashboard" ? "active" : ""}`} onClick={() => setCurrentView("dashboard")}>Dashboard</button>
               <button className={`nav-tab ${currentView === "create-campaign" ? "active" : ""}`} onClick={() => { if (isLoggedIn) setCurrentView("create-campaign"); else setCurrentView("login"); }}>Create Campaign</button>
@@ -992,7 +998,7 @@ function App() {
           )}
         </div>
         <div className="header-right">
-          {currentView === "landing" ? (
+          {(!hasMounted || currentView === "landing") ? (
             <>
               <GetStartedButton3D onClick={() => setCurrentView("signup")} />
               <button className="icon-btn" onClick={toggleDarkMode} title="Toggle dark mode">
@@ -1083,7 +1089,7 @@ function App() {
         </div>
       </header>
 
-      {currentView === "landing" ? (
+      {(!hasMounted || currentView === "landing") ? (
         /* Landing Page – minimal, Advanced Team style */
         <main className="landing-page">
           <LandingBackground3D />
