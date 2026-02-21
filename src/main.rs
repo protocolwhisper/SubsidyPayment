@@ -1982,6 +1982,26 @@ async fn creator_metrics(State(state): State<SharedState>) -> Response {
         }
         .ok_or_else(|| ApiError::config("Postgres not configured; set DATABASE_URL"))?;
 
+        // If creator_events table is not available (e.g. partial migrations), return empty summary.
+        let creator_events_exists = sqlx::query_scalar::<_, bool>(
+            "select to_regclass('public.creator_events') is not null",
+        )
+        .fetch_one(&db)
+        .await
+        .map_err(|err| ApiError::database(StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+
+        if !creator_events_exists {
+            return Ok((
+                StatusCode::OK,
+                Json(CreatorMetricSummary {
+                    total_events: 0,
+                    success_events: 0,
+                    success_rate: 0.0,
+                    per_skill: Vec::new(),
+                }),
+            ));
+        }
+
         // Get total events and success events
         let total_events = sqlx::query_scalar::<_, i64>("select count(*) from creator_events")
             .fetch_one(&db)

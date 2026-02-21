@@ -288,6 +288,7 @@ function App() {
   const [callerLoading, setCallerLoading] = useState(false);
   const [callerResult, setCallerResult] = useState<any>(null);
   const [callerError, setCallerError] = useState<string | null>(null);
+  const [lastSyncAt, setLastSyncAt] = useState<string | null>(null);
   const [callerForm, setCallerForm] = useState({
     callType: "proxy" as "proxy" | "tool" | "sponsored-api",
     service: "",
@@ -299,6 +300,23 @@ function App() {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedKpi, setSelectedKpi] = useState("");
   const [showServiceDropdown, setShowServiceDropdown] = useState(false);
+  const [dashboardMode, setDashboardMode] = useState<"general" | "user">("general");
+  const [dataWarnings, setDataWarnings] = useState<string[]>([]);
+  const [currentUserEmail, setCurrentUserEmail] = useState(() => {
+    return localStorage.getItem("currentUserEmail") || "";
+  });
+
+  const apiBaseUrl = useMemo(() => {
+    const configured = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
+    if (configured) {
+      return configured.replace(/\/+$/, "");
+    }
+    const hostname = window.location.hostname;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return "/api";
+    }
+    return "https://subsidypayment-1k0h.onrender.com";
+  }, []);
 
   // サービスが選択されたときに、serviceConfigsを更新
   useEffect(() => {
@@ -326,21 +344,24 @@ function App() {
   }, [selectedServices]);
 
   async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-    // 環境変数からAPIのベースURLを取得（開発環境では /api、本番環境では環境変数から）
-    const apiBaseUrl = import.meta.env.VITE_API_URL || '/api';
-    
     // ウォレットアドレスを取得（ログインしている場合）
     const walletAddress = localStorage.getItem("walletAddress");
-    
-    // GETリクエストの場合、ウォレットアドレスをクエリパラメータとして追加
+
+    // GET /campaigns のみ、ログイン時にウォレットで絞り込み
     let url = `${apiBaseUrl}${path}`;
-    if (walletAddress && (!init || !init.method || init.method === "GET")) {
+    if (
+      isLoggedIn &&
+      walletAddress &&
+      (!init || !init.method || init.method === "GET") &&
+      path.startsWith("/campaigns")
+    ) {
       const separator = path.includes("?") ? "&" : "?";
       url = `${apiBaseUrl}${path}${separator}sponsor_wallet_address=${encodeURIComponent(walletAddress)}`;
     }
-    
+
     const response = await fetch(url, {
       ...init,
+      cache: "no-store",
       headers: {
         "content-type": "application/json",
         ...(init?.headers ?? {})
@@ -358,15 +379,30 @@ function App() {
   async function loadDashboard(silent = false) {
     setLoading(true);
     if (!silent) {
-    setError(null);
+      setError(null);
     }
 
     try {
-      const [campaignData, profileData, creatorData] = await Promise.all([
+      const [campaignResult, profileResult, creatorResult] = await Promise.allSettled([
         fetchJson<Campaign[]>("/campaigns", { method: "GET" }),
         fetchJson<Profile[]>("/profiles", { method: "GET" }),
         fetchJson<CreatorSummary>("/creator/metrics", { method: "GET" })
       ]);
+
+      const warnings: string[] = [];
+      const campaignData = campaignResult.status === "fulfilled" ? campaignResult.value : [];
+      const profileData = profileResult.status === "fulfilled" ? profileResult.value : [];
+      const creatorData = creatorResult.status === "fulfilled" ? creatorResult.value : null;
+
+      if (campaignResult.status === "rejected") {
+        warnings.push("Could not load campaigns.");
+      }
+      if (profileResult.status === "rejected") {
+        warnings.push("Could not load user profiles.");
+      }
+      if (creatorResult.status === "rejected") {
+        warnings.push("Creator metrics endpoint is unavailable right now.");
+      }
 
       const dashboardResults = await Promise.allSettled(
         campaignData.map((campaign) =>
@@ -377,27 +413,33 @@ function App() {
       );
 
       const nextCampaignDashboards: Record<string, SponsorDashboardData> = {};
+      let dashboardFailures = 0;
       dashboardResults.forEach((result, index) => {
         if (result.status === "fulfilled") {
           nextCampaignDashboards[campaignData[index].id] = result.value;
+        } else {
+          dashboardFailures += 1;
         }
       });
+      if (dashboardFailures > 0) {
+        warnings.push(`Some sponsor dashboard rows failed to load (${dashboardFailures}).`);
+      }
 
       setCampaigns(campaignData);
       setProfiles(profileData);
       setCreator(creatorData);
       setCampaignDashboards(nextCampaignDashboards);
-    } catch (err) {
-      // Only show error if not silent mode (for user-initiated actions)
-      if (!silent) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      } else {
-        // Silent mode: just set empty data, don't show error
-        setCampaigns([]);
-        setProfiles([]);
-        setCreator(null);
-        setCampaignDashboards({});
+      setDataWarnings(warnings);
+      setLastSyncAt(new Date().toISOString());
+
+      if (!silent && campaignData.length === 0 && profileData.length === 0 && warnings.length > 0) {
+        setError("Backend responded with partial/empty data. Check API health and DB records.");
       }
+    } catch (err) {
+      if (!silent) {
+        setError(err instanceof Error ? err.message : "Unknown error");
+      }
+      setDataWarnings(["Unexpected dashboard load error."]);
     } finally {
       setLoading(false);
     }
@@ -435,8 +477,11 @@ function App() {
     e.preventDefault();
     // Simple login - in production, this would call an API
     if (loginForm.email && loginForm.password) {
+      const normalizedEmail = loginForm.email.trim().toLowerCase();
       setIsLoggedIn(true);
       localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("currentUserEmail", normalizedEmail);
+      setCurrentUserEmail(normalizedEmail);
       setShowProfile(true);
       setLoginForm({ email: "", password: "" });
       // If we were trying to create a campaign, go there after login
@@ -451,6 +496,8 @@ function App() {
   const handleLogout = () => {
     setIsLoggedIn(false);
     localStorage.setItem("isLoggedIn", "false");
+    localStorage.removeItem("currentUserEmail");
+    setCurrentUserEmail("");
     setShowProfile(false);
     setCurrentView("landing"); // Show landing page after logout
   };
@@ -678,6 +725,68 @@ function App() {
       userToolRanking
     };
   }, [campaigns, profiles, creator, campaignDashboards]);
+
+  const userDashboardStats = useMemo(() => {
+    const scopedProfiles = currentUserEmail
+      ? profiles.filter((profile) => profile.email.toLowerCase() === currentUserEmail.toLowerCase())
+      : profiles;
+
+    const sortedProfiles = [...scopedProfiles].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    const recentProfiles = sortedProfiles.slice(0, 8);
+
+    const regionMap = new Map<string, number>();
+    const roleMap = new Map<string, number>();
+    const toolMap = new Map<string, number>();
+
+    scopedProfiles.forEach((profile) => {
+      const region = (profile.region || "unknown").toUpperCase();
+      regionMap.set(region, (regionMap.get(region) ?? 0) + 1);
+
+      profile.roles.forEach((role) => {
+        const key = role.trim().toLowerCase();
+        if (!key) return;
+        roleMap.set(key, (roleMap.get(key) ?? 0) + 1);
+      });
+
+      profile.tools_used.forEach((tool) => {
+        const key = tool.trim().toLowerCase();
+        if (!key) return;
+        toolMap.set(key, (toolMap.get(key) ?? 0) + 1);
+      });
+    });
+
+    const toTopRows = (map: Map<string, number>, limit = 6) =>
+      Array.from(map.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, limit)
+        .map(([label, value]) => ({ label, value }));
+
+    const topRegions = toTopRows(regionMap, 5);
+    const topRoles = toTopRows(roleMap, 6);
+    const topTools = toTopRows(toolMap, 8);
+
+    const totalToolsAssigned = scopedProfiles.reduce((acc, profile) => acc + profile.tools_used.length, 0);
+    const avgToolsPerUser = scopedProfiles.length > 0 ? totalToolsAssigned / scopedProfiles.length : 0;
+    const usersWithDevRoles = scopedProfiles.filter((profile) =>
+      profile.roles.some((role) => {
+        const normalized = role.toLowerCase();
+        return normalized.includes("dev") || normalized.includes("builder") || normalized.includes("engineer");
+      })
+    ).length;
+    const devRoleShare = scopedProfiles.length > 0 ? (usersWithDevRoles / scopedProfiles.length) * 100 : 0;
+
+    return {
+      scopedProfilesCount: scopedProfiles.length,
+      recentProfiles,
+      topRegions,
+      topRoles,
+      topTools,
+      avgToolsPerUser,
+      devRoleShare
+    };
+  }, [profiles, currentUserEmail]);
 
   async function onCreateCampaign(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -984,15 +1093,15 @@ function App() {
 
           <section className="lp-stats">
             <div className="lp-stat">
-              <span className="lp-stat-value">$12,450</span>
+              <span className="lp-stat-value">${(dashboardStats.remainingBudgetCents / 100).toFixed(0)}</span>
               <span className="lp-stat-label">Active Subsidies</span>
             </div>
             <div className="lp-stat">
-              <span className="lp-stat-value">1,247</span>
+              <span className="lp-stat-value">{dashboardStats.userCount}</span>
               <span className="lp-stat-label">Developers</span>
             </div>
             <div className="lp-stat">
-              <span className="lp-stat-value">96.2%</span>
+              <span className="lp-stat-value">{(dashboardStats.completionRate * 100).toFixed(1)}%</span>
               <span className="lp-stat-label">Completion Rate</span>
             </div>
           </section>
@@ -1034,8 +1143,11 @@ function App() {
                   return;
                 }
                 setError(null);
+                const normalizedEmail = signupForm.email.trim().toLowerCase();
                 setIsLoggedIn(true);
                 localStorage.setItem("isLoggedIn", "true");
+                localStorage.setItem("currentUserEmail", normalizedEmail);
+                setCurrentUserEmail(normalizedEmail);
                 setSignupForm({ email: "", company: "", password: "", confirmPassword: "" });
                 setCurrentView("create-campaign");
               }}>
@@ -1208,16 +1320,16 @@ function App() {
             <div className="card create-campaign-card">
               <div className="card-content">
                 {error && <div className="error-message">{error}</div>}
-                <div className="profile-card">
-                  <div className="profile-avatar">
+                <div className="creator-summary-card">
+                  <div className="creator-summary-avatar">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                       <circle cx="12" cy="7" r="4"></circle>
                     </svg>
                   </div>
-                  <div className="profile-details">
+                  <div className="creator-summary-details">
                     <h4>Your Profile</h4>
-                    <div className="profile-stats">
+                    <div className="creator-summary-stats">
                       <span>Active: {dashboardStats.activeCampaigns}</span>
                       <span>Total: {dashboardStats.campaignCount}</span>
                       <span>Budget: ${(dashboardStats.remainingBudgetCents / 100).toFixed(2)}</span>
@@ -1570,6 +1682,69 @@ function App() {
       ) : (
         /* Dashboard */
         <main className="main-content">
+          <section className="data-source-banner">
+            <div className="data-source-title">
+              <span className="pulse-dot"></span>
+              Live Backend Data
+            </div>
+            <div className="data-source-meta">
+              <span>API: {apiBaseUrl}</span>
+              <span>Campaigns: {dashboardStats.campaignCount}</span>
+              <span>Profiles: {dashboardStats.userCount}</span>
+              <span>
+                Last Sync:{" "}
+                {lastSyncAt ? new Date(lastSyncAt).toLocaleString() : "not synced"}
+              </span>
+            </div>
+          </section>
+
+          {dataWarnings.length > 0 && (
+            <section className="data-warning-banner">
+              {dataWarnings.join(" ")}
+            </section>
+          )}
+
+          <section className="dashboard-view-switch">
+            <button
+              className={`view-switch-btn ${dashboardMode === "general" ? "active" : ""}`}
+              onClick={() => setDashboardMode("general")}
+            >
+              General Dashboard
+            </button>
+            <button
+              className={`view-switch-btn ${dashboardMode === "user" ? "active" : ""}`}
+              onClick={() => setDashboardMode("user")}
+            >
+              User Dashboard
+            </button>
+          </section>
+
+          <div className="dashboard-layout">
+            <aside className="dashboard-sidebar">
+              <div className="sidebar-card">
+                <h4>Overview</h4>
+                <p>Campaigns: {dashboardStats.campaignCount}</p>
+                <p>Active: {dashboardStats.activeCampaigns}</p>
+                <p>Profiles: {dashboardStats.userCount}</p>
+                <p>Calls: {dashboardStats.totalSponsoredCalls}</p>
+              </div>
+              <div className="sidebar-card">
+                <h4>Quick Actions</h4>
+                <button className="sidebar-action-btn" onClick={() => void loadDashboard(false)}>Refresh Data</button>
+                <button className="sidebar-action-btn" onClick={() => setCurrentView("caller")}>Open API Caller</button>
+                <button
+                  className="sidebar-action-btn"
+                  onClick={() => setCurrentView(isLoggedIn ? "create-campaign" : "login")}
+                >
+                  Create Campaign
+                </button>
+              </div>
+            </aside>
+
+            <section className="dashboard-main">
+              {dashboardMode === "general" ? (
+                <>
+
           {/* A. Top Metrics Row */}
           <div className="metrics-row">
             <div className="metric-card">
@@ -1869,6 +2044,149 @@ function App() {
               </table>
             </div>
             </div>
+                </>
+              ) : (
+                <>
+                  <section className="user-scope-banner">
+                    <strong>Scope:</strong>{" "}
+                    {currentUserEmail ? `User ${currentUserEmail}` : "All users (no login email scope)"}
+                    {" · "}
+                    {userDashboardStats.scopedProfilesCount} profile(s) matched
+                  </section>
+
+                  <div className="metrics-row">
+                    <div className="metric-card">
+                      <div className="metric-card-label">Registered Users</div>
+                      <div className="metric-card-value">{userDashboardStats.scopedProfilesCount}</div>
+                      <div className="metric-card-sub">Profiles in current scope</div>
+                    </div>
+                    <div className="metric-card">
+                      <div className="metric-card-label">Avg Tools Per User</div>
+                      <div className="metric-card-value">{userDashboardStats.avgToolsPerUser.toFixed(1)}</div>
+                      <div className="metric-card-sub">Average number of tools users already use</div>
+                    </div>
+                    <div className="metric-card">
+                      <div className="metric-card-label">Builder/Dev Share</div>
+                      <div className="metric-card-value">{userDashboardStats.devRoleShare.toFixed(1)}%</div>
+                      <div className="metric-card-sub">Users with developer or builder roles</div>
+                    </div>
+                  </div>
+
+                  <div className="two-col-row">
+                    <div className="card">
+                      <div className="card-header"><div className="card-title"><h3>Top Regions</h3></div></div>
+                      <div className="card-content">
+                        {userDashboardStats.topRegions.map((entry) => (
+                          <div key={entry.label} className="ranking-item">
+                            <span className="ranking-name">{entry.label}</span>
+                            <div className="ranking-bar-bg">
+                              <div
+                                className="ranking-bar-fill"
+                                style={{
+                                  width: `${userDashboardStats.scopedProfilesCount > 0 ? (entry.value / userDashboardStats.scopedProfilesCount) * 100 : 0}%`
+                                }}
+                              ></div>
+                            </div>
+                            <span className="ranking-pct">{entry.value}</span>
+                          </div>
+                        ))}
+                        {userDashboardStats.topRegions.length === 0 && (
+                          <div className="ranking-item">
+                            <span className="ranking-name">No profile region data yet.</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="card">
+                      <div className="card-header"><div className="card-title"><h3>Top User Roles</h3></div></div>
+                      <div className="card-content">
+                        {userDashboardStats.topRoles.map((entry) => (
+                          <div key={entry.label} className="ranking-item">
+                            <span className="ranking-name">{entry.label}</span>
+                            <div className="ranking-bar-bg">
+                              <div
+                                className="ranking-bar-fill"
+                                style={{
+                                  width: `${userDashboardStats.scopedProfilesCount > 0 ? (entry.value / userDashboardStats.scopedProfilesCount) * 100 : 0}%`
+                                }}
+                              ></div>
+                            </div>
+                            <span className="ranking-pct">{entry.value}</span>
+                          </div>
+                        ))}
+                        {userDashboardStats.topRoles.length === 0 && (
+                          <div className="ranking-item">
+                            <span className="ranking-name">No user role data yet.</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="card full-width">
+                    <div className="card-header"><div className="card-title"><h3>Most Used Tools by Users</h3></div></div>
+                    <div className="card-content">
+                      {userDashboardStats.topTools.map((entry, index) => (
+                        <div key={`${entry.label}-${index}`} className="ranking-item">
+                          <span className="ranking-number">{index + 1}</span>
+                          <span className="ranking-name">{entry.label}</span>
+                          <div className="ranking-bar-bg">
+                            <div
+                              className="ranking-bar-fill"
+                              style={{
+                                width: `${userDashboardStats.scopedProfilesCount > 0 ? (entry.value / userDashboardStats.scopedProfilesCount) * 100 : 0}%`
+                              }}
+                            ></div>
+                          </div>
+                          <span className="ranking-pct">{entry.value}</span>
+                        </div>
+                      ))}
+                      {userDashboardStats.topTools.length === 0 && (
+                        <div className="ranking-item">
+                          <span className="ranking-name">No tool usage captured yet.</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="card full-width">
+                    <div className="card-header"><div className="card-title"><h3>Recent Users</h3></div></div>
+                    <div className="table-container">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Email</th>
+                            <th>Region</th>
+                            <th>Roles</th>
+                            <th>Tools Used</th>
+                            <th>Joined</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {userDashboardStats.recentProfiles.length === 0 ? (
+                            <tr>
+                              <td colSpan={5}>No user profiles loaded yet.</td>
+                            </tr>
+                          ) : (
+                            userDashboardStats.recentProfiles.map((profile) => (
+                              <tr key={profile.id}>
+                                <td>{profile.email}</td>
+                                <td>{profile.region}</td>
+                                <td>{profile.roles.join(", ") || "N/A"}</td>
+                                <td>{profile.tools_used.join(", ") || "N/A"}</td>
+                                <td>{new Date(profile.created_at).toLocaleDateString()}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </>
+              )}
+            </section>
+          </div>
 
           {/* User Profile Section - Only shown when logged in */}
           {isLoggedIn && showProfile && (
