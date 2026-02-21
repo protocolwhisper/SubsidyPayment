@@ -49,6 +49,14 @@ type CreatorSummary = {
   }>;
 };
 
+type SponsorDashboardData = {
+  campaign: Campaign;
+  tasks_completed: number;
+  sponsored_calls: number;
+  spend_cents: number;
+  remaining_budget_cents: number;
+};
+
 type ServiceTaskConfig = {
   service: string;
   tasks: string[];
@@ -191,10 +199,77 @@ const TASK_CATEGORIES: TaskCategory[] = [
   }
 ];
 
+function percentile(values: number[], pct: number): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.min(
+    sorted.length - 1,
+    Math.max(0, Math.floor((pct / 100) * (sorted.length - 1)))
+  );
+  return sorted[index];
+}
+
+function formatDuration(ms: number): string {
+  if (!Number.isFinite(ms) || ms <= 0) return "0s";
+  const totalSeconds = Math.round(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes === 0) return `${seconds}s`;
+  return `${minutes}m ${seconds}s`;
+}
+
+function taskCategoryFromText(task: string): string {
+  const lower = task.toLowerCase();
+  if (lower.includes("email") || lower.includes("telegram") || lower.includes("contact")) {
+    return "Contact Sharing";
+  }
+  if (lower.includes("survey") || lower.includes("feedback") || lower.includes("research")) {
+    return "Survey / Feedback";
+  }
+  if (
+    lower.includes("signup") ||
+    lower.includes("sign up") ||
+    lower.includes("onboard") ||
+    lower.includes("account")
+  ) {
+    return "Signup / Onboarding";
+  }
+  if (
+    lower.includes("api key") ||
+    lower.includes("sdk") ||
+    lower.includes("cli") ||
+    lower.includes("github") ||
+    lower.includes("pr") ||
+    lower.includes("bug")
+  ) {
+    return "Developer Task";
+  }
+  if (
+    lower.includes("tweet") ||
+    lower.includes("sns") ||
+    lower.includes("ugc") ||
+    lower.includes("social") ||
+    lower.includes("post") ||
+    lower.includes("review")
+  ) {
+    return "Social / UGC";
+  }
+  if (
+    lower.includes("photo") ||
+    lower.includes("local") ||
+    lower.includes("mystery") ||
+    lower.includes("inspection")
+  ) {
+    return "Field Task";
+  }
+  return "Other";
+}
+
 function App() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [creator, setCreator] = useState<CreatorSummary | null>(null);
+  const [campaignDashboards, setCampaignDashboards] = useState<Record<string, SponsorDashboardData>>({});
   const [loading, setLoading] = useState(true);
   const [createLoading, setCreateLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -292,9 +367,26 @@ function App() {
         fetchJson<Profile[]>("/profiles", { method: "GET" }),
         fetchJson<CreatorSummary>("/creator/metrics", { method: "GET" })
       ]);
+
+      const dashboardResults = await Promise.allSettled(
+        campaignData.map((campaign) =>
+          fetchJson<SponsorDashboardData>(`/dashboard/sponsor/${campaign.id}`, {
+            method: "GET"
+          })
+        )
+      );
+
+      const nextCampaignDashboards: Record<string, SponsorDashboardData> = {};
+      dashboardResults.forEach((result, index) => {
+        if (result.status === "fulfilled") {
+          nextCampaignDashboards[campaignData[index].id] = result.value;
+        }
+      });
+
       setCampaigns(campaignData);
       setProfiles(profileData);
       setCreator(creatorData);
+      setCampaignDashboards(nextCampaignDashboards);
     } catch (err) {
       // Only show error if not silent mode (for user-initiated actions)
       if (!silent) {
@@ -304,6 +396,7 @@ function App() {
         setCampaigns([]);
         setProfiles([]);
         setCreator(null);
+        setCampaignDashboards({});
       }
     } finally {
       setLoading(false);
@@ -439,30 +532,152 @@ function App() {
     setCurrentView("landing");
   };
 
-  const totals = useMemo(() => {
+  const dashboardStats = useMemo(() => {
     const activeCampaigns = campaigns.filter((item) => item.active).length;
-    const subsidyCents = campaigns.reduce(
-      (acc, item) => acc + item.subsidy_per_call_cents,
-      0
-    );
-    const budgetCents = campaigns.reduce(
-      (acc, item) => acc + item.budget_remaining_cents,
-      0
-    );
-    const totalPayouts = campaigns.reduce(
-      (acc, item) => acc + item.budget_total_cents - item.budget_remaining_cents,
+    const totalBudgetCents = campaigns.reduce((acc, item) => acc + item.budget_total_cents, 0);
+    const remainingBudgetCents = campaigns.reduce((acc, item) => acc + item.budget_remaining_cents, 0);
+    const fallbackSpentCents = campaigns.reduce(
+      (acc, item) => acc + (item.budget_total_cents - item.budget_remaining_cents),
       0
     );
 
+    const dashboardRows = campaigns
+      .map((campaign) => campaignDashboards[campaign.id])
+      .filter((row): row is SponsorDashboardData => Boolean(row));
+
+    const dashboardSpendCents = dashboardRows.reduce((acc, row) => acc + row.spend_cents, 0);
+    const hasDashboardSpend = dashboardRows.some((row) => row.spend_cents > 0);
+    const spentCents = hasDashboardSpend ? dashboardSpendCents : fallbackSpentCents;
+
+    const totalSponsoredCalls = dashboardRows.reduce((acc, row) => acc + row.sponsored_calls, 0);
+    const totalTasksCompleted = dashboardRows.reduce((acc, row) => acc + row.tasks_completed, 0);
+
+    const userCount = profiles.length;
+    const callsPerUser = userCount > 0 ? totalSponsoredCalls / userCount : 0;
+    const spendPerCallCents = totalSponsoredCalls > 0 ? spentCents / totalSponsoredCalls : 0;
+    const spendPerTaskCents = totalTasksCompleted > 0 ? spentCents / totalTasksCompleted : 0;
+    const spendPerUserCents = userCount > 0 ? spentCents / userCount : 0;
+
+    const callsPerCampaign = dashboardRows.map((row) => row.sponsored_calls);
+    const medianCalls = percentile(callsPerCampaign, 50);
+    const p90Calls = percentile(callsPerCampaign, 90);
+
+    const oldestCampaignMs = campaigns.length > 0
+      ? Math.min(...campaigns.map((item) => new Date(item.created_at).getTime()))
+      : Date.now();
+    const daysRunning = Math.max(1, (Date.now() - oldestCampaignMs) / (1000 * 60 * 60 * 24));
+    const burnRateCentsPerDay = spentCents > 0 ? spentCents / daysRunning : 0;
+    const depletionDays = burnRateCentsPerDay > 0 ? remainingBudgetCents / burnRateCentsPerDay : null;
+    const depletionDate = depletionDays
+      ? new Date(Date.now() + depletionDays * 24 * 60 * 60 * 1000)
+      : null;
+    const spentPct = totalBudgetCents > 0 ? (spentCents / totalBudgetCents) * 100 : 0;
+
+    const durationRows = creator?.per_skill ?? [];
+    const durationNumerator = durationRows.reduce(
+      (acc, row) => acc + (row.avg_duration_ms ?? 0) * row.total_events,
+      0
+    );
+    const durationDenominator = durationRows.reduce(
+      (acc, row) => acc + (row.avg_duration_ms !== null ? row.total_events : 0),
+      0
+    );
+    const avgEventDurationMs = durationDenominator > 0 ? durationNumerator / durationDenominator : 0;
+
+    const completionRate = totalSponsoredCalls > 0
+      ? Math.min(1, totalTasksCompleted / totalSponsoredCalls)
+      : (creator?.success_rate ?? 0);
+
+    const taskBreakdownMap = new Map<string, number>();
+    campaigns.forEach((campaign) => {
+      const category = taskCategoryFromText(campaign.required_task);
+      const weight = campaignDashboards[campaign.id]?.tasks_completed ?? 1;
+      taskBreakdownMap.set(category, (taskBreakdownMap.get(category) ?? 0) + Math.max(1, weight));
+    });
+    const taskBreakdownTotal = Array.from(taskBreakdownMap.values()).reduce((acc, value) => acc + value, 0);
+    const taskBreakdown = Array.from(taskBreakdownMap.entries())
+      .map(([label, value]) => ({
+        label,
+        pct: taskBreakdownTotal > 0 ? (value / taskBreakdownTotal) * 100 : 0
+      }))
+      .sort((a, b) => b.pct - a.pct)
+      .slice(0, 5);
+
+    const comparisonRows = campaigns
+      .map((campaign) => {
+        const dashboard = campaignDashboards[campaign.id];
+        const campaignSpendCents =
+          dashboard?.spend_cents ??
+          Math.max(0, campaign.budget_total_cents - campaign.budget_remaining_cents);
+        const campaignCalls = dashboard?.sponsored_calls ?? 0;
+        const campaignTasks = dashboard?.tasks_completed ?? 0;
+        const campaignCompletion = campaignCalls > 0 ? (campaignTasks / campaignCalls) * 100 : 0;
+        const costPerTaskCents = campaignTasks > 0 ? campaignSpendCents / campaignTasks : 0;
+
+        return {
+          id: campaign.id,
+          service: campaign.name,
+          users: campaignTasks,
+          totalSubsidyCents: campaignSpendCents,
+          costPerTaskCents,
+          completionPct: campaignCompletion,
+          status: campaign.active ? "ACTIVE" : "PAUSED"
+        };
+      })
+      .sort((a, b) => b.totalSubsidyCents - a.totalSubsidyCents)
+      .slice(0, 6);
+
+    const toolUsageMap = new Map<string, number>();
+    profiles.forEach((profile) => {
+      const uniqueTools = new Set(profile.tools_used.map((tool) => tool.trim()).filter(Boolean));
+      uniqueTools.forEach((tool) => {
+        toolUsageMap.set(tool, (toolUsageMap.get(tool) ?? 0) + 1);
+      });
+    });
+
+    const formatToolName = (tool: string) =>
+      tool
+        .split(/[-_ ]+/)
+        .filter(Boolean)
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(" ");
+
+    const rankingSourceTotal = userCount > 0 ? userCount : campaigns.length;
+    const userToolRanking = Array.from(toolUsageMap.entries())
+      .map(([tool, count]) => ({
+        name: formatToolName(tool),
+        pct: rankingSourceTotal > 0 ? (count / rankingSourceTotal) * 100 : 0
+      }))
+      .sort((a, b) => b.pct - a.pct)
+      .slice(0, 5);
+
     return {
       activeCampaigns,
-      subsidyDollars: (subsidyCents / 100).toFixed(2),
-      budgetDollars: (budgetCents / 100).toFixed(2),
-      profiles: profiles.length,
-      creatorSuccessRate: ((creator?.success_rate ?? 0) * 100).toFixed(1),
-      totalPayouts: (totalPayouts / 100).toFixed(2)
+      campaignCount: campaigns.length,
+      userCount,
+      remainingBudgetCents,
+      totalBudgetCents,
+      spentCents,
+      spentPct,
+      burnRateCentsPerDay,
+      depletionDays,
+      depletionDate,
+      totalSponsoredCalls,
+      totalTasksCompleted,
+      callsPerUser,
+      spendPerCallCents,
+      spendPerTaskCents,
+      spendPerUserCents,
+      medianCalls,
+      p90Calls,
+      completionRate,
+      avgEventDurationMs,
+      creatorSuccessRate: creator?.success_rate ?? 0,
+      taskBreakdown,
+      comparisonRows,
+      userToolRanking
     };
-  }, [campaigns, profiles.length, creator?.success_rate]);
+  }, [campaigns, profiles, creator, campaignDashboards]);
 
   async function onCreateCampaign(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1003,9 +1218,9 @@ function App() {
                   <div className="profile-details">
                     <h4>Your Profile</h4>
                     <div className="profile-stats">
-                      <span>Active: {totals.activeCampaigns}</span>
-                      <span>Total: {campaigns.length}</span>
-                      <span>Budget: ${totals.budgetDollars}</span>
+                      <span>Active: {dashboardStats.activeCampaigns}</span>
+                      <span>Total: {dashboardStats.campaignCount}</span>
+                      <span>Budget: ${(dashboardStats.remainingBudgetCents / 100).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
@@ -1359,23 +1574,37 @@ function App() {
           <div className="metrics-row">
             <div className="metric-card">
               <div className="metric-card-label">Remaining Budget</div>
-              <div className="metric-card-value">$12,450.00</div>
-              <div className="metric-card-sub">75.3% of $16,540 total</div>
+              <div className="metric-card-value">${(dashboardStats.remainingBudgetCents / 100).toFixed(2)}</div>
+              <div className="metric-card-sub">
+                {(dashboardStats.totalBudgetCents - dashboardStats.remainingBudgetCents >= 0
+                  ? ((dashboardStats.remainingBudgetCents / Math.max(1, dashboardStats.totalBudgetCents)) * 100)
+                  : 0
+                ).toFixed(1)}
+                % of ${(dashboardStats.totalBudgetCents / 100).toFixed(2)} total
+              </div>
             </div>
             <div className="metric-card">
               <div className="metric-card-label">Total Subsidized Amount</div>
-              <div className="metric-card-value">$4,090.00</div>
-              <div className="metric-card-sub positive">+18.2% vs last week</div>
+              <div className="metric-card-value">${(dashboardStats.spentCents / 100).toFixed(2)}</div>
+              <div className="metric-card-sub positive">
+                {dashboardStats.totalSponsoredCalls} sponsored call{dashboardStats.totalSponsoredCalls === 1 ? "" : "s"}
+              </div>
             </div>
             <div className="metric-card">
               <div className="metric-card-label">Users Subsidized</div>
-              <div className="metric-card-value">1,247</div>
-              <div className="metric-card-sub positive">+89 new this week</div>
+              <div className="metric-card-value">{dashboardStats.userCount}</div>
+              <div className="metric-card-sub positive">
+                {dashboardStats.totalTasksCompleted} completed sponsor task{dashboardStats.totalTasksCompleted === 1 ? "" : "s"}
+              </div>
             </div>
             <div className="metric-card">
               <div className="metric-card-label">Burn Rate</div>
-              <div className="metric-card-value">$127.50/day</div>
-              <div className="metric-card-sub">~98 days until depletion, Apr 19 2026</div>
+              <div className="metric-card-value">${(dashboardStats.burnRateCentsPerDay / 100).toFixed(2)}/day</div>
+              <div className="metric-card-sub">
+                {dashboardStats.depletionDays && dashboardStats.depletionDate
+                  ? `~${Math.ceil(dashboardStats.depletionDays)} days until depletion, ${dashboardStats.depletionDate.toLocaleDateString()}`
+                  : "No depletion forecast yet (insufficient spend data)"}
+              </div>
             </div>
           </div>
 
@@ -1387,13 +1616,17 @@ function App() {
                 <div className="inner-box-row">
                   <div className="inner-box">
                     <div className="inner-box-label">Frequency</div>
-                    <div className="inner-box-value">4.7 calls</div>
-                    <div className="inner-box-detail">Median 3.2 &middot; P90 11.4</div>
+                    <div className="inner-box-value">{dashboardStats.callsPerUser.toFixed(1)} calls</div>
+                    <div className="inner-box-detail">
+                      Median {dashboardStats.medianCalls.toFixed(1)} &middot; P90 {dashboardStats.p90Calls.toFixed(1)}
+                    </div>
                   </div>
                   <div className="inner-box">
                     <div className="inner-box-label">Intensity</div>
-                    <div className="inner-box-value">$0.69/call</div>
-                    <div className="inner-box-detail">Range $0.05 - $2.40</div>
+                    <div className="inner-box-value">${(dashboardStats.spendPerCallCents / 100).toFixed(2)}/call</div>
+                    <div className="inner-box-detail">
+                      ${ (dashboardStats.spendPerUserCents / 100).toFixed(2) } per subsidized user
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1402,18 +1635,22 @@ function App() {
               <div className="card-header"><div className="card-title"><h3>Budget Pacing & Depletion Forecast</h3></div></div>
               <div className="card-content">
                 <div className="progress-bar-container">
-                  <div className="progress-bar-fill" style={{ width: "24.7%" }}></div>
+                  <div className="progress-bar-fill" style={{ width: `${Math.min(100, Math.max(0, dashboardStats.spentPct)).toFixed(1)}%` }}></div>
                 </div>
-                <div className="progress-bar-label">24.7% spent</div>
+                <div className="progress-bar-label">{dashboardStats.spentPct.toFixed(1)}% spent</div>
                 <div className="inner-box-row" style={{ marginTop: "16px" }}>
                   <div className="inner-box">
                     <div className="inner-box-label">Daily Burn</div>
-                    <div className="inner-box-value">$127.50/day</div>
+                    <div className="inner-box-value">${(dashboardStats.burnRateCentsPerDay / 100).toFixed(2)}/day</div>
                   </div>
                   <div className="inner-box">
                     <div className="inner-box-label">Forecast Depletion</div>
-                    <div className="inner-box-value">Apr 19 2026</div>
-                    <div className="inner-box-detail">~98 days</div>
+                    <div className="inner-box-value">
+                      {dashboardStats.depletionDate ? dashboardStats.depletionDate.toLocaleDateString() : "N/A"}
+                    </div>
+                    <div className="inner-box-detail">
+                      {dashboardStats.depletionDays ? `~${Math.ceil(dashboardStats.depletionDays)} days` : "No forecast yet"}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1423,32 +1660,50 @@ function App() {
           {/* C. Third Row */}
           <div className="two-col-row">
             <div className="card">
-              <div className="card-header"><div className="card-title"><h3>CPA Efficiency vs Sponsor Target</h3></div></div>
+              <div className="card-header"><div className="card-title"><h3>Efficiency Metrics (Live)</h3></div></div>
               <div className="card-content">
-                <div className="cpa-row"><span className="cpa-label">Cost per Signup</span><span className="cpa-values">$5.20 vs $8.50 target</span><span className="cpa-badge">-38.8%</span></div>
-                <div className="cpa-row"><span className="cpa-label">Cost per Activated User</span><span className="cpa-values">$9.80 vs $12.00</span><span className="cpa-badge">-18.3%</span></div>
-                <div className="cpa-row"><span className="cpa-label">Cost per Qualified Lead</span><span className="cpa-values">$18.50 vs $22.00</span><span className="cpa-badge">-15.9%</span></div>
+                <div className="cpa-row">
+                  <span className="cpa-label">Spend per Sponsored Call</span>
+                  <span className="cpa-values">${(dashboardStats.spendPerCallCents / 100).toFixed(2)}</span>
+                  <span className="cpa-badge">live</span>
+                </div>
+                <div className="cpa-row">
+                  <span className="cpa-label">Spend per Completed Task</span>
+                  <span className="cpa-values">${(dashboardStats.spendPerTaskCents / 100).toFixed(2)}</span>
+                  <span className="cpa-badge">live</span>
+                </div>
+                <div className="cpa-row">
+                  <span className="cpa-label">Spend per Subsidized User</span>
+                  <span className="cpa-values">${(dashboardStats.spendPerUserCents / 100).toFixed(2)}</span>
+                  <span className="cpa-badge">live</span>
+                </div>
               </div>
             </div>
             <div className="card">
               <div className="card-header"><div className="card-title"><h3>Subsidized Task Breakdown</h3></div></div>
               <div className="card-content">
-                {[
-                  { label: "Signup to sponsor services", pct: 34.2 },
-                  { label: "Survey responses", pct: 27.8 },
-                  { label: "Email sharing", pct: 21.5 },
-                  { label: "Ad views", pct: 11.3 },
-                  { label: "Social media sharing", pct: 5.2 }
-                ].map((task, i) => (
+                {dashboardStats.taskBreakdown.map((task, i) => (
                   <div key={task.label} className="task-item">
-                    <span className="task-item-dot" style={{ background: taskBreakdownColors[i] }}></span>
+                    <span className="task-item-dot" style={{ background: taskBreakdownColors[i % taskBreakdownColors.length] }}></span>
                     <span className="task-item-label">{task.label}</span>
-                    <span className="task-item-pct">{task.pct}%</span>
+                    <span className="task-item-pct">{task.pct.toFixed(1)}%</span>
                   </div>
                 ))}
+                {dashboardStats.taskBreakdown.length === 0 && (
+                  <div className="task-item">
+                    <span className="task-item-label">No task data yet.</span>
+                  </div>
+                )}
                 <div className="task-bar-stack">
-                  {[34.2, 27.8, 21.5, 11.3, 5.2].map((pct, i) => (
-                    <div key={i} className="task-bar-segment" style={{ width: `${pct}%`, background: taskBreakdownColors[i] }}></div>
+                  {dashboardStats.taskBreakdown.map((task, i) => (
+                    <div
+                      key={task.label}
+                      className="task-bar-segment"
+                      style={{
+                        width: `${task.pct}%`,
+                        background: taskBreakdownColors[i % taskBreakdownColors.length]
+                      }}
+                    ></div>
                   ))}
                 </div>
               </div>
@@ -1460,9 +1715,21 @@ function App() {
             <div className="card-header"><div className="card-title"><h3>Task Completion Metrics</h3></div></div>
             <div className="card-content">
               <div className="metrics-row metrics-row-inner">
-                <div className="metric-card metric-card-compact"><div className="metric-card-label">Avg Time-to-Complete</div><div className="metric-card-value">2m 34s</div><div className="metric-card-sub positive">-12% faster</div></div>
-                <div className="metric-card metric-card-compact"><div className="metric-card-label">Avg Delay</div><div className="metric-card-value">18.3s</div><div className="metric-card-sub positive">under 30s SLA</div></div>
-                <div className="metric-card metric-card-compact"><div className="metric-card-label">Completion Rate</div><div className="metric-card-value">94.7%</div><div className="metric-card-sub positive">+2.1%</div></div>
+                <div className="metric-card metric-card-compact">
+                  <div className="metric-card-label">Avg Event Duration</div>
+                  <div className="metric-card-value">{formatDuration(dashboardStats.avgEventDurationMs)}</div>
+                  <div className="metric-card-sub positive">from creator metrics</div>
+                </div>
+                <div className="metric-card metric-card-compact">
+                  <div className="metric-card-label">Successful Events</div>
+                  <div className="metric-card-value">{(dashboardStats.creatorSuccessRate * 100).toFixed(1)}%</div>
+                  <div className="metric-card-sub positive">{creator?.success_events ?? 0} / {creator?.total_events ?? 0}</div>
+                </div>
+                <div className="metric-card metric-card-compact">
+                  <div className="metric-card-label">Completion Rate</div>
+                  <div className="metric-card-value">{(dashboardStats.completionRate * 100).toFixed(1)}%</div>
+                  <div className="metric-card-sub positive">task completions vs sponsored calls</div>
+                </div>
               </div>
             </div>
           </div>
@@ -1472,11 +1739,28 @@ function App() {
             <div className="card-header"><div className="card-title"><h3>Comparative Performance</h3></div></div>
             <div className="table-container">
               <table className="comparison-table">
-                <thead><tr><th>Service</th><th>Users</th><th>Total Subsidy</th><th>CPA</th><th>Completion</th><th>Trend</th></tr></thead>
+                <thead><tr><th>Service</th><th>Users</th><th>Total Subsidy</th><th>Cost / Task</th><th>Completion</th><th>Status</th></tr></thead>
                 <tbody>
-                  <tr><td>Uniswap</td><td>482</td><td>$1,580</td><td>$3.28</td><td>96.2%</td><td><span className="trend-positive">+12%</span></td></tr>
-                  <tr><td>Aave</td><td>351</td><td>$1,240</td><td>$3.53</td><td>93.8%</td><td><span className="trend-positive">+8%</span></td></tr>
-                  <tr><td>OpenSea</td><td>289</td><td>$890</td><td>$3.08</td><td>91.4%</td><td><span className="trend-negative">-3%</span></td></tr>
+                  {dashboardStats.comparisonRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={6}>No campaign performance data yet.</td>
+                    </tr>
+                  ) : (
+                    dashboardStats.comparisonRows.map((row) => (
+                      <tr key={row.id}>
+                        <td>{row.service}</td>
+                        <td>{row.users}</td>
+                        <td>${(row.totalSubsidyCents / 100).toFixed(2)}</td>
+                        <td>${(row.costPerTaskCents / 100).toFixed(2)}</td>
+                        <td>{row.completionPct.toFixed(1)}%</td>
+                        <td>
+                          <span className={row.status === "ACTIVE" ? "trend-positive" : "trend-negative"}>
+                            {row.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1486,22 +1770,21 @@ function App() {
           <div className="card full-width">
             <div className="card-header"><div className="card-title"><h3>What services are your target users actively using right now?</h3></div></div>
             <div className="card-content">
-              {[
-                { rank: 1, name: "CoinGecko", pct: 78.4 },
-                { rank: 2, name: "Claude", pct: 62.1 },
-                { rank: 3, name: "Midjourney API", pct: 45.6 },
-                { rank: 4, name: "Supabase", pct: 33.2 },
-                { rank: 5, name: "Vercel", pct: 24.8 }
-              ].map((item) => (
-                <div key={item.rank} className="ranking-item">
-                  <span className="ranking-number">{item.rank}</span>
+              {dashboardStats.userToolRanking.map((item, index) => (
+                <div key={`${item.name}-${index}`} className="ranking-item">
+                  <span className="ranking-number">{index + 1}</span>
                   <span className="ranking-name">{item.name}</span>
                   <div className="ranking-bar-bg">
                     <div className="ranking-bar-fill" style={{ width: `${item.pct}%` }}></div>
                   </div>
-                  <span className="ranking-pct">{item.pct}%</span>
+                  <span className="ranking-pct">{item.pct.toFixed(1)}%</span>
                 </div>
               ))}
+              {dashboardStats.userToolRanking.length === 0 && (
+                <div className="ranking-item">
+                  <span className="ranking-name">No profile tool usage data yet.</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1622,15 +1905,15 @@ function App() {
                 </div>
                 <div className="profile-stats">
                   <div className="profile-stat">
-                    <span className="stat-number">{totals.activeCampaigns}</span>
+                    <span className="stat-number">{dashboardStats.activeCampaigns}</span>
                     <span className="stat-label">Active</span>
                   </div>
                   <div className="profile-stat">
-                    <span className="stat-number">{campaigns.length}</span>
+                    <span className="stat-number">{dashboardStats.campaignCount}</span>
                     <span className="stat-label">Total</span>
                   </div>
                   <div className="profile-stat">
-                    <span className="stat-number">${totals.budgetDollars}</span>
+                    <span className="stat-number">${(dashboardStats.remainingBudgetCents / 100).toFixed(2)}</span>
                     <span className="stat-label">Budget</span>
                   </div>
                 </div>
