@@ -279,7 +279,7 @@ function App() {
   const [selectedTab, setSelectedTab] = useState("All");
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem("darkMode");
-    return saved ? JSON.parse(saved) : false;
+    return saved !== null ? JSON.parse(saved) : true;
   });
   const [isLoggedIn, setIsLoggedIn] = useState(false); // Start logged out (public dashboard)
   const [showProfile, setShowProfile] = useState(false);
@@ -1121,21 +1121,21 @@ function App() {
               <div className="lp-feature-icon">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></svg>
               </div>
-              <h3>For Developers/Users/traders/designers</h3>
+              <h3 className="lp-feature-title">For developers &amp; creators</h3>
               <p>Reduce the cost of the paid services you use daily (AI tools, APIs, data services) to zero through sponsored campaigns. Focus on usage, not billing.</p>
             </div>
             <div className="lp-feature-card">
               <div className="lp-feature-icon">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
               </div>
-              <h3>For Sponsors</h3>
+              <h3 className="lp-feature-title">For sponsors</h3>
               <p>Reach your target user segments by subsidizing access to the services they use daily. Pay only for completed tasks.</p>
             </div>
             <div className="lp-feature-card">
               <div className="lp-feature-icon">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
               </div>
-              <h3>Seamless Payments</h3>
+              <h3 className="lp-feature-title">Seamless payments</h3>
               <p>Super-seamless payments for AI and humans. Agent-native payments powered by the x402 protocol. Transparent, instant, and verifiable for both AI agents and humans.</p>
             </div>
           </section>

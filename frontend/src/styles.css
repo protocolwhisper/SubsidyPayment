@@ -2514,8 +2514,10 @@ td {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
-.landing-page .lp-feature-card h3 {
-  color: #fff;
+.landing-page .lp-feature-card h3,
+.landing-page .lp-feature-card .lp-feature-title {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 1.15rem;
 }
 .landing-page .lp-feature-card p {
   color: rgba(255, 255, 255, 0.7);
@@ -2600,7 +2602,7 @@ td {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 40px 28px;
+  padding: 36px 20px;
   text-align: center;
   box-shadow: var(--shadow);
   transition: transform 0.2s, box-shadow 0.2s;
@@ -2627,19 +2629,16 @@ td {
   flex-shrink: 0;
 }
 
-.lp-feature-card h3 {
-  font-size: 18px;
+.lp-feature-card h3,
+.lp-feature-card .lp-feature-title {
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--text-primary);
-  margin-bottom: 16px;
-  line-height: 1.5;
-  min-height: 54px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  word-break: break-word;
-  hyphens: auto;
-  padding: 0 4px;
+  margin: 0 0 12px;
+  padding: 0;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  text-align: center;
 }
 
 .lp-feature-card p {
@@ -2647,8 +2646,8 @@ td {
   color: var(--text-secondary);
   line-height: 1.7;
   flex: 1;
-  display: flex;
-  align-items: center;
+  text-align: center;
+  margin: 0;
 }
 
 .lp-stats {
@@ -2810,13 +2809,13 @@ td {
 
   .lp-feature-card {
     min-height: auto;
-    padding: 32px 20px;
+    padding: 28px 16px;
   }
 
-  .lp-feature-card h3 {
-    min-height: auto;
-    margin-bottom: 14px;
-    font-size: 17px;
+  .lp-feature-card h3,
+  .lp-feature-card .lp-feature-title {
+    margin-bottom: 12px;
+    font-size: 1.05rem;
   }
 
   .lp-feature-card p {
@@ -2877,13 +2876,13 @@ td {
   }
 
   .lp-feature-card {
-    padding: 36px 24px;
+    padding: 32px 20px;
     min-height: 300px;
   }
 
-  .lp-feature-card h3 {
-    min-height: 48px;
-    font-size: 17px;
+  .lp-feature-card h3,
+  .lp-feature-card .lp-feature-title {
+    font-size: 1.1rem;
   }
 }
 
