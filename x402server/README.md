@@ -25,6 +25,12 @@ pnpm run demo
 ## MCP Server test
 
 ```bash
+# Start Rust backend server
+cargo run
+
+cd x402server
+pnpm run dev
+
 cd ../mcp-server
 # start mcp server
 npm run dev

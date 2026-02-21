@@ -240,7 +240,7 @@
       const requiredTask = data.required_task ?? 'Task';
       const taskDescription = data.task_description ?? 'Complete the task to unlock sponsor coverage.';
       const subsidyAmount = Number(data.subsidy_amount_cents ?? 0) / 100;
-      const taskInputFormat = data.task_input_format ?? {};
+      const task_input_format = data.task_input_format ?? {};
       const alreadyCompleted = Boolean(data.already_completed);
       const selectedServiceKey = typeof widgetState?.selectedServiceKey === 'string' ? widgetState.selectedServiceKey : '';
       const selectedServiceName = typeof widgetState?.selectedServiceName === 'string' ? widgetState.selectedServiceName : selectedServiceKey || 'service';
@@ -315,7 +315,9 @@
       }
 
       function buildFields() {
-        const requiredFields = Array.isArray(taskInputFormat.required_fields) ? taskInputFormat.required_fields : ['email', 'username', 'password'];
+        const requiredFields = Array.isArray(task_input_format?.required_fields)
+          ? task_input_format.required_fields
+          : ['email', 'username', 'password'];
         const defaults = {
           email: 'you@example.com',
           username: 'Choose a username',
