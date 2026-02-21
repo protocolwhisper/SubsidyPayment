@@ -1738,10 +1738,9 @@ function App() {
           <section className="data-source-banner">
             <div className="data-source-title">
               <span className="pulse-dot"></span>
-              Live Backend Data
+              Live
             </div>
             <div className="data-source-meta">
-              <span>API: {apiBaseUrl}</span>
               <span>Campaigns: {dashboardStats.campaignCount}</span>
               <span>Profiles: {dashboardStats.userCount}</span>
               <span>
@@ -1774,15 +1773,29 @@ function App() {
 
           <div className="dashboard-layout">
             <aside className="dashboard-sidebar">
-              <div className="sidebar-card">
-                <h4>Overview</h4>
-                <p>Campaigns: {dashboardStats.campaignCount}</p>
-                <p>Active: {dashboardStats.activeCampaigns}</p>
-                <p>Profiles: {dashboardStats.userCount}</p>
-                <p>Calls: {dashboardStats.totalSponsoredCalls}</p>
+              <div className="sidebar-card sidebar-card-overview">
+                <h4 className="sidebar-card-title">Overview</h4>
+                <dl className="overview-stats">
+                  <div className="overview-stat">
+                    <dt>Campaigns</dt>
+                    <dd>{dashboardStats.campaignCount}</dd>
+                  </div>
+                  <div className="overview-stat">
+                    <dt>Active</dt>
+                    <dd>{dashboardStats.activeCampaigns}</dd>
+                  </div>
+                  <div className="overview-stat">
+                    <dt>Profiles</dt>
+                    <dd>{dashboardStats.userCount}</dd>
+                  </div>
+                  <div className="overview-stat">
+                    <dt>Calls</dt>
+                    <dd>{dashboardStats.totalSponsoredCalls}</dd>
+                  </div>
+                </dl>
               </div>
               <div className="sidebar-card">
-                <h4>Quick Actions</h4>
+                <h4 className="sidebar-card-title">Quick Actions</h4>
                 <button className="sidebar-action-btn" onClick={() => void loadDashboard(false)}>Refresh Data</button>
                 <button className="sidebar-action-btn" onClick={() => setCurrentView("caller")}>Open API Caller</button>
                 <button
