@@ -5,7 +5,6 @@ import { z } from 'zod';
 import { BackendClient, BackendClientError } from '../backend-client.ts';
 import type { BackendConfig } from '../config.ts';
 import type { GptSearchResponse, SearchServicesParams } from '../types.ts';
-import { readWidgetHtml, RESOURCE_MIME_TYPE } from '../widgets/index.ts';
 
 const searchServicesInputSchema = z.object({
   q: z.string().optional(),
@@ -14,7 +13,7 @@ const searchServicesInputSchema = z.object({
   intent: z.string().optional(),
 });
 
-function toSearchServicesResult(response: GptSearchResponse, html: string) {
+function toSearchServicesResult(response: GptSearchResponse) {
   const services = response.services.filter((service) => service.service_type === 'campaign');
   const candidateServices = response.candidate_services ?? [];
   const serviceCatalog = response.service_catalog ?? [];
@@ -35,14 +34,9 @@ function toSearchServicesResult(response: GptSearchResponse, html: string) {
       applied_filters: response.applied_filters,
       available_categories: response.available_categories,
     },
-    contents: [
-      {
-        uri: 'ui://widget/services-list.html',
-        mimeType: RESOURCE_MIME_TYPE,
-        text: html,
-      },
+    content: [
+      { type: 'text' as const, text: message },
     ],
-    content: [{ type: 'text' as const, text: message }],
     _meta: {
       full_response: response,
     },
@@ -69,13 +63,13 @@ export function registerSearchServicesTool(server: McpServer, config: BackendCon
         ui: { resourceUri: 'ui://widget/services-list.html' },
         'openai/toolInvocation/invoking': 'Searching services...',
         'openai/toolInvocation/invoked': 'Services found',
+        'openai/outputTemplate': 'ui://widget/services-list.html',
       },
     },
     async (input: SearchServicesParams) => {
       try {
         const response = await client.searchServices(input);
-        const html = await readWidgetHtml('services-list.html');
-        return toSearchServicesResult(response, html);
+        return toSearchServicesResult(response);
       } catch (error) {
         if (error instanceof BackendClientError) {
           return {

@@ -5,7 +5,6 @@ import { z } from 'zod';
 import { TokenVerifier } from '../auth/token-verifier.ts';
 import { BackendClient, BackendClientError } from '../backend-client.ts';
 import type { BackendConfig } from '../config.ts';
-import { readWidgetHtml, RESOURCE_MIME_TYPE } from '../widgets/index.ts';
 import { resolveOrCreateNoAuthSessionToken } from './session-manager.ts';
 
 const getUserStatusInputSchema = z.object({
@@ -62,6 +61,7 @@ export function registerGetUserStatusTool(server: McpServer, config: BackendConf
         ui: { resourceUri: 'ui://widget/user-dashboard.html' },
         'openai/toolInvocation/invoking': 'Fetching user status...',
         'openai/toolInvocation/invoked': 'User status fetched',
+        'openai/outputTemplate': 'ui://widget/user-dashboard.html',
       },
     },
     async (input, context: any) => {
@@ -80,7 +80,6 @@ export function registerGetUserStatusTool(server: McpServer, config: BackendConf
         }
 
         const response = await client.getUserStatus(sessionToken);
-        const html = await readWidgetHtml('user-dashboard.html');
 
         return {
           structuredContent: {
@@ -89,14 +88,9 @@ export function registerGetUserStatusTool(server: McpServer, config: BackendConf
             completed_tasks: response.completed_tasks,
             available_services: response.available_services,
           },
-          contents: [
-            {
-              uri: 'ui://widget/user-dashboard.html',
-              mimeType: RESOURCE_MIME_TYPE,
-              text: html,
-            },
+          content: [
+            { type: 'text' as const, text: response.message },
           ],
-          content: [{ type: 'text' as const, text: response.message }],
           _meta: {
             full_response: response,
           },

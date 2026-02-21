@@ -176,7 +176,8 @@ describe('MCP tools unit tests (task 9.1)', () => {
     const result = await handler({ q: 'design' }, {});
 
     expect(result.structuredContent).toBeDefined();
-    expect(result.contents).toBeDefined();
+    expect(result.content.find((c: any) => c.type === 'resource')).toBeUndefined();
+    expect(result.contents).toBeUndefined();
     expect(result.content).toBeDefined();
     expect(result._meta).toBeDefined();
     expect(result.isError).toBeUndefined();
@@ -231,7 +232,8 @@ describe('MCP tools unit tests (task 9.1)', () => {
       user_id: 'user-id',
       email: 'user@example.com',
     });
-    expect(result.contents).toBeDefined();
+    expect(result.content.find((c: any) => c.type === 'resource')).toBeUndefined();
+    expect(result.contents).toBeUndefined();
     expect(result._meta.session_token).toBe('session-token');
   });
 
@@ -259,7 +261,8 @@ describe('MCP tools unit tests (task 9.1)', () => {
     );
 
     expect(result.structuredContent.output).toBeUndefined();
-    expect(result.contents).toBeDefined();
+    expect(result.content.find((c: any) => c.type === 'resource')).toBeUndefined();
+    expect(result.contents).toBeUndefined();
     expect(result._meta.output).toBe('very-large-payload');
   });
 

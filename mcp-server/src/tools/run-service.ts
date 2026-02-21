@@ -6,7 +6,6 @@ import { TokenVerifier } from '../auth/token-verifier.ts';
 import { BackendClient, BackendClientError } from '../backend-client.ts';
 import type { BackendConfig } from '../config.ts';
 import type { PaymentRequiredResponse } from '../types.ts';
-import { RESOURCE_MIME_TYPE, readWidgetHtml } from '../widgets/index.ts';
 import { resolveOrCreateNoAuthSessionToken } from './session-manager.ts';
 
 const runServiceInputSchema = z.object({
@@ -81,7 +80,7 @@ function serviceExecutedResult(response: {
   tx_hash: string | null;
   message: string;
   output: string;
-}, html: string) {
+}) {
   return {
     structuredContent: {
       mode: 'service_executed',
@@ -91,21 +90,16 @@ function serviceExecutedResult(response: {
       tx_hash: response.tx_hash,
       message: response.message,
     },
-    contents: [
-      {
-        uri: 'ui://widget/service-access.html',
-        mimeType: RESOURCE_MIME_TYPE,
-        text: html,
-      },
+    content: [
+      { type: 'text' as const, text: response.message },
     ],
-    content: [{ type: 'text' as const, text: response.message }],
     _meta: {
       output: response.output,
     },
   };
 }
 
-function paymentRequiredResult(payment: PaymentRequiredResponse, html: string) {
+function paymentRequiredResult(payment: PaymentRequiredResponse) {
   return {
     structuredContent: {
       mode: 'payment_required',
@@ -116,14 +110,9 @@ function paymentRequiredResult(payment: PaymentRequiredResponse, html: string) {
       next_step: payment.next_step,
       payment_mode: 'user_direct',
     },
-    contents: [
-      {
-        uri: 'ui://widget/service-access.html',
-        mimeType: RESOURCE_MIME_TYPE,
-        text: html,
-      },
+    content: [
+      { type: 'text' as const, text: `x402 payment required. ${payment.next_step}` },
     ],
-    content: [{ type: 'text' as const, text: `x402 payment required. ${payment.next_step}` }],
     _meta: {
       payment_required: payment,
     },
@@ -134,8 +123,7 @@ async function directPayFallbackResult(
   client: BackendClient,
   service: string,
   inputPayload: string,
-  sessionToken: string,
-  html: string
+  sessionToken: string
 ) {
   const status = await client.getUserStatus(sessionToken);
 
@@ -154,14 +142,9 @@ async function directPayFallbackResult(
         tx_hash: response.tx_hash,
         message: 'Service executed through proxy.',
       },
-      contents: [
-        {
-          uri: 'ui://widget/service-access.html',
-          mimeType: RESOURCE_MIME_TYPE,
-          text: html,
-        },
+      content: [
+        { type: 'text' as const, text: 'Service executed through proxy.' },
       ],
-      content: [{ type: 'text' as const, text: 'Service executed through proxy.' }],
       _meta: {
         output: response.output,
       },
@@ -169,7 +152,7 @@ async function directPayFallbackResult(
   } catch (error) {
     if (error instanceof BackendClientError && error.code === 'payment_required') {
       const payment = parsePaymentRequired(error.details);
-      if (payment) return paymentRequiredResult(payment, html);
+      if (payment) return paymentRequiredResult(payment);
     }
     throw error;
   }
@@ -196,7 +179,7 @@ function deriveTaskOptions(taskInputFormat: { task_type?: string; required_field
   return options;
 }
 
-async function taskRequiredResult(client: BackendClient, service: string, sessionToken: string, html: string) {
+async function taskRequiredResult(client: BackendClient, service: string, sessionToken: string) {
   const searchResponse = await client.searchServices({
     q: service,
     session_token: sessionToken,
@@ -221,13 +204,6 @@ async function taskRequiredResult(client: BackendClient, service: string, sessio
       task_options: taskOptions,
       payment_mode: 'sponsored',
     },
-    contents: [
-      {
-        uri: 'ui://widget/service-access.html',
-        mimeType: RESOURCE_MIME_TYPE,
-        text: html,
-      },
-    ],
     content: [
       {
         type: 'text' as const,
@@ -266,6 +242,7 @@ export function registerRunServiceTool(server: McpServer, config: BackendConfig)
         ui: { resourceUri: 'ui://widget/service-access.html' },
         'openai/toolInvocation/invoking': 'Running service...',
         'openai/toolInvocation/invoked': 'Service run completed',
+        'openai/outputTemplate': 'ui://widget/service-access.html',
       },
     },
     async (input, context: any) => {
@@ -282,11 +259,10 @@ export function registerRunServiceTool(server: McpServer, config: BackendConfig)
         return unauthorizedSessionResponse(config.publicUrl);
       }
 
-      const html = await readWidgetHtml('service-access.html');
 
       if (input.input.trim().toLowerCase() === DIRECT_PAYMENT_SENTINEL) {
         try {
-          return await directPayFallbackResult(client, input.service, input.input, sessionToken, html);
+          return await directPayFallbackResult(client, input.service, input.input, sessionToken);
         } catch (error) {
           if (error instanceof BackendClientError) {
             return {
@@ -310,18 +286,18 @@ export function registerRunServiceTool(server: McpServer, config: BackendConfig)
           input: input.input,
         });
 
-        return serviceExecutedResult(response, html);
+        return serviceExecutedResult(response);
       } catch (error) {
         if (error instanceof BackendClientError) {
           if (error.code === 'payment_required') {
             const payment = parsePaymentRequired(error.details);
-            if (payment) return paymentRequiredResult(payment, html);
+            if (payment) return paymentRequiredResult(payment);
           }
 
           if (error.code === 'precondition_required') {
             if (isTaskRequiredMessage(error.message)) {
               try {
-                const taskResult = await taskRequiredResult(client, input.service, sessionToken, html);
+                const taskResult = await taskRequiredResult(client, input.service, sessionToken);
                 if (taskResult) return taskResult;
               } catch {
                 // fall through to backend error
@@ -330,7 +306,7 @@ export function registerRunServiceTool(server: McpServer, config: BackendConfig)
 
             if (isNoSponsorMessage(error.message)) {
               try {
-                return await directPayFallbackResult(client, input.service, input.input, sessionToken, html);
+                return await directPayFallbackResult(client, input.service, input.input, sessionToken);
               } catch {
                 // fall through to backend error
               }

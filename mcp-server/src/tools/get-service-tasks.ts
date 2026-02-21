@@ -6,7 +6,6 @@ import { TokenVerifier } from '../auth/token-verifier.ts';
 import { BackendClient, BackendClientError } from '../backend-client.ts';
 import type { BackendConfig } from '../config.ts';
 import type { GptCandidateServiceOffer, GptSearchResponse } from '../types.ts';
-import { RESOURCE_MIME_TYPE, readWidgetHtml } from '../widgets/index.ts';
 import { resolveOrCreateNoAuthSessionToken } from './session-manager.ts';
 
 const getServiceTasksInputSchema = z.object({
@@ -167,6 +166,7 @@ export function registerGetServiceTasksTool(server: McpServer, config: BackendCo
         ui: { resourceUri: 'ui://widget/service-tasks.html' },
         'openai/toolInvocation/invoking': 'Loading service tasks...',
         'openai/toolInvocation/invoked': 'Service tasks loaded',
+        'openai/outputTemplate': 'ui://widget/service-tasks.html',
       },
     },
     async (input, context: any) => {
@@ -212,7 +212,6 @@ export function registerGetServiceTasksTool(server: McpServer, config: BackendCo
           ` from ${result.sponsor_names.length} sponsor(s).` +
           ` Total available subsidy: $${(result.total_subsidy_cents / 100).toFixed(2)}.`;
 
-        const html = await readWidgetHtml('service-tasks.html');
 
         return {
           structuredContent: {
@@ -223,14 +222,9 @@ export function registerGetServiceTasksTool(server: McpServer, config: BackendCo
             sponsor_names: result.sponsor_names,
             total_subsidy_cents: result.total_subsidy_cents,
           },
-          contents: [
-            {
-              uri: 'ui://widget/service-tasks.html',
-              mimeType: RESOURCE_MIME_TYPE,
-              text: html,
-            },
+          content: [
+            { type: 'text' as const, text: message },
           ],
-          content: [{ type: 'text' as const, text: message }],
           _meta: {
             full_response: searchResponse,
           },

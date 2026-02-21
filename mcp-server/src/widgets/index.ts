@@ -12,14 +12,25 @@ const __dirname = dirname(__filename);
 const widgetsDistDir = resolve(__dirname, '../../dist/widgets');
 
 export async function readWidgetHtml(fileName: string): Promise<string> {
-  try {
-    return await readFile(resolve(widgetsDistDir, fileName), 'utf8');
-  } catch (error: any) {
-    if (error?.code === 'ENOENT') {
-      return readFile(resolve(__dirname, 'src', fileName), 'utf8');
+  const candidates = [
+    resolve(widgetsDistDir, 'src/widgets/src', fileName),
+    resolve(widgetsDistDir, fileName),
+    resolve(__dirname, 'src', fileName),
+  ];
+
+  let lastError: unknown;
+  for (const candidate of candidates) {
+    try {
+      return await readFile(candidate, 'utf8');
+    } catch (error: any) {
+      if (error?.code !== 'ENOENT') {
+        throw error;
+      }
+      lastError = error;
     }
-    throw error;
   }
+
+  throw lastError ?? new Error(`Widget HTML not found: ${fileName}`);
 }
 
 function registerWidgetResource(server: McpServer, name: string, uri: string, fileName: string): void {

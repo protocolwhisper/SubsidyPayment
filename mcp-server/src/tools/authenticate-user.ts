@@ -5,7 +5,6 @@ import { z } from 'zod';
 import { TokenVerifier } from '../auth/token-verifier.ts';
 import { BackendClient, BackendClientError } from '../backend-client.ts';
 import type { BackendConfig } from '../config.ts';
-import { RESOURCE_MIME_TYPE, readWidgetHtml } from '../widgets/index.ts';
 import { rememberSessionToken } from './session-manager.ts';
 
 
@@ -80,6 +79,7 @@ export function registerAuthenticateUserTool(server: McpServer, config: BackendC
           : [{ type: 'noauth' }],
         'openai/toolInvocation/invoking': 'Authenticating user...',
         'openai/toolInvocation/invoked': 'Authentication complete',
+        'openai/outputTemplate': 'ui://widget/user-dashboard.html',
       },
     },
     async (input, context) => {
@@ -114,7 +114,6 @@ export function registerAuthenticateUserTool(server: McpServer, config: BackendC
         });
         rememberSessionToken(context, response.session_token, response.email);
 
-        const html = await readWidgetHtml('user-dashboard.html');
 
         return {
           structuredContent: {
@@ -122,14 +121,9 @@ export function registerAuthenticateUserTool(server: McpServer, config: BackendC
             email: response.email,
             is_new_user: response.is_new_user,
           },
-          contents: [
-            {
-              uri: 'ui://widget/user-dashboard.html',
-              mimeType: RESOURCE_MIME_TYPE,
-              text: html,
-            },
+          content: [
+            { type: 'text' as const, text: response.message },
           ],
-          content: [{ type: 'text' as const, text: response.message }],
           _meta: {
             session_token: response.session_token,
           },
