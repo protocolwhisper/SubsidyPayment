@@ -12,11 +12,16 @@ const __dirname = dirname(__filename);
 const widgetsDistDir = resolve(__dirname, '../../dist/widgets');
 
 export async function readWidgetHtml(fileName: string): Promise<string> {
-  const candidates = [
+  const distCandidates = [
     resolve(widgetsDistDir, 'src/widgets/src', fileName),
     resolve(widgetsDistDir, fileName),
-    resolve(__dirname, 'src', fileName),
   ];
+  const srcCandidate = resolve(__dirname, 'src', fileName);
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  const candidates = isProduction
+    ? [...distCandidates, srcCandidate]
+    : [srcCandidate, ...distCandidates];
 
   let lastError: unknown;
   for (const candidate of candidates) {
