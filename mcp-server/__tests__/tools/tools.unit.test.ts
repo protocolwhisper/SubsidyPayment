@@ -6,6 +6,7 @@ const mocked = vi.hoisted(() => ({
   searchServices: vi.fn(),
   authenticateUser: vi.fn(),
   getTaskDetails: vi.fn(),
+  initZkpassportVerification: vi.fn(),
   completeTask: vi.fn(),
   runService: vi.fn(),
   runProxyService: vi.fn(),
@@ -36,6 +37,7 @@ vi.mock('../../src/backend-client.ts', () => {
     searchServices = mocked.searchServices;
     authenticateUser = mocked.authenticateUser;
     getTaskDetails = mocked.getTaskDetails;
+    initZkpassportVerification = mocked.initZkpassportVerification;
     completeTask = mocked.completeTask;
     runService = mocked.runService;
     runProxyService = mocked.runProxyService;
@@ -106,6 +108,7 @@ describe('MCP tools unit tests (task 9.1)', () => {
     mocked.searchServices.mockReset();
     mocked.authenticateUser.mockReset();
     mocked.getTaskDetails.mockReset();
+    mocked.initZkpassportVerification.mockReset();
     mocked.completeTask.mockReset();
     mocked.runService.mockReset();
     mocked.runProxyService.mockReset();
@@ -116,15 +119,16 @@ describe('MCP tools unit tests (task 9.1)', () => {
     mocked.verifyToken.mockReset();
   });
 
-  it('registers all 9 tools with expected security schemes', () => {
+  it('registers all 10 tools with expected security schemes', () => {
     registerAndCaptureTools();
 
-    expect(mocked.registrations.size).toBe(9);
+    expect(mocked.registrations.size).toBe(10);
     expect(getRegistered('search_services').definition._meta.securitySchemes).toEqual([{ type: 'noauth' }]);
 
     const oauthTools = [
       'authenticate_user',
       'get_task_details',
+      'start_zkpassport_verification',
       'complete_task',
       'run_service',
       'get_user_status',

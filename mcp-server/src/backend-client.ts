@@ -5,9 +5,11 @@ import type {
   CompleteTaskInput,
   GetPreferencesParams,
   GetUserRecordParams,
+  GptInitZkpassportVerificationResponse,
   PaymentRequiredResponse,
   ProxyRunInput,
   ProxyRunServiceResponse,
+  InitZkpassportVerificationInput,
   GetTaskDetailsParams,
   GetUserStatusParams,
   GptAuthResponse,
@@ -84,6 +86,22 @@ export class BackendClient {
         consent: payload.consent,
       }),
     });
+  }
+
+  async initZkpassportVerification(
+    campaignId: string,
+    payload: InitZkpassportVerificationInput
+  ): Promise<GptInitZkpassportVerificationResponse> {
+    return this.request<GptInitZkpassportVerificationResponse>(
+      `/gpt/tasks/${encodeURIComponent(campaignId)}/zkpassport/init`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          session_token: payload.session_token,
+          consent: payload.consent,
+        }),
+      }
+    );
   }
 
   async runService(service: string, payload: RunServiceInput): Promise<GptRunServiceResponse> {

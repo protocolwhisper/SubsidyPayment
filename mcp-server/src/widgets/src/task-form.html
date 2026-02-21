@@ -166,6 +166,11 @@
       const campaignRequiredFields = Array.isArray(task_input_format?.required_fields)
         ? task_input_format.required_fields
         : [];
+      const taskConstraints =
+        task_input_format && typeof task_input_format === 'object' && task_input_format.constraints
+          ? task_input_format.constraints
+          : {};
+      const isZkpassportTask = taskType === 'zkpassport_age_country';
 
       const defaultTaskOptions = [
         {
@@ -220,6 +225,15 @@
       }
 
       function buildTaskOptions() {
+        if (isZkpassportTask) {
+          return `
+            <p class="desc">
+              This task requires human proof with zkPassport.
+              Click <strong>Verify age &amp; country</strong> to continue.
+            </p>
+          `;
+        }
+
         if (taskOptions.length === 0) {
           return '<p class="desc">No task options available.</p>';
         }
@@ -238,6 +252,22 @@
       }
 
       function buildDynamicFields() {
+        if (isZkpassportTask) {
+          const minAge = Number(taskConstraints?.min_age ?? 18);
+          const allowedCountries = Array.isArray(taskConstraints?.allowed_country_labels)
+            ? taskConstraints.allowed_country_labels.join(', ')
+            : 'EU countries, USA, Japan';
+          return `
+            <div class="field">
+              <label>Verification Policy</label>
+              <div class="desc">
+                Age must be <strong>${minAge}+</strong> and nationality must be in:
+                ${allowedCountries}
+              </div>
+            </div>
+          `;
+        }
+
         const option = selectedTaskOption();
         const requiredFields = Array.isArray(option?.required_fields) ? option.required_fields : [];
         if (!Array.isArray(requiredFields) || requiredFields.length === 0) {
@@ -262,15 +292,6 @@
         const formData = new FormData(form);
         const option = selectedTaskOption();
 
-        const detailsPayload = {};
-        for (const key of formData.keys()) {
-          if (key !== 'data_sharing_agreed' && key !== 'purpose_acknowledged' && key !== 'contact_permission') {
-            detailsPayload[key] = formData.get(key);
-          }
-        }
-        detailsPayload._task_option = option?.id ?? null;
-        detailsPayload._task_option_label = option?.title ?? null;
-
         const consent = {
           data_sharing_agreed: formData.get('data_sharing_agreed') === 'on',
           purpose_acknowledged: formData.get('purpose_acknowledged') === 'on',
@@ -282,6 +303,52 @@
           if (err) err.textContent = 'All three consent checkboxes are required.';
           return;
         }
+
+        if (isZkpassportTask) {
+          const err = root.querySelector('.error');
+          if (err) {
+            err.textContent = 'Creating verification session...';
+            err.style.color = 'var(--muted)';
+          }
+          try {
+            const response = await callTool('start_zkpassport_verification', {
+              campaign_id,
+              consent,
+            });
+            const verificationUrl =
+              response?.structuredContent?.verification_url ??
+              response?._meta?.full_response?.verification_url ??
+              null;
+            if (typeof verificationUrl !== 'string' || verificationUrl.length === 0) {
+              if (err) {
+                err.textContent = 'Verification URL not returned. Please try again.';
+                err.style.color = 'var(--danger)';
+              }
+              return;
+            }
+            window.open(verificationUrl, '_blank', 'noopener,noreferrer');
+            if (err) {
+              err.textContent = 'Verification opened in a new tab. Complete it and return to GPT.';
+              err.style.color = 'var(--muted)';
+            }
+            return;
+          } catch (error) {
+            if (err) {
+              err.textContent = error?.message || 'Failed to start verification.';
+              err.style.color = 'var(--danger)';
+            }
+            return;
+          }
+        }
+
+        const detailsPayload = {};
+        for (const key of formData.keys()) {
+          if (key !== 'data_sharing_agreed' && key !== 'purpose_acknowledged' && key !== 'contact_permission') {
+            detailsPayload[key] = formData.get(key);
+          }
+        }
+        detailsPayload._task_option = option?.id ?? null;
+        detailsPayload._task_option_label = option?.title ?? null;
 
         await callTool('complete_task', {
           campaign_id,
@@ -339,7 +406,7 @@
                 <label><input type="checkbox" name="contact_permission" /> I allow follow-up contact</label>
               </div>
               <p class="error"></p>
-              <button type="submit">Submit</button>
+              <button type="submit">${isZkpassportTask ? 'Verify age & country' : 'Submit'}</button>
               <div class="alt-actions">
                 <button type="button" id="direct-payment">Use direct payment instead</button>
               </div>

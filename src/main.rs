@@ -39,6 +39,10 @@ fn build_gpt_router(state: SharedState) -> Router<SharedState> {
             "/tasks/{campaign_id}/complete",
             post(gpt::gpt_complete_task),
         )
+        .route(
+            "/tasks/{campaign_id}/zkpassport/init",
+            post(gpt::gpt_init_zkpassport_verification),
+        )
         .route("/services/{service}/run", post(gpt::gpt_run_service))
         .route("/user/status", get(gpt::gpt_user_status))
         .route("/user/record", get(gpt::gpt_user_record))
@@ -113,6 +117,15 @@ fn build_app(state: SharedState, agent_discovery_limit_per_min: u32) -> Router {
     Router::new()
         .route("/", get(health))
         .route("/health", get(health))
+        .route("/verify/zkpassport", get(gpt::serve_zkpassport_verify_page))
+        .route(
+            "/zkpassport/session/{verification_token}",
+            get(gpt::zkpassport_get_session),
+        )
+        .route(
+            "/zkpassport/session/{verification_token}/submit",
+            post(gpt::zkpassport_submit_proof),
+        )
         .route("/profiles", post(create_profile).get(list_profiles))
         .route("/register", post(register_user))
         .route("/campaigns", post(create_campaign).get(list_campaigns))

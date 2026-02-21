@@ -381,6 +381,9 @@ paths:
                           type: string
                       instructions:
                         type: string
+                      constraints:
+                        type: object
+                        nullable: true
                   already_completed:
                     type: boolean
                   subsidy_amount_cents:
@@ -391,6 +394,166 @@ paths:
           description: Invalid or expired session token
         "404":
           description: Campaign not found
+
+  /gpt/tasks/{campaign_id}/zkpassport/init:
+    post:
+      operationId: initZkpassportVerification
+      summary: Initialize zkPassport verification session
+      description: >-
+        Creates a short-lived verification session URL for age and country proof.
+        Use this for campaigns with required_task = zkpassport_age_country.
+      parameters:
+        - name: campaign_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - session_token
+                - consent
+              properties:
+                session_token:
+                  type: string
+                  format: uuid
+                consent:
+                  type: object
+                  required:
+                    - data_sharing_agreed
+                    - purpose_acknowledged
+                    - contact_permission
+                  properties:
+                    data_sharing_agreed:
+                      type: boolean
+                    purpose_acknowledged:
+                      type: boolean
+                    contact_permission:
+                      type: boolean
+      responses:
+        "200":
+          description: Verification session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  verification_id:
+                    type: string
+                    format: uuid
+                  verification_token:
+                    type: string
+                    format: uuid
+                  campaign_id:
+                    type: string
+                    format: uuid
+                  verification_url:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+                  message:
+                    type: string
+        "401":
+          description: Invalid or expired session token
+        "404":
+          description: Campaign not found
+
+  /zkpassport/session/{verification_token}:
+    get:
+      operationId: getZkpassportSession
+      summary: Get public zkPassport verification session
+      parameters:
+        - name: verification_token
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Session details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  verification_id:
+                    type: string
+                    format: uuid
+                  campaign_id:
+                    type: string
+                    format: uuid
+                  required_task:
+                    type: string
+                  min_age:
+                    type: integer
+                  allowed_country_labels:
+                    type: array
+                    items:
+                      type: string
+                  scope:
+                    type: string
+                  status:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+                  message:
+                    type: string
+        "404":
+          description: Verification session not found
+
+  /zkpassport/session/{verification_token}/submit:
+    post:
+      operationId: submitZkpassportProof
+      summary: Submit zkPassport proof for server-side verification
+      parameters:
+        - name: verification_token
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - proofs
+              properties:
+                proofs:
+                  type: object
+                query_result:
+                  type: object
+      responses:
+        "200":
+          description: Verification succeeded and task completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  verification_id:
+                    type: string
+                    format: uuid
+                  campaign_id:
+                    type: string
+                    format: uuid
+                  task_completion_id:
+                    type: string
+                    format: uuid
+                  can_use_service:
+                    type: boolean
+                  message:
+                    type: string
 
   /gpt/tasks/{campaign_id}/complete:
     post:

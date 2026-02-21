@@ -23,6 +23,11 @@ pub const DEFAULT_X402_SETTLE_PATH: &str = "/settle";
 pub const DEFAULT_X402_NETWORK: &str = "base-sepolia";
 pub const DEFAULT_PUBLIC_BASE_URL: &str = "http://localhost:3000";
 pub const DEFAULT_AGENT_DISCOVERY_RATE_LIMIT_PER_MIN: u64 = 120;
+pub const DEFAULT_ZKPASSPORT_VERIFIER_URL: &str =
+    "http://localhost:3001/internal/zkpassport/verify";
+pub const DEFAULT_ZKPASSPORT_SCOPE: &str = "snapfuel-gpt-age-country-v1";
+pub const DEFAULT_ZKPASSPORT_VERIFICATION_TTL_SECS: u64 = 900;
+pub const DEFAULT_ZKPASSPORT_HASH_SALT: &str = "change-me-in-production";
 pub const AGENT_DISCOVERY_SCHEMA_VERSION: &str = "2026-02-14";
 
 #[derive(Clone)]
@@ -40,10 +45,20 @@ pub struct AppConfig {
     pub gpt_actions_api_key: Option<String>,
     pub agent_discovery_api_key: Option<String>,
     pub agent_discovery_rate_limit_per_min: u32,
+    pub zkpassport_verifier_url: String,
+    pub zkpassport_verifier_api_key: Option<String>,
+    pub zkpassport_verify_page_url: String,
+    pub zkpassport_scope: String,
+    pub zkpassport_verification_ttl_secs: u64,
+    pub zkpassport_hash_salt: String,
 }
 
 impl AppConfig {
     pub fn from_env() -> Self {
+        let public_base_url = std::env::var("PUBLIC_BASE_URL")
+            .unwrap_or_else(|_| DEFAULT_PUBLIC_BASE_URL.to_string());
+        let base = public_base_url.trim_end_matches('/');
+
         Self {
             sponsored_api_create_price_cents: read_env_u64(
                 "SPONSORED_API_CREATE_PRICE_CENTS",
@@ -64,8 +79,7 @@ impl AppConfig {
                 .unwrap_or_else(|_| DEFAULT_X402_NETWORK.to_string()),
             x402_pay_to: std::env::var("X402_PAY_TO").ok(),
             x402_asset: std::env::var("X402_ASSET").ok(),
-            public_base_url: std::env::var("PUBLIC_BASE_URL")
-                .unwrap_or_else(|_| DEFAULT_PUBLIC_BASE_URL.to_string()),
+            public_base_url: public_base_url.clone(),
             gpt_actions_api_key: std::env::var("GPT_ACTIONS_API_KEY").ok(),
             agent_discovery_api_key: std::env::var("AGENT_DISCOVERY_API_KEY").ok(),
             agent_discovery_rate_limit_per_min: read_env_u64(
@@ -73,6 +87,20 @@ impl AppConfig {
                 DEFAULT_AGENT_DISCOVERY_RATE_LIMIT_PER_MIN,
             )
             .clamp(1, u64::from(u32::MAX)) as u32,
+            zkpassport_verifier_url: std::env::var("ZKPASSPORT_VERIFIER_URL")
+                .unwrap_or_else(|_| DEFAULT_ZKPASSPORT_VERIFIER_URL.to_string()),
+            zkpassport_verifier_api_key: std::env::var("ZKPASSPORT_VERIFIER_API_KEY").ok(),
+            zkpassport_verify_page_url: std::env::var("ZKPASSPORT_VERIFY_PAGE_URL")
+                .unwrap_or_else(|_| format!("{base}/verify/zkpassport")),
+            zkpassport_scope: std::env::var("ZKPASSPORT_SCOPE")
+                .unwrap_or_else(|_| DEFAULT_ZKPASSPORT_SCOPE.to_string()),
+            zkpassport_verification_ttl_secs: read_env_u64(
+                "ZKPASSPORT_VERIFICATION_TTL_SECS",
+                DEFAULT_ZKPASSPORT_VERIFICATION_TTL_SECS,
+            )
+            .clamp(60, 86_400),
+            zkpassport_hash_salt: std::env::var("ZKPASSPORT_HASH_SALT")
+                .unwrap_or_else(|_| DEFAULT_ZKPASSPORT_HASH_SALT.to_string()),
         }
     }
 }
@@ -769,6 +797,8 @@ pub struct GptTaskInputFormat {
     pub task_type: String,
     pub required_fields: Vec<String>,
     pub instructions: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub constraints: Option<Value>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -784,6 +814,50 @@ pub struct GptConsentInput {
     pub data_sharing_agreed: bool,
     pub purpose_acknowledged: bool,
     pub contact_permission: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct GptInitZkpassportVerificationRequest {
+    pub session_token: Uuid,
+    pub consent: GptConsentInput,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GptInitZkpassportVerificationResponse {
+    pub verification_id: Uuid,
+    pub verification_token: Uuid,
+    pub campaign_id: Uuid,
+    pub verification_url: String,
+    pub expires_at: DateTime<Utc>,
+    pub message: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ZkpassportSessionResponse {
+    pub verification_id: Uuid,
+    pub campaign_id: Uuid,
+    pub required_task: String,
+    pub min_age: u8,
+    pub allowed_country_labels: Vec<String>,
+    pub scope: String,
+    pub status: String,
+    pub expires_at: DateTime<Utc>,
+    pub message: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ZkpassportSubmitProofRequest {
+    pub proofs: Value,
+    pub query_result: Option<Value>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ZkpassportSubmitProofResponse {
+    pub verification_id: Uuid,
+    pub campaign_id: Uuid,
+    pub task_completion_id: Uuid,
+    pub can_use_service: bool,
+    pub message: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

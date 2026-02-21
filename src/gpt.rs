@@ -12,22 +12,59 @@ use tokio::sync::Mutex;
 use uuid::Uuid;
 
 use chrono::Utc;
-use serde_json::json;
+use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 
 use crate::error::{ApiError, ApiResult};
 use crate::types::{
     AppliedFilters, Campaign, CampaignRow as FullCampaignRow, GptAuthRequest, GptAuthResponse,
     GptAvailableService, GptCandidateService, GptCandidateServiceOffer, GptCompleteTaskRequest,
-    GptCompleteTaskResponse, GptCompletedTaskSummary, GptPreferencesParams, GptPreferencesResponse,
+    GptCompleteTaskResponse, GptCompletedTaskSummary, GptInitZkpassportVerificationRequest,
+    GptInitZkpassportVerificationResponse, GptPreferencesParams, GptPreferencesResponse,
     GptRunServiceRequest, GptRunServiceResponse, GptSearchParams, GptSearchResponse,
     GptServiceItem, GptSetPreferencesRequest, GptSetPreferencesResponse, GptTaskInputFormat,
     GptTaskParams, GptTaskResponse, GptUserRecordEntry, GptUserRecordParams, GptUserRecordResponse,
     GptUserRecordSponsorSummary, GptUserStatusParams, GptUserStatusResponse, SharedState,
     SponsoredApi, SponsoredApiRow as FullSponsoredApiRow, TaskPreference, UserProfile,
+    ZkpassportSessionResponse, ZkpassportSubmitProofRequest, ZkpassportSubmitProofResponse,
 };
 use crate::utils::{
     build_marketplace_catalog_from_gpt_services, call_upstream, respond, service_display_name,
 };
+
+const ZKPASSPORT_TASK_TYPE: &str = "zkpassport_age_country";
+const ZKPASSPORT_MIN_AGE: i64 = 18;
+const ZKPASSPORT_ALLOWED_COUNTRY_LABELS: &[&str] = &[
+    "Austria",
+    "Belgium",
+    "Bulgaria",
+    "Croatia",
+    "Cyprus",
+    "Czechia",
+    "Denmark",
+    "Estonia",
+    "Finland",
+    "France",
+    "Germany",
+    "Greece",
+    "Hungary",
+    "Ireland",
+    "Italy",
+    "Latvia",
+    "Lithuania",
+    "Luxembourg",
+    "Malta",
+    "Netherlands",
+    "Poland",
+    "Portugal",
+    "Romania",
+    "Slovakia",
+    "Slovenia",
+    "Spain",
+    "Sweden",
+    "United States of America",
+    "Japan",
+];
 
 pub struct RateLimiter {
     tokens: u32,
@@ -958,10 +995,15 @@ pub async fn gpt_get_tasks(
 
         let task_input_format = match campaign.task_schema {
             Some(schema) => {
+                let is_zkpassport_task = campaign.required_task == ZKPASSPORT_TASK_TYPE;
                 let task_type = schema
                     .get("task_type")
                     .and_then(|v| v.as_str())
-                    .unwrap_or("survey")
+                    .unwrap_or(if is_zkpassport_task {
+                        ZKPASSPORT_TASK_TYPE
+                    } else {
+                        "survey"
+                    })
                     .to_string();
                 let required_fields = schema
                     .get("required_fields")
@@ -971,24 +1013,62 @@ pub async fn gpt_get_tasks(
                             .filter_map(|v| v.as_str().map(String::from))
                             .collect()
                     })
-                    .unwrap_or_else(|| vec!["email".to_string(), "region".to_string()]);
+                    .unwrap_or_else(|| {
+                        if task_type == ZKPASSPORT_TASK_TYPE {
+                            vec![]
+                        } else {
+                            vec!["email".to_string(), "region".to_string()]
+                        }
+                    });
                 let instructions = schema
                     .get("instructions")
                     .and_then(|v| v.as_str())
-                    .unwrap_or("Please provide the required information.")
+                    .unwrap_or(if task_type == ZKPASSPORT_TASK_TYPE {
+                        "Use Verify age & country to prove age >= 18 and nationality in EU/USA/Japan."
+                    } else {
+                        "Please provide the required information."
+                    })
                     .to_string();
+                let constraints = if task_type == ZKPASSPORT_TASK_TYPE {
+                    Some(json!({
+                        "min_age": ZKPASSPORT_MIN_AGE,
+                        "allowed_country_labels": ZKPASSPORT_ALLOWED_COUNTRY_LABELS,
+                        "requires_human_proof": true
+                    }))
+                } else {
+                    schema.get("constraints").cloned()
+                };
+
                 GptTaskInputFormat {
                     task_type,
                     required_fields,
                     instructions,
+                    constraints,
                 }
             }
-            None => GptTaskInputFormat {
-                task_type: "survey".to_string(),
-                required_fields: vec!["email".to_string(), "region".to_string()],
-                instructions: "Please provide the required information to complete this task."
-                    .to_string(),
-            },
+            None => {
+                if campaign.required_task == ZKPASSPORT_TASK_TYPE {
+                    GptTaskInputFormat {
+                        task_type: ZKPASSPORT_TASK_TYPE.to_string(),
+                        required_fields: vec![],
+                        instructions: "Use Verify age & country to prove age >= 18 and nationality in EU/USA/Japan."
+                            .to_string(),
+                        constraints: Some(json!({
+                            "min_age": ZKPASSPORT_MIN_AGE,
+                            "allowed_country_labels": ZKPASSPORT_ALLOWED_COUNTRY_LABELS,
+                            "requires_human_proof": true
+                        })),
+                    }
+                } else {
+                    GptTaskInputFormat {
+                        task_type: "survey".to_string(),
+                        required_fields: vec!["email".to_string(), "region".to_string()],
+                        instructions: "Please provide the required information to complete this task."
+                            .to_string(),
+                        constraints: None,
+                    }
+                }
+            }
         };
 
         let message = if already_completed {
@@ -1020,6 +1100,330 @@ pub async fn gpt_get_tasks(
     respond(&metrics, "gpt_get_tasks", result)
 }
 
+#[derive(sqlx::FromRow)]
+struct ZkpassportVerificationWithTaskRow {
+    id: Uuid,
+    campaign_id: Uuid,
+    user_id: Uuid,
+    status: String,
+    min_age: i32,
+    allowed_country_labels: Vec<String>,
+    consent_data_sharing_agreed: bool,
+    consent_purpose_acknowledged: bool,
+    consent_contact_permission: bool,
+    expires_at: chrono::DateTime<chrono::Utc>,
+    required_task: String,
+}
+
+#[derive(serde::Serialize)]
+struct ZkpassportVerifierRequest {
+    proofs: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    query_result: Option<Value>,
+}
+
+#[derive(serde::Deserialize)]
+struct ZkpassportVerifierResponse {
+    verified: bool,
+    #[serde(default)]
+    unique_identifier: Option<String>,
+    #[serde(default)]
+    query_result: Option<Value>,
+    #[serde(default)]
+    query_result_errors: Option<Vec<String>>,
+    #[serde(default)]
+    message: Option<String>,
+}
+
+fn normalize_country_label(raw: &str) -> String {
+    raw.trim()
+        .to_lowercase()
+        .replace(['-', '_', ','], " ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn is_usa_label(raw: &str) -> bool {
+    matches!(
+        normalize_country_label(raw).as_str(),
+        "united states" | "united states of america" | "usa" | "us"
+    )
+}
+
+fn is_japan_label(raw: &str) -> bool {
+    matches!(
+        normalize_country_label(raw).as_str(),
+        "japan" | "jpn" | "jp"
+    )
+}
+
+fn is_eu_label(raw: &str) -> bool {
+    matches!(
+        normalize_country_label(raw).as_str(),
+        "austria"
+            | "aut"
+            | "at"
+            | "belgium"
+            | "bel"
+            | "be"
+            | "bulgaria"
+            | "bgr"
+            | "bg"
+            | "croatia"
+            | "hrv"
+            | "hr"
+            | "cyprus"
+            | "cyp"
+            | "cy"
+            | "czechia"
+            | "czech republic"
+            | "cze"
+            | "cz"
+            | "denmark"
+            | "dnk"
+            | "dk"
+            | "estonia"
+            | "est"
+            | "ee"
+            | "finland"
+            | "fin"
+            | "fi"
+            | "france"
+            | "fra"
+            | "fr"
+            | "germany"
+            | "deu"
+            | "de"
+            | "greece"
+            | "grc"
+            | "gr"
+            | "hungary"
+            | "hun"
+            | "hu"
+            | "ireland"
+            | "irl"
+            | "ie"
+            | "italy"
+            | "ita"
+            | "it"
+            | "latvia"
+            | "lva"
+            | "lv"
+            | "lithuania"
+            | "ltu"
+            | "lt"
+            | "luxembourg"
+            | "lux"
+            | "lu"
+            | "malta"
+            | "mlt"
+            | "mt"
+            | "netherlands"
+            | "nld"
+            | "nl"
+            | "poland"
+            | "pol"
+            | "pl"
+            | "portugal"
+            | "prt"
+            | "pt"
+            | "romania"
+            | "rou"
+            | "ro"
+            | "slovakia"
+            | "svk"
+            | "sk"
+            | "slovenia"
+            | "svn"
+            | "si"
+            | "spain"
+            | "esp"
+            | "es"
+            | "sweden"
+            | "swe"
+            | "se"
+    )
+}
+
+fn is_allowed_country_label(raw: &str) -> bool {
+    is_eu_label(raw) || is_usa_label(raw) || is_japan_label(raw)
+}
+
+fn hash_with_salt(value: &str, salt: &str) -> String {
+    let mut hasher = Sha256::new();
+    hasher.update(salt.as_bytes());
+    hasher.update(b":");
+    hasher.update(value.as_bytes());
+    format!("{:x}", hasher.finalize())
+}
+
+fn validate_zkpassport_query_result(
+    query_result: &Value,
+    min_age: i32,
+    allowed_country_labels: &[String],
+) -> ApiResult<()> {
+    let age_expected = query_result
+        .get("age")
+        .and_then(|v| v.get("gte"))
+        .and_then(|v| v.get("expected"))
+        .and_then(|v| v.as_i64())
+        .ok_or_else(|| ApiError::validation("zkPassport query_result missing age.gte.expected"))?;
+
+    let age_ok = query_result
+        .get("age")
+        .and_then(|v| v.get("gte"))
+        .and_then(|v| v.get("result"))
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    if age_expected < i64::from(min_age) || !age_ok {
+        return Err(ApiError::forbidden(
+            "zkPassport age check failed (must be >= 18)",
+        ));
+    }
+
+    let nationality_expected = query_result
+        .get("nationality")
+        .and_then(|v| v.get("in"))
+        .and_then(|v| v.get("expected"))
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| {
+            ApiError::validation("zkPassport query_result missing nationality.in.expected")
+        })?;
+
+    let nationality_result = query_result
+        .get("nationality")
+        .and_then(|v| v.get("in"))
+        .and_then(|v| v.get("result"))
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    if !nationality_result {
+        return Err(ApiError::forbidden(
+            "zkPassport nationality check failed (must be in allowed countries)",
+        ));
+    }
+
+    let expected_labels: Vec<String> = nationality_expected
+        .iter()
+        .filter_map(|v| v.as_str().map(ToString::to_string))
+        .collect();
+    if expected_labels.is_empty() {
+        return Err(ApiError::validation(
+            "zkPassport nationality.in.expected must not be empty",
+        ));
+    }
+
+    for label in &expected_labels {
+        if !is_allowed_country_label(label) {
+            return Err(ApiError::forbidden(format!(
+                "zkPassport nationality constraint contains disallowed country: {label}"
+            )));
+        }
+    }
+
+    if expected_labels.len() < allowed_country_labels.len() {
+        return Err(ApiError::forbidden(
+            "zkPassport nationality policy is narrower than required",
+        ));
+    }
+
+    let has_usa = expected_labels.iter().any(|label| is_usa_label(label));
+    let has_japan = expected_labels.iter().any(|label| is_japan_label(label));
+    let has_eu = expected_labels.iter().any(|label| is_eu_label(label));
+    if !(has_usa && has_japan && has_eu) {
+        return Err(ApiError::forbidden(
+            "zkPassport nationality policy must include EU + USA + Japan",
+        ));
+    }
+
+    if let Some(disclosed_nationality) = query_result
+        .get("nationality")
+        .and_then(|v| v.get("disclose"))
+        .and_then(|v| v.get("result"))
+        .and_then(|v| v.as_str())
+        && !is_allowed_country_label(disclosed_nationality)
+    {
+        return Err(ApiError::forbidden(
+            "zkPassport disclosed nationality is outside allowed countries",
+        ));
+    }
+
+    Ok(())
+}
+
+async fn record_consents(
+    db: &PgPool,
+    user_id: Uuid,
+    campaign_id: Uuid,
+    consent: &crate::types::GptConsentInput,
+    now: chrono::DateTime<chrono::Utc>,
+) -> ApiResult<()> {
+    let consent_records = [
+        (
+            "data_sharing",
+            consent.data_sharing_agreed,
+            Some("Data sharing with sponsor"),
+        ),
+        (
+            "contact",
+            consent.contact_permission,
+            Some("Contact permission"),
+        ),
+        (
+            "retention",
+            consent.purpose_acknowledged,
+            Some("Data retention acknowledgement"),
+        ),
+    ];
+
+    for (consent_type, granted, purpose) in &consent_records {
+        sqlx::query(
+            "INSERT INTO consents (id, user_id, campaign_id, consent_type, granted, purpose, created_at) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7)"
+        )
+        .bind(Uuid::new_v4())
+        .bind(user_id)
+        .bind(campaign_id)
+        .bind(*consent_type)
+        .bind(*granted)
+        .bind(*purpose)
+        .bind(now)
+        .execute(db)
+        .await
+        .map_err(|e| ApiError::internal(format!("consent insert failed: {e}")))?;
+    }
+
+    Ok(())
+}
+
+async fn record_task_completion(
+    db: &PgPool,
+    campaign_id: Uuid,
+    user_id: Uuid,
+    task_name: &str,
+    details: Option<&str>,
+    now: chrono::DateTime<chrono::Utc>,
+) -> ApiResult<Uuid> {
+    let task_completion_id = Uuid::new_v4();
+    sqlx::query(
+        "INSERT INTO task_completions (id, campaign_id, user_id, task_name, details, created_at) \
+         VALUES ($1, $2, $3, $4, $5, $6)",
+    )
+    .bind(task_completion_id)
+    .bind(campaign_id)
+    .bind(user_id)
+    .bind(task_name)
+    .bind(details)
+    .bind(now)
+    .execute(db)
+    .await
+    .map_err(|e| ApiError::internal(format!("task completion insert failed: {e}")))?;
+
+    Ok(task_completion_id)
+}
+
 pub async fn gpt_complete_task(
     State(state): State<SharedState>,
     Path(campaign_id): Path<Uuid>,
@@ -1047,46 +1451,17 @@ pub async fn gpt_complete_task(
         return Err(ApiError::not_found("campaign not found"));
     }
 
-    // Record consent (3 types: data_sharing, contact, retention)
     let now = Utc::now();
-    let consent_records = [
-        ("data_sharing", payload.consent.data_sharing_agreed, Some("Data sharing with sponsor")),
-        ("contact", payload.consent.contact_permission, Some("Contact permission")),
-        ("retention", payload.consent.purpose_acknowledged, Some("Data retention acknowledgement")),
-    ];
-
-    for (consent_type, granted, purpose) in &consent_records {
-        sqlx::query(
-            "INSERT INTO consents (id, user_id, campaign_id, consent_type, granted, purpose, created_at) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7)"
-        )
-        .bind(Uuid::new_v4())
-        .bind(user_id)
-        .bind(campaign_id)
-        .bind(*consent_type)
-        .bind(*granted)
-        .bind(*purpose)
-        .bind(now)
-        .execute(&db)
-        .await
-        .map_err(|e| ApiError::internal(format!("consent insert failed: {e}")))?;
-    }
-
-    // Record task completion (reuse existing logic pattern)
-    let task_completion_id = Uuid::new_v4();
-    sqlx::query(
-        "INSERT INTO task_completions (id, campaign_id, user_id, task_name, details, created_at) \
-         VALUES ($1, $2, $3, $4, $5, $6)"
+    record_consents(&db, user_id, campaign_id, &payload.consent, now).await?;
+    let task_completion_id = record_task_completion(
+        &db,
+        campaign_id,
+        user_id,
+        &payload.task_name,
+        payload.details.as_deref(),
+        now,
     )
-    .bind(task_completion_id)
-    .bind(campaign_id)
-    .bind(user_id)
-    .bind(&payload.task_name)
-    .bind(payload.details.as_deref())
-    .bind(now)
-    .execute(&db)
-    .await
-    .map_err(|e| ApiError::internal(format!("task completion insert failed: {e}")))?;
+    .await?;
 
     let message = if payload.consent.data_sharing_agreed {
         "Task completed successfully. Consent recorded. You can now use the sponsored service.".to_string()
@@ -1104,6 +1479,420 @@ pub async fn gpt_complete_task(
     }
     .await;
     respond(&metrics, "gpt_complete_task", result)
+}
+
+#[derive(sqlx::FromRow)]
+struct ZkpassportCampaignTaskRow {
+    required_task: String,
+}
+
+pub async fn gpt_init_zkpassport_verification(
+    State(state): State<SharedState>,
+    Path(campaign_id): Path<Uuid>,
+    Json(payload): Json<GptInitZkpassportVerificationRequest>,
+) -> Response {
+    let metrics = { state.inner.read().await.metrics.clone() };
+    let result: ApiResult<Json<GptInitZkpassportVerificationResponse>> = async {
+        let (db, verify_page_url, ttl_secs) = {
+            let s = state.inner.read().await;
+            (
+                s.db.clone()
+                    .ok_or_else(|| ApiError::internal("database not configured"))?,
+                s.config.zkpassport_verify_page_url.clone(),
+                s.config.zkpassport_verification_ttl_secs,
+            )
+        };
+
+        let user_id = resolve_session(&db, payload.session_token).await?;
+
+        let campaign = sqlx::query_as::<_, ZkpassportCampaignTaskRow>(
+            "SELECT required_task FROM campaigns WHERE id = $1",
+        )
+        .bind(campaign_id)
+        .fetch_optional(&db)
+        .await
+        .map_err(|e| ApiError::internal(format!("campaign lookup failed: {e}")))?
+        .ok_or_else(|| ApiError::not_found("campaign not found"))?;
+
+        if campaign.required_task != ZKPASSPORT_TASK_TYPE {
+            return Err(ApiError::validation(format!(
+                "campaign task '{}' is not zkPassport-enabled (expected '{}')",
+                campaign.required_task, ZKPASSPORT_TASK_TYPE
+            )));
+        }
+
+        let now = Utc::now();
+        let expires_at = now + chrono::Duration::seconds(ttl_secs as i64);
+        let verification_id = Uuid::new_v4();
+        let verification_token = Uuid::new_v4();
+        let allowed_country_labels: Vec<String> = ZKPASSPORT_ALLOWED_COUNTRY_LABELS
+            .iter()
+            .map(|label| (*label).to_string())
+            .collect();
+
+        sqlx::query(
+            "UPDATE zkpassport_verifications \
+             SET status = 'expired', completed_at = $1, failure_reason = 'superseded by new init request' \
+             WHERE campaign_id = $2 AND user_id = $3 AND status = 'pending'",
+        )
+        .bind(now)
+        .bind(campaign_id)
+        .bind(user_id)
+        .execute(&db)
+        .await
+        .map_err(|e| ApiError::internal(format!("verification cleanup failed: {e}")))?;
+
+        sqlx::query(
+            "INSERT INTO zkpassport_verifications ( \
+             id, verification_token, campaign_id, user_id, status, min_age, allowed_country_labels, \
+             consent_data_sharing_agreed, consent_purpose_acknowledged, consent_contact_permission, \
+             created_at, expires_at \
+             ) VALUES ($1, $2, $3, $4, 'pending', $5, $6, $7, $8, $9, $10, $11)",
+        )
+        .bind(verification_id)
+        .bind(verification_token)
+        .bind(campaign_id)
+        .bind(user_id)
+        .bind(ZKPASSPORT_MIN_AGE as i32)
+        .bind(&allowed_country_labels)
+        .bind(payload.consent.data_sharing_agreed)
+        .bind(payload.consent.purpose_acknowledged)
+        .bind(payload.consent.contact_permission)
+        .bind(now)
+        .bind(expires_at)
+        .execute(&db)
+        .await
+        .map_err(|e| ApiError::internal(format!("verification init insert failed: {e}")))?;
+
+        let separator = if verify_page_url.contains('?') { "&" } else { "?" };
+        let verification_url = format!("{verify_page_url}{separator}token={verification_token}");
+
+        Ok(Json(GptInitZkpassportVerificationResponse {
+            verification_id,
+            verification_token,
+            campaign_id,
+            verification_url,
+            expires_at,
+            message:
+                "Open the verification page and complete human proof. Return here after success."
+                    .to_string(),
+        }))
+    }
+    .await;
+    respond(&metrics, "gpt_init_zkpassport_verification", result)
+}
+
+pub async fn zkpassport_get_session(
+    State(state): State<SharedState>,
+    Path(verification_token): Path<Uuid>,
+) -> Response {
+    let metrics = { state.inner.read().await.metrics.clone() };
+    let result: ApiResult<Json<ZkpassportSessionResponse>> = async {
+        let (db, scope) = {
+            let s = state.inner.read().await;
+            (
+                s.db.clone()
+                    .ok_or_else(|| ApiError::internal("database not configured"))?,
+                s.config.zkpassport_scope.clone(),
+            )
+        };
+
+        let mut row = sqlx::query_as::<_, ZkpassportVerificationWithTaskRow>(
+            "SELECT z.id, z.campaign_id, z.user_id, z.status, z.min_age, z.allowed_country_labels, \
+             z.consent_data_sharing_agreed, z.consent_purpose_acknowledged, z.consent_contact_permission, \
+             z.expires_at, c.required_task \
+             FROM zkpassport_verifications z \
+             JOIN campaigns c ON c.id = z.campaign_id \
+             WHERE z.verification_token = $1",
+        )
+        .bind(verification_token)
+        .fetch_optional(&db)
+        .await
+        .map_err(|e| ApiError::internal(format!("verification lookup failed: {e}")))?
+        .ok_or_else(|| ApiError::not_found("verification session not found"))?;
+
+        if row.status == "pending" && row.expires_at <= Utc::now() {
+            sqlx::query(
+                "UPDATE zkpassport_verifications \
+                 SET status = 'expired', completed_at = NOW(), failure_reason = 'verification session expired' \
+                 WHERE id = $1",
+            )
+            .bind(row.id)
+            .execute(&db)
+            .await
+            .map_err(|e| ApiError::internal(format!("verification expire update failed: {e}")))?;
+            row.status = "expired".to_string();
+        }
+
+        let message = match row.status.as_str() {
+            "pending" => "Proceed with zkPassport verification.",
+            "verified" => "Verification already completed.",
+            "expired" => "Verification session expired. Start again from the GPT task button.",
+            "failed" => "Previous verification attempt failed. Start again from the GPT task button.",
+            _ => "Verification session state loaded.",
+        }
+        .to_string();
+
+        Ok(Json(ZkpassportSessionResponse {
+            verification_id: row.id,
+            campaign_id: row.campaign_id,
+            required_task: row.required_task,
+            min_age: u8::try_from(row.min_age).unwrap_or(18),
+            allowed_country_labels: row.allowed_country_labels,
+            scope,
+            status: row.status,
+            expires_at: row.expires_at,
+            message,
+        }))
+    }
+    .await;
+    respond(&metrics, "zkpassport_get_session", result)
+}
+
+async fn load_latest_task_completion_id(
+    db: &PgPool,
+    campaign_id: Uuid,
+    user_id: Uuid,
+    task_name: &str,
+) -> ApiResult<Uuid> {
+    sqlx::query_scalar::<_, Uuid>(
+        "SELECT id FROM task_completions \
+         WHERE campaign_id = $1 AND user_id = $2 AND task_name = $3 \
+         ORDER BY created_at DESC LIMIT 1",
+    )
+    .bind(campaign_id)
+    .bind(user_id)
+    .bind(task_name)
+    .fetch_optional(db)
+    .await
+    .map_err(|e| ApiError::internal(format!("task completion lookup failed: {e}")))?
+    .ok_or_else(|| ApiError::internal("task completion record missing"))
+}
+
+pub async fn zkpassport_submit_proof(
+    State(state): State<SharedState>,
+    Path(verification_token): Path<Uuid>,
+    Json(payload): Json<ZkpassportSubmitProofRequest>,
+) -> Response {
+    let metrics = { state.inner.read().await.metrics.clone() };
+    let result: ApiResult<Json<ZkpassportSubmitProofResponse>> = async {
+        let (db, http, verifier_url, verifier_api_key, hash_salt) = {
+            let s = state.inner.read().await;
+            (
+                s.db.clone()
+                    .ok_or_else(|| ApiError::internal("database not configured"))?,
+                s.http.clone(),
+                s.config.zkpassport_verifier_url.clone(),
+                s.config.zkpassport_verifier_api_key.clone(),
+                s.config.zkpassport_hash_salt.clone(),
+            )
+        };
+
+        let mut row = sqlx::query_as::<_, ZkpassportVerificationWithTaskRow>(
+            "SELECT z.id, z.campaign_id, z.user_id, z.status, z.min_age, z.allowed_country_labels, \
+             z.consent_data_sharing_agreed, z.consent_purpose_acknowledged, z.consent_contact_permission, \
+             z.expires_at, c.required_task \
+             FROM zkpassport_verifications z \
+             JOIN campaigns c ON c.id = z.campaign_id \
+             WHERE z.verification_token = $1",
+        )
+        .bind(verification_token)
+        .fetch_optional(&db)
+        .await
+        .map_err(|e| ApiError::internal(format!("verification lookup failed: {e}")))?
+        .ok_or_else(|| ApiError::not_found("verification session not found"))?;
+
+        if row.required_task != ZKPASSPORT_TASK_TYPE {
+            return Err(ApiError::validation(
+                "campaign task does not match zkPassport flow",
+            ));
+        }
+
+        if row.status == "verified" {
+            let task_completion_id = load_latest_task_completion_id(
+                &db,
+                row.campaign_id,
+                row.user_id,
+                &row.required_task,
+            )
+            .await?;
+            return Ok(Json(ZkpassportSubmitProofResponse {
+                verification_id: row.id,
+                campaign_id: row.campaign_id,
+                task_completion_id,
+                can_use_service: true,
+                message: "Verification already completed.".to_string(),
+            }));
+        }
+
+        if row.status != "pending" {
+            return Err(ApiError::precondition(
+                "verification session is not pending; initialize a new one",
+            ));
+        }
+
+        if row.expires_at <= Utc::now() {
+            sqlx::query(
+                "UPDATE zkpassport_verifications \
+                 SET status = 'expired', completed_at = NOW(), failure_reason = 'verification session expired' \
+                 WHERE id = $1",
+            )
+            .bind(row.id)
+            .execute(&db)
+            .await
+            .map_err(|e| ApiError::internal(format!("verification expire update failed: {e}")))?;
+            row.status = "expired".to_string();
+            return Err(ApiError::precondition(
+                "verification session expired; initialize a new one",
+            ));
+        }
+
+        let verifier_payload = ZkpassportVerifierRequest {
+            proofs: payload.proofs.clone(),
+            query_result: payload.query_result.clone(),
+        };
+        let mut verify_req = http.post(&verifier_url).json(&verifier_payload);
+        if let Some(key) = verifier_api_key.as_deref() {
+            verify_req = verify_req.header("x-zkpassport-verifier-key", key);
+        }
+
+        let verify_response = verify_req
+            .send()
+            .await
+            .map_err(|e| ApiError::upstream(axum::http::StatusCode::BAD_GATEWAY, format!(
+                "zkPassport verifier request failed: {e}"
+            )))?;
+
+        if !verify_response.status().is_success() {
+            let status = verify_response.status();
+            let body = verify_response.text().await.unwrap_or_default();
+            sqlx::query(
+                "UPDATE zkpassport_verifications \
+                 SET status = 'failed', completed_at = NOW(), failure_reason = $2, verification_errors = $3 \
+                 WHERE id = $1",
+            )
+            .bind(row.id)
+            .bind(format!("verifier returned HTTP {status}"))
+            .bind(json!({ "body": body }))
+            .execute(&db)
+            .await
+            .map_err(|e| ApiError::internal(format!("verification status update failed: {e}")))?;
+            return Err(ApiError::upstream(
+                axum::http::StatusCode::BAD_GATEWAY,
+                "zkPassport verifier returned non-success status",
+            ));
+        }
+
+        let verifier: ZkpassportVerifierResponse = verify_response
+            .json()
+            .await
+            .map_err(|e| ApiError::internal(format!("invalid verifier response JSON: {e}")))?;
+
+        if !verifier.verified {
+            sqlx::query(
+                "UPDATE zkpassport_verifications \
+                 SET status = 'failed', completed_at = NOW(), failure_reason = $2, verification_errors = $3, query_result = $4 \
+                 WHERE id = $1",
+            )
+            .bind(row.id)
+            .bind(
+                verifier
+                    .message
+                    .clone()
+                    .unwrap_or_else(|| "zkPassport verification failed".to_string()),
+            )
+            .bind(json!(verifier.query_result_errors))
+            .bind(verifier.query_result.clone())
+            .execute(&db)
+            .await
+            .map_err(|e| ApiError::internal(format!("verification failure update failed: {e}")))?;
+            return Err(ApiError::forbidden("zkPassport verification failed"));
+        }
+
+        let verified_query_result = verifier
+            .query_result
+            .or(payload.query_result)
+            .ok_or_else(|| ApiError::validation("verifier did not return query_result"))?;
+
+        validate_zkpassport_query_result(
+            &verified_query_result,
+            row.min_age,
+            &row.allowed_country_labels,
+        )?;
+
+        let now = Utc::now();
+        let consent = crate::types::GptConsentInput {
+            data_sharing_agreed: row.consent_data_sharing_agreed,
+            purpose_acknowledged: row.consent_purpose_acknowledged,
+            contact_permission: row.consent_contact_permission,
+        };
+
+        let already_completed = crate::utils::has_completed_task(
+            &db,
+            row.campaign_id,
+            row.user_id,
+            &row.required_task,
+        )
+        .await?;
+
+        let details_json = json!({
+            "verification_method": "zkpassport",
+            "min_age_required": row.min_age,
+            "allowed_country_labels": row.allowed_country_labels,
+        })
+        .to_string();
+
+        let task_completion_id = if already_completed {
+            load_latest_task_completion_id(&db, row.campaign_id, row.user_id, &row.required_task).await?
+        } else {
+            record_consents(&db, row.user_id, row.campaign_id, &consent, now).await?;
+            record_task_completion(
+                &db,
+                row.campaign_id,
+                row.user_id,
+                &row.required_task,
+                Some(&details_json),
+                now,
+            )
+            .await?
+        };
+
+        let unique_identifier_hash = verifier
+            .unique_identifier
+            .as_deref()
+            .map(|identifier| hash_with_salt(identifier, &hash_salt));
+
+        sqlx::query(
+            "UPDATE zkpassport_verifications \
+             SET status = 'verified', completed_at = $2, proofs = $3, query_result = $4, \
+             unique_identifier_hash = $5, verification_errors = $6, failure_reason = NULL \
+             WHERE id = $1",
+        )
+        .bind(row.id)
+        .bind(now)
+        .bind(payload.proofs)
+        .bind(verified_query_result)
+        .bind(unique_identifier_hash)
+        .bind(json!(verifier.query_result_errors))
+        .execute(&db)
+        .await
+        .map_err(|e| ApiError::internal(format!("verification success update failed: {e}")))?;
+
+        Ok(Json(ZkpassportSubmitProofResponse {
+            verification_id: row.id,
+            campaign_id: row.campaign_id,
+            task_completion_id,
+            can_use_service: true,
+            message: "zkPassport verification successful. You can now use the sponsored service."
+                .to_string(),
+        }))
+    }
+    .await;
+    respond(&metrics, "zkpassport_submit_proof", result)
+}
+
+pub async fn serve_zkpassport_verify_page() -> axum::response::Html<&'static str> {
+    axum::response::Html(include_str!("zkpassport_verify.html"))
 }
 
 pub async fn gpt_run_service(

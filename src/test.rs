@@ -420,6 +420,7 @@ fn gpt_types_exist_and_are_constructible() {
         task_type: "survey".into(),
         required_fields: vec!["email".into()],
         instructions: "Fill out the survey".into(),
+        constraints: None,
     };
     let _task_resp = GptTaskResponse {
         campaign_id: Uuid::new_v4(),
@@ -431,6 +432,7 @@ fn gpt_types_exist_and_are_constructible() {
             task_type: "survey".into(),
             required_fields: vec![],
             instructions: "".into(),
+            constraints: None,
         },
         already_completed: false,
         subsidy_amount_cents: 100,
@@ -4596,6 +4598,33 @@ fn migration_0012_campaign_tags_has_expected_schema() {
     assert!(
         lower.contains("default '{}'"),
         "tags should default to empty array"
+    );
+}
+
+#[test]
+fn migration_0014_zkpassport_verifications_has_expected_schema() {
+    let sql = include_str!("../migrations/0014_zkpassport_verifications.sql");
+    let lower = sql.to_lowercase();
+
+    assert!(
+        lower.contains("create table if not exists zkpassport_verifications"),
+        "should create zkpassport_verifications table"
+    );
+    assert!(
+        lower.contains("verification_token uuid not null unique"),
+        "should enforce unique verification_token"
+    );
+    assert!(
+        lower.contains("allowed_country_labels text[] not null"),
+        "should store allowed country labels as text[]"
+    );
+    assert!(
+        lower.contains("status text not null"),
+        "should include status column"
+    );
+    assert!(
+        lower.contains("status in ('pending', 'verified', 'failed', 'expired')"),
+        "status should be constrained to expected values"
     );
 }
 

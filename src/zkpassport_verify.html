@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SnapFuel zkPassport Verification</title>
+    <style>
+      :root {
+        --bg: #f8fafc;
+        --surface: #ffffff;
+        --border: #cbd5e1;
+        --text: #0f172a;
+        --muted: #475569;
+        --accent: #0f766e;
+        --danger: #b91c1c;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+        display: grid;
+        place-items: start center;
+        min-height: 100vh;
+        padding: 24px 12px;
+      }
+
+      .panel {
+        width: 100%;
+        max-width: 760px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 18px;
+      }
+
+      h1 {
+        margin: 0 0 10px 0;
+        font-size: 22px;
+      }
+
+      p {
+        margin: 0 0 10px 0;
+        color: var(--muted);
+      }
+
+      .meta {
+        margin-top: 10px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 14px 0;
+      }
+
+      button,
+      a.button {
+        border: 1px solid var(--accent);
+        background: var(--accent);
+        color: #fff;
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-size: 14px;
+        cursor: pointer;
+        text-decoration: none;
+      }
+
+      button[disabled] {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      .qr-wrap {
+        margin-top: 14px;
+      }
+
+      #qr {
+        width: 220px;
+        height: 220px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: #fff;
+        display: none;
+      }
+
+      .status {
+        margin-top: 14px;
+        padding: 10px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: #fff;
+        font-size: 14px;
+      }
+
+      .error {
+        color: var(--danger);
+        border-color: #fecaca;
+        background: #fff1f2;
+      }
+
+      .success {
+        border-color: #86efac;
+        background: #f0fdf4;
+        color: #166534;
+      }
+
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 12px;
+      }
+
+      #open-request-link {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="panel">
+      <h1>Verify Age & Country</h1>
+      <p>
+        Complete zkPassport human proof to verify <strong>age >= 18</strong> and nationality in
+        <strong>EU/USA/Japan</strong>.
+      </p>
+
+      <div class="meta">
+        <div>Session: <span id="session-id" class="mono">loading...</span></div>
+        <div>Status: <span id="session-status">loading...</span></div>
+        <div>Expires: <span id="session-expires">loading...</span></div>
+      </div>
+
+      <div class="controls">
+        <button id="start-button" type="button" disabled>Start verification</button>
+        <a id="open-request-link" class="button" target="_blank" rel="noopener noreferrer">Open request link</a>
+      </div>
+
+      <div class="qr-wrap">
+        <img id="qr" alt="QR code for zkPassport request" />
+      </div>
+
+      <div id="status" class="status">Loading verification session...</div>
+    </main>
+
+    <script type="module">
+      const statusEl = document.getElementById('status');
+      const sessionIdEl = document.getElementById('session-id');
+      const sessionStatusEl = document.getElementById('session-status');
+      const sessionExpiresEl = document.getElementById('session-expires');
+      const startButton = document.getElementById('start-button');
+      const openRequestLink = document.getElementById('open-request-link');
+      const qrImage = document.getElementById('qr');
+
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+      let session = null;
+      let capturedProofs = [];
+      let capturedQueryResult = null;
+
+      function setStatus(message, type = 'normal') {
+        statusEl.textContent = message;
+        statusEl.classList.remove('error', 'success');
+        if (type === 'error') statusEl.classList.add('error');
+        if (type === 'success') statusEl.classList.add('success');
+      }
+
+      async function fetchJson(path, init) {
+        const response = await fetch(path, {
+          ...init,
+          headers: {
+            'Content-Type': 'application/json',
+            ...(init?.headers ?? {}),
+          },
+        });
+
+        if (!response.ok) {
+          let message = `Request failed (${response.status})`;
+          try {
+            const body = await response.json();
+            message = body?.error?.message || message;
+          } catch (_) {
+            // ignore json parse errors
+          }
+          throw new Error(message);
+        }
+
+        return response.json();
+      }
+
+      async function loadSession() {
+        if (!token) {
+          setStatus('Missing verification token in URL.', 'error');
+          sessionIdEl.textContent = 'missing';
+          sessionStatusEl.textContent = 'invalid';
+          sessionExpiresEl.textContent = '-';
+          return;
+        }
+
+        const data = await fetchJson(`/zkpassport/session/${encodeURIComponent(token)}`, { method: 'GET' });
+        session = data;
+        sessionIdEl.textContent = data.verification_id || '-';
+        sessionStatusEl.textContent = data.status || '-';
+        sessionExpiresEl.textContent = data.expires_at ? new Date(data.expires_at).toLocaleString() : '-';
+
+        if (data.status !== 'pending') {
+          startButton.disabled = true;
+          setStatus(data.message || 'Session is not pending. Return to GPT and start a new verification.', 'error');
+          return;
+        }
+
+        startButton.disabled = false;
+        setStatus('Ready. Click "Start verification".');
+      }
+
+      async function submitProofs() {
+        if (!token) return;
+        setStatus('Submitting proof to server for final verification...');
+
+        const response = await fetchJson(`/zkpassport/session/${encodeURIComponent(token)}/submit`, {
+          method: 'POST',
+          body: JSON.stringify({
+            proofs: capturedProofs,
+            query_result: capturedQueryResult,
+          }),
+        });
+
+        setStatus(response.message || 'Verification complete. You can return to GPT and continue.', 'success');
+        startButton.disabled = true;
+      }
+
+      async function startVerificationFlow() {
+        if (!session) {
+          setStatus('Session is not loaded yet.', 'error');
+          return;
+        }
+
+        startButton.disabled = true;
+        setStatus('Preparing zkPassport request...');
+
+        try {
+          const sdk = await import('https://esm.sh/@zkpassport/sdk@0.4.3?bundle');
+          const ZKPassport = sdk.ZKPassport;
+          if (!ZKPassport) {
+            throw new Error('Could not load ZKPassport SDK from CDN.');
+          }
+
+          const domain = window.location.hostname || 'localhost';
+          const zkPassport = new ZKPassport(domain);
+          const requestBuilder = await zkPassport.request({
+            name: 'SnapFuel',
+            logo: `${window.location.origin}/favicon.ico`,
+            purpose:
+              'Verify that you are age 18+ and from EU/USA/Japan to unlock sponsored service access.',
+            scope: session.scope,
+          });
+
+          const request = requestBuilder
+            .gte('age', Number(session.min_age || 18))
+            .in('nationality', Array.isArray(session.allowed_country_labels) ? session.allowed_country_labels : [])
+            .disclose('nationality')
+            .done();
+
+          capturedProofs = [];
+          capturedQueryResult = null;
+
+          const requestUrl = request.url;
+          if (typeof requestUrl === 'string' && requestUrl.length > 0) {
+            openRequestLink.href = requestUrl;
+            openRequestLink.style.display = 'inline-flex';
+            qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(requestUrl)}`;
+            qrImage.style.display = 'block';
+          }
+
+          request.onRequestReceived(() => {
+            setStatus('Request received. Continue in your identity app.');
+          });
+
+          request.onGeneratingProof(() => {
+            setStatus('Generating zero-knowledge proof...');
+          });
+
+          request.onProofGenerated((proof) => {
+            capturedProofs.push(proof);
+            setStatus('Proof generated. Waiting for final verification result...');
+          });
+
+          request.onReject((error) => {
+            const message = error?.message || 'Verification was rejected by user.';
+            setStatus(message, 'error');
+            startButton.disabled = false;
+          });
+
+          request.onError((error) => {
+            const message = error?.message || 'Verification flow failed.';
+            setStatus(message, 'error');
+            startButton.disabled = false;
+          });
+
+          request.onResult(async ({ verified, result }) => {
+            capturedQueryResult = result ?? null;
+            if (!verified) {
+              setStatus('Proof did not pass verification. Please try again.', 'error');
+              startButton.disabled = false;
+              return;
+            }
+
+            try {
+              await submitProofs();
+            } catch (error) {
+              setStatus(error?.message || 'Server-side verification failed.', 'error');
+              startButton.disabled = false;
+            }
+          });
+
+          setStatus('Scan QR code (or open request link) to continue verification.');
+        } catch (error) {
+          setStatus(error?.message || 'Could not start zkPassport flow.', 'error');
+          startButton.disabled = false;
+        }
+      }
+
+      startButton.addEventListener('click', () => {
+        void startVerificationFlow();
+      });
+
+      void loadSession().catch((error) => {
+        setStatus(error?.message || 'Failed to load verification session.', 'error');
+      });
+    </script>
+  </body>
+</html>

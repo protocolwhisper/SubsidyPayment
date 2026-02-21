@@ -6,6 +6,7 @@ const mocked = vi.hoisted(() => ({
   searchServices: vi.fn(),
   authenticateUser: vi.fn(),
   getTaskDetails: vi.fn(),
+  initZkpassportVerification: vi.fn(),
   completeTask: vi.fn(),
   runService: vi.fn(),
   runProxyService: vi.fn(),
@@ -26,6 +27,7 @@ vi.mock('../../src/backend-client.ts', async () => {
     searchServices = mocked.searchServices;
     authenticateUser = mocked.authenticateUser;
     getTaskDetails = mocked.getTaskDetails;
+    initZkpassportVerification = mocked.initZkpassportVerification;
     completeTask = mocked.completeTask;
     runService = mocked.runService;
     runProxyService = mocked.runProxyService;
@@ -85,6 +87,7 @@ describe('MCP E2E flow (task 9.3)', () => {
     mocked.searchServices.mockReset();
     mocked.authenticateUser.mockReset();
     mocked.getTaskDetails.mockReset();
+    mocked.initZkpassportVerification.mockReset();
     mocked.completeTask.mockReset();
     mocked.runService.mockReset();
     mocked.runProxyService.mockReset();

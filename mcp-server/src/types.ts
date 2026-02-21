@@ -88,6 +88,7 @@ export interface GptTaskInputFormat {
   task_type: string;
   required_fields: string[];
   instructions: string;
+  constraints?: Record<string, unknown>;
 }
 
 export interface GptCompleteTaskResponse {
@@ -95,6 +96,15 @@ export interface GptCompleteTaskResponse {
   campaign_id: string;
   consent_recorded: boolean;
   can_use_service: boolean;
+  message: string;
+}
+
+export interface GptInitZkpassportVerificationResponse {
+  verification_id: string;
+  verification_token: string;
+  campaign_id: string;
+  verification_url: string;
+  expires_at: string;
   message: string;
 }
 
@@ -227,6 +237,12 @@ export interface CompleteTaskInput {
   session_token: string;
   task_name: string;
   details?: string;
+  consent: GptConsentInput;
+}
+
+export interface InitZkpassportVerificationInput {
+  campaign_id: string;
+  session_token: string;
   consent: GptConsentInput;
 }
 
