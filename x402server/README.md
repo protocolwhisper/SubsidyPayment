@@ -31,4 +31,7 @@ npm run dev
 
 # start MCP inspector
 npx @modelcontextprotocol/inspector
+
+# ngrok(test for GPT App)
+ngrok http 3001
 ```

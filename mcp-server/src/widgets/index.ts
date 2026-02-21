@@ -10,7 +10,14 @@ const __dirname = dirname(__filename);
 const widgetsDistDir = resolve(__dirname, '../../dist/widgets');
 
 async function readWidgetHtml(fileName: string): Promise<string> {
-  return readFile(resolve(widgetsDistDir, fileName), 'utf8');
+  try {
+    return await readFile(resolve(widgetsDistDir, fileName), 'utf8');
+  } catch (error: any) {
+    if (error?.code === 'ENOENT') {
+      return readFile(resolve(widgetsDistDir, 'src/widgets/src', fileName), 'utf8');
+    }
+    throw error;
+  }
 }
 
 function registerWidgetResource(server: McpServer, name: string, uri: string, fileName: string): void {

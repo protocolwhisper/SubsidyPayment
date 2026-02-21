@@ -6,27 +6,15 @@
     <title>Service Tasks Widget</title>
     <style>
       :root {
-        --bg: #f5f7fb;
-        --surface: #ffffff;
-        --text: #101828;
-        --muted: #475467;
-        --border: #d0d5dd;
-        --accent: #0f766e;
-        --accent-soft: #ccfbf1;
-        --success: #059669;
-        --success-soft: #d1fae5;
-      }
-
-      body.dark {
-        --bg: #0b1220;
-        --surface: #111827;
-        --text: #f3f4f6;
-        --muted: #cbd5e1;
+        --bg-0: #0f172a;
+        --bg-1: #0c1222;
+        --panel: #111827;
+        --panel-soft: #1e293b;
         --border: #334155;
-        --accent: #5eead4;
-        --accent-soft: #134e4a;
-        --success: #34d399;
-        --success-soft: #052e16;
+        --text: #f8fafc;
+        --muted: #94a3b8;
+        --accent: #0ea5e9;
+        --success: #22c55e;
       }
 
       * {
@@ -35,75 +23,96 @@
 
       body {
         margin: 0;
-        background: var(--bg);
         color: var(--text);
-        font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+        font-family: 'Space Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: linear-gradient(160deg, var(--bg-0) 0%, var(--bg-1) 100%);
       }
 
       #app {
-        padding: 12px;
-        max-width: 100%;
+        width: 100%;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        box-shadow: 0 18px 44px rgba(2, 6, 23, 0.45);
       }
 
       .header {
         display: flex;
         align-items: center;
         gap: 10px;
-        margin-bottom: 12px;
+        padding: 18px 20px;
       }
 
-      .header-title {
+      .back {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+      }
+
+      .service-title {
         margin: 0;
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 700;
       }
 
-      .header-badge {
-        padding: 3px 8px;
-        border-radius: 999px;
-        background: var(--accent-soft);
-        border: 1px solid var(--accent);
+      .service-sub {
+        margin: 2px 0 0;
+        color: var(--muted);
         font-size: 12px;
-        font-weight: 600;
-        color: var(--accent);
       }
 
-      .total-bar {
+      .divider {
+        width: 100%;
+        height: 1px;
+        background: var(--border);
+      }
+
+      .section-header {
         display: flex;
+        justify-content: space-between;
         align-items: center;
-        justify-content: center;
         gap: 8px;
-        padding: 10px;
-        margin-bottom: 12px;
-        border-radius: 10px;
-        background: var(--accent-soft);
-        border: 1px solid var(--accent);
-        font-size: 13px;
-        color: var(--accent);
-        font-weight: 600;
+        padding: 14px 20px 10px;
       }
 
-      .tasks {
+      .section-title {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .badge {
+        border: 1px solid var(--accent);
+        border-radius: 999px;
+        color: var(--accent);
+        background: rgba(14, 165, 233, 0.16);
+        font-size: 11px;
+        font-weight: 600;
+        padding: 3px 9px;
+      }
+
+      .list {
         display: grid;
-        grid-template-columns: 1fr;
         gap: 10px;
+        padding: 0 20px 14px;
       }
 
       .task-card {
         border: 1px solid var(--border);
-        border-radius: 10px;
-        background: var(--surface);
+        border-radius: 12px;
+        background: rgba(15, 23, 42, 0.55);
         padding: 12px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
       }
 
-      .task-top {
+      .row-top {
         display: flex;
-        justify-content: space-between;
         align-items: flex-start;
-        gap: 10px;
+        justify-content: space-between;
+        gap: 8px;
       }
 
       .task-name {
@@ -112,79 +121,98 @@
         font-weight: 700;
       }
 
-      .task-campaign {
-        margin: 2px 0 0 0;
+      .task-desc {
+        margin: 2px 0 0;
         font-size: 12px;
         color: var(--muted);
       }
 
-      .task-amount {
-        padding: 4px 10px;
-        border-radius: 8px;
-        background: var(--success-soft);
-        color: var(--success);
-        font-size: 13px;
-        font-weight: 700;
-        white-space: nowrap;
-      }
-
-      .task-bottom {
-        display: flex;
-        justify-content: space-between;
+      .amount {
+        display: inline-flex;
         align-items: center;
+        gap: 4px;
+        border-radius: 999px;
+        border: 1px solid rgba(34, 197, 94, 0.5);
+        background: rgba(34, 197, 94, 0.15);
+        color: #86efac;
+        padding: 4px 9px;
+        font-size: 12px;
+        font-weight: 700;
       }
 
-      .task-sponsor {
+      .row-bottom {
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      .sponsor {
         font-size: 12px;
         color: var(--muted);
       }
 
-      .task-tags {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-        margin-top: 4px;
-      }
-
-      .tag {
-        padding: 2px 8px;
-        border: 1px solid var(--border);
-        border-radius: 999px;
-        font-size: 11px;
-      }
-
-      .start-btn {
-        border: none;
+      .start {
+        border: 1px solid var(--accent);
         background: var(--accent);
-        color: white;
-        border-radius: 8px;
-        padding: 6px 14px;
+        color: #fff;
+        border-radius: 9px;
+        padding: 6px 10px;
         font-size: 12px;
         font-weight: 600;
         cursor: pointer;
       }
 
-      .empty {
-        padding: 20px;
-        border: 1px dashed var(--border);
+      .total {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin: 2px 20px 16px;
         border-radius: 10px;
+        border: 1px solid rgba(14, 165, 233, 0.45);
+        background: rgba(14, 165, 233, 0.14);
+        color: #bae6fd;
+        padding: 10px 12px;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .empty {
+        margin: 12px 20px 16px;
+        border-radius: 12px;
+        border: 1px dashed var(--border);
         color: var(--muted);
-        text-align: center;
+        font-size: 13px;
+        background: rgba(15, 23, 42, 0.45);
+        padding: 16px;
       }
     </style>
   </head>
   <body>
     <main id="app"></main>
     <script type="module">
-      import { initWidget, notifyWidgetHeight } from './common.ts';
+      import { initWidget, notifyWidgetHeight } from './common.js';
 
       const { app, toolOutput, widgetState } = initWidget();
       const root = document.getElementById('app');
+
       const structured = toolOutput?.structuredContent ?? {};
-      const tasks = structured.tasks ?? [];
+      const tasks = Array.isArray(structured.tasks) ? structured.tasks : [];
       const displayName = structured.display_name ?? structured.service_key ?? 'Service';
-      const taskCount = structured.task_count ?? tasks.length;
-      const totalSubsidyCents = structured.total_subsidy_cents ?? 0;
+      const taskCount = Number(structured.task_count ?? tasks.length);
+      const totalSubsidyCents = Number(structured.total_subsidy_cents ?? 0);
+      const serviceKey = typeof structured.service_key === 'string' ? structured.service_key : widgetState?.selectedServiceKey ?? '';
+
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#39;');
+      }
 
       function formatDollars(cents) {
         return new Intl.NumberFormat('en-US', {
@@ -197,68 +225,88 @@
         return app?.callTool?.(name, input);
       }
 
-      async function onStartTask(campaignId) {
+      async function setWidgetState(nextState) {
+        return app?.setWidgetState?.(nextState);
+      }
+
+      async function onStartTask(campaignId, sponsor, requiredTask) {
+        await setWidgetState({
+          ...(widgetState ?? {}),
+          selectedCampaignId: campaignId,
+          selectedSponsor: sponsor,
+          selectedRequiredTask: requiredTask,
+          selectedServiceKey: serviceKey,
+          selectedServiceName: displayName,
+        });
         await callTool('get_task_details', { campaign_id: campaignId });
+      }
+
+      async function onBack() {
+        await callTool('search_services', {
+          q: typeof displayName === 'string' ? displayName : undefined,
+        });
+      }
+
+      function renderTaskCards() {
+        return tasks
+          .map((task) => {
+            const title = task.required_task || 'Task';
+            const desc = task.campaign_name || 'Campaign task';
+            return `
+              <article class="task-card">
+                <div class="row-top">
+                  <div>
+                    <p class="task-name">${escapeHtml(title)}</p>
+                    <p class="task-desc">${escapeHtml(desc)}</p>
+                  </div>
+                  <span class="amount">🎁 ${escapeHtml(formatDollars(task.subsidy_amount_cents))}</span>
+                </div>
+                <div class="row-bottom">
+                  <span class="sponsor">by ${escapeHtml(task.sponsor ?? '-')}</span>
+                  <button class="start" data-campaign-id="${escapeHtml(task.campaign_id)}" data-task-name="${escapeHtml(title)}" data-sponsor="${escapeHtml(task.sponsor ?? '')}">
+                    Start ›
+                  </button>
+                </div>
+              </article>
+            `;
+          })
+          .join('');
       }
 
       function render() {
         if (!root) return;
 
-        if (tasks.length === 0) {
-          root.innerHTML = `
-            <div class="header">
-              <h2 class="header-title">${displayName}</h2>
-            </div>
-            <div class="empty">No subsidized tasks available for this service.</div>
-          `;
-          notifyWidgetHeight(app);
-          return;
-        }
-
-        const totalBar = `
-          <div class="total-bar">
-            Total available subsidy: ${formatDollars(totalSubsidyCents)}
-          </div>
-        `;
-
-        const cards = tasks
-          .map((task) => {
-            const tags = [...(task.category ?? []), ...(task.tags ?? [])];
-            const tagHtml = tags.map((t) => `<span class="tag">${t}</span>`).join('');
-
-            return `
-              <div class="task-card">
-                <div class="task-top">
-                  <div>
-                    <p class="task-name">${task.required_task ?? 'Task'}</p>
-                    <p class="task-campaign">${task.campaign_name ?? ''}</p>
-                  </div>
-                  <div class="task-amount">${formatDollars(task.subsidy_amount_cents)}</div>
-                </div>
-                ${tags.length > 0 ? `<div class="task-tags">${tagHtml}</div>` : ''}
-                <div class="task-bottom">
-                  <span class="task-sponsor">by ${task.sponsor ?? '-'}</span>
-                  <button class="start-btn" data-campaign-id="${task.campaign_id}">Start</button>
-                </div>
-              </div>
-            `;
-          })
-          .join('');
-
         root.innerHTML = `
-          <div class="header">
-            <h2 class="header-title">${displayName}</h2>
-            <span class="header-badge">${taskCount} task${taskCount !== 1 ? 's' : ''}</span>
-          </div>
-          ${totalBar}
-          <div class="tasks">${cards}</div>
+          <section class="header">
+            <button class="back" id="back-btn">←</button>
+            <div>
+              <h2 class="service-title">${escapeHtml(displayName)}</h2>
+              <p class="service-sub">Available subsidized tasks</p>
+            </div>
+          </section>
+          <div class="divider"></div>
+          <section class="section-header">
+            <h3 class="section-title">Available Subsidized Tasks</h3>
+            <span class="badge">${escapeHtml(taskCount)} task${taskCount === 1 ? '' : 's'}</span>
+          </section>
+          ${tasks.length > 0 ? `<section class="list">${renderTaskCards()}</section>` : `<div class="empty">No subsidized tasks available for this service.</div>`}
+          <section class="total">
+            <span>👛 Total available subsidy:</span>
+            <strong>${escapeHtml(formatDollars(totalSubsidyCents))}</strong>
+          </section>
         `;
 
-        for (const btn of root.querySelectorAll('.start-btn')) {
-          btn.addEventListener('click', () => {
-            const campaignId = btn.getAttribute('data-campaign-id');
+        root.querySelector('#back-btn')?.addEventListener('click', () => {
+          void onBack();
+        });
+
+        for (const button of root.querySelectorAll('.start')) {
+          button.addEventListener('click', () => {
+            const campaignId = button.getAttribute('data-campaign-id');
+            const taskName = button.getAttribute('data-task-name');
+            const sponsor = button.getAttribute('data-sponsor');
             if (campaignId) {
-              onStartTask(campaignId);
+              void onStartTask(campaignId, sponsor ?? '', taskName ?? 'Task');
             }
           });
         }
