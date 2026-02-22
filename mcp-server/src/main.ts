@@ -13,6 +13,7 @@ import { createServer } from './server.ts';
 
 const ALLOWED_ORIGINS = [
   'https://chatgpt.com',
+  'https://chat.openai.com',
   'https://cdn.oaistatic.com',
   'https://web-sandbox.oaiusercontent.com',
 ];
@@ -62,8 +63,18 @@ export function createApp() {
   app.use(
     cors({
       origin: ALLOWED_ORIGINS,
-      methods: ['GET', 'POST', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
+      methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+      // Streamable HTTP MCP clients send protocol/session headers after initialize.
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'Mcp-Session-Id',
+        'MCP-Session-Id',
+        'Mcp-Protocol-Version',
+        'MCP-Protocol-Version',
+        'Last-Event-ID',
+      ],
+      exposedHeaders: ['Mcp-Session-Id', 'MCP-Session-Id', 'Mcp-Protocol-Version', 'MCP-Protocol-Version'],
     })
   );
 
