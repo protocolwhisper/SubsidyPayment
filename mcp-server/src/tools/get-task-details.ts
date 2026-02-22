@@ -60,6 +60,8 @@ export function registerGetTaskDetailsTool(server: McpServer, config: BackendCon
           ? [{ type: 'oauth2', scopes: ['tasks.read'] }]
           : [{ type: 'noauth' }],
         ui: { resourceUri: 'ui://widget/task-form.html' },
+        'openai/resultCanProduceWidget': true,
+        'openai/widgetAccessible': true,
         'openai/toolInvocation/invoking': 'Fetching task details...',
         'openai/toolInvocation/invoked': 'Task details fetched',
         'openai/outputTemplate': 'ui://widget/task-form.html',
@@ -97,6 +99,7 @@ export function registerGetTaskDetailsTool(server: McpServer, config: BackendCon
             { type: 'text' as const, text: response.message },
           ],
           _meta: {
+            'openai/outputTemplate': 'ui://widget/task-form.html',
             full_response: response,
           },
         };

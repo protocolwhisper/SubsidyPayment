@@ -77,6 +77,8 @@ export function registerAuthenticateUserTool(server: McpServer, config: BackendC
         securitySchemes: config.authEnabled
           ? [{ type: 'oauth2', scopes: ['user.write'] }]
           : [{ type: 'noauth' }],
+        'openai/resultCanProduceWidget': true,
+        'openai/widgetAccessible': true,
         'openai/toolInvocation/invoking': 'Authenticating user...',
         'openai/toolInvocation/invoked': 'Authentication complete',
         'openai/outputTemplate': 'ui://widget/user-dashboard.html',
@@ -125,6 +127,7 @@ export function registerAuthenticateUserTool(server: McpServer, config: BackendC
             { type: 'text' as const, text: response.message },
           ],
           _meta: {
+            'openai/outputTemplate': 'ui://widget/user-dashboard.html',
             session_token: response.session_token,
           },
         };

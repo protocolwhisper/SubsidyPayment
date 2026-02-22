@@ -59,6 +59,8 @@ export function registerGetUserStatusTool(server: McpServer, config: BackendConf
           ? [{ type: 'oauth2', scopes: ['user.read'] }]
           : [{ type: 'noauth' }],
         ui: { resourceUri: 'ui://widget/user-dashboard.html' },
+        'openai/resultCanProduceWidget': true,
+        'openai/widgetAccessible': true,
         'openai/toolInvocation/invoking': 'Fetching user status...',
         'openai/toolInvocation/invoked': 'User status fetched',
         'openai/outputTemplate': 'ui://widget/user-dashboard.html',
@@ -92,6 +94,7 @@ export function registerGetUserStatusTool(server: McpServer, config: BackendConf
             { type: 'text' as const, text: response.message },
           ],
           _meta: {
+            'openai/outputTemplate': 'ui://widget/user-dashboard.html',
             full_response: response,
           },
         };

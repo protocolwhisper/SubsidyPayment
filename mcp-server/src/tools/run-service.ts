@@ -240,6 +240,8 @@ export function registerRunServiceTool(server: McpServer, config: BackendConfig)
           ? [{ type: 'oauth2', scopes: ['services.execute'] }]
           : [{ type: 'noauth' }],
         ui: { resourceUri: 'ui://widget/service-access.html' },
+        'openai/resultCanProduceWidget': true,
+        'openai/widgetAccessible': true,
         'openai/toolInvocation/invoking': 'Running service...',
         'openai/toolInvocation/invoked': 'Service run completed',
         'openai/outputTemplate': 'ui://widget/service-access.html',

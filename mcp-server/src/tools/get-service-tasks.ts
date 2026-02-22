@@ -164,6 +164,8 @@ export function registerGetServiceTasksTool(server: McpServer, config: BackendCo
           ? [{ type: 'oauth2', scopes: ['tasks.read'] }]
           : [{ type: 'noauth' }],
         ui: { resourceUri: 'ui://widget/service-tasks.html' },
+        'openai/resultCanProduceWidget': true,
+        'openai/widgetAccessible': true,
         'openai/toolInvocation/invoking': 'Loading service tasks...',
         'openai/toolInvocation/invoked': 'Service tasks loaded',
         'openai/outputTemplate': 'ui://widget/service-tasks.html',
@@ -204,6 +206,9 @@ export function registerGetServiceTasksTool(server: McpServer, config: BackendCo
                 text: `No subsidized tasks found for service "${input.service_key}".`,
               },
             ],
+            _meta: {
+              'openai/outputTemplate': 'ui://widget/service-tasks.html',
+            },
           };
         }
 
@@ -226,6 +231,7 @@ export function registerGetServiceTasksTool(server: McpServer, config: BackendCo
             { type: 'text' as const, text: message },
           ],
           _meta: {
+            'openai/outputTemplate': 'ui://widget/service-tasks.html',
             full_response: searchResponse,
           },
         };

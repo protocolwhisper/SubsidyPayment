@@ -38,6 +38,7 @@ function toSearchServicesResult(response: GptSearchResponse) {
       { type: 'text' as const, text: message },
     ],
     _meta: {
+      'openai/outputTemplate': 'ui://widget/services-list.html',
       full_response: response,
     },
   };
@@ -61,6 +62,8 @@ export function registerSearchServicesTool(server: McpServer, config: BackendCon
       _meta: {
         securitySchemes: [{ type: 'noauth' }],
         ui: { resourceUri: 'ui://widget/services-list.html' },
+        'openai/resultCanProduceWidget': true,
+        'openai/widgetAccessible': true,
         'openai/toolInvocation/invoking': 'Searching services...',
         'openai/toolInvocation/invoked': 'Services found',
         'openai/outputTemplate': 'ui://widget/services-list.html',
