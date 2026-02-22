@@ -64,6 +64,7 @@ export function registerSearchServicesTool(server: McpServer, config: BackendCon
         ui: { resourceUri: 'ui://widget/services-list.html' },
         'openai/resultCanProduceWidget': true,
         'openai/widgetAccessible': true,
+        'openai/widgetDescription': 'Interactive list of sponsored services with tap-to-select cards.',
         'openai/toolInvocation/invoking': 'Searching services...',
         'openai/toolInvocation/invoked': 'Services found',
         'openai/outputTemplate': 'ui://widget/services-list.html',

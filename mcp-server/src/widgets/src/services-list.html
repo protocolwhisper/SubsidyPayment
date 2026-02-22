@@ -238,24 +238,41 @@
         return {
           app,
           toolOutput: app?.toolOutput ?? null,
+          toolResponseMetadata: app?.toolResponseMetadata ?? null,
           widgetState: app?.widgetState ?? {},
           isDark,
         };
       }
 
       function notifyWidgetHeight(app) {
-        app?.notifyIntrinsicHeight?.(document.body.scrollHeight);
+        const height = Math.max(
+          document.body?.scrollHeight || 0,
+          document.documentElement?.scrollHeight || 0
+        );
+        app?.notifyIntrinsicHeight?.(height);
       }
 
-      const { app, toolOutput, widgetState } = initWidget();
+      const globals = initWidget();
+      const app = globals.app;
       const root = document.getElementById('app');
+      let toolOutput = globals.toolOutput;
+      let widgetState = globals.widgetState;
 
-      const structuredContent = toolOutput?.structuredContent ?? {};
-      const candidateServices = Array.isArray(structuredContent.candidate_services) ? structuredContent.candidate_services : [];
-      const services = Array.isArray(structuredContent.services) ? structuredContent.services : [];
-      const serviceCatalog = Array.isArray(structuredContent.service_catalog) ? structuredContent.service_catalog : [];
-      const selectedServiceKey = typeof widgetState?.selectedServiceKey === 'string' ? widgetState.selectedServiceKey : '';
-      const keyword = typeof structuredContent?.applied_filters?.keyword === 'string' ? structuredContent.applied_filters.keyword : '';
+      function normalizeStructuredContent(value) {
+        if (!value || typeof value !== 'object') return {};
+        if (value.structuredContent && typeof value.structuredContent === 'object') {
+          return value.structuredContent;
+        }
+        return value;
+      }
+
+      function currentStructuredContent() {
+        return normalizeStructuredContent(toolOutput);
+      }
+
+      function currentWidgetState() {
+        return widgetState && typeof widgetState === 'object' ? widgetState : {};
+      }
 
       function escapeHtml(value) {
         return String(value ?? '')
@@ -288,6 +305,9 @@
       }
 
       function buildCards() {
+        const structuredContent = currentStructuredContent();
+        const candidateServices = Array.isArray(structuredContent.candidate_services) ? structuredContent.candidate_services : [];
+        const services = Array.isArray(structuredContent.services) ? structuredContent.services : [];
         if (candidateServices.length > 0) {
           return candidateServices.map((candidate) => {
             const offers = Array.isArray(candidate.offers) ? candidate.offers : [];
@@ -338,7 +358,7 @@
       async function selectService(campaignId, serviceKey, serviceName) {
         if (!campaignId) return;
         await setWidgetState({
-          ...(widgetState ?? {}),
+          ...(currentWidgetState() ?? {}),
           selectedServiceId: campaignId,
           selectedServiceKey: serviceKey,
           selectedServiceName: serviceName,
@@ -348,6 +368,14 @@
 
       function render() {
         if (!root) return;
+        const structuredContent = currentStructuredContent();
+        const candidateServices = Array.isArray(structuredContent.candidate_services) ? structuredContent.candidate_services : [];
+        const services = Array.isArray(structuredContent.services) ? structuredContent.services : [];
+        const serviceCatalog = Array.isArray(structuredContent.service_catalog) ? structuredContent.service_catalog : [];
+        const selectedServiceKey =
+          typeof currentWidgetState()?.selectedServiceKey === 'string' ? currentWidgetState().selectedServiceKey : '';
+        const keyword =
+          typeof structuredContent?.applied_filters?.keyword === 'string' ? structuredContent.applied_filters.keyword : '';
 
         const cards = buildCards();
         const serviceCount = cards.length;
@@ -432,9 +460,28 @@
         }
 
         notifyWidgetHeight(app);
+        setTimeout(() => notifyWidgetHeight(app), 50);
       }
 
-      render();
+      function safeRender() {
+        try {
+          render();
+        } catch (error) {
+          if (root) {
+            root.innerHTML = `<div class="empty">Widget render error: ${escapeHtml(error?.message || 'unknown error')}</div>`;
+          }
+          console.error('services-list widget render error', error);
+          notifyWidgetHeight(app);
+        }
+      }
+
+      window.addEventListener('openai:set_globals', () => {
+        toolOutput = window.openai?.toolOutput ?? toolOutput;
+        widgetState = window.openai?.widgetState ?? widgetState;
+        safeRender();
+      });
+
+      safeRender();
       notifyWidgetHeight(app);
     </script>
   </body>

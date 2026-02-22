@@ -9,6 +9,31 @@ export { registerAppResource, RESOURCE_MIME_TYPE };
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+function resolveWidgetUiMeta() {
+  const rawPublicUrl = process.env.PUBLIC_URL?.trim() ?? '';
+  let domain = rawPublicUrl;
+  try {
+    if (rawPublicUrl) {
+      const parsed = new URL(rawPublicUrl);
+      domain = parsed.origin;
+    }
+  } catch {
+    // Keep raw value as fallback; widget can still work without a perfect origin.
+  }
+
+  return {
+    ui: {
+      prefersBorder: true,
+      ...(domain ? { domain } : {}),
+      csp: {
+        connectDomains: domain ? [domain] : [],
+        resourceDomains: ['https://esm.sh', 'https://api.qrserver.com'],
+      },
+    },
+  };
+}
+
 export async function readWidgetHtml(fileName: string): Promise<string> {
   // Support both layouts:
   // 1) `tsx src/main.ts` (module lives in `src/widgets`)
@@ -71,6 +96,7 @@ function registerWidgetResource(server: McpServer, name: string, uri: string, fi
           uri,
           mimeType: RESOURCE_MIME_TYPE,
           text: await readWidgetHtml(fileName),
+          _meta: resolveWidgetUiMeta(),
         },
       ],
     })
