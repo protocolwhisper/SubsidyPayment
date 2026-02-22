@@ -55,11 +55,9 @@ export async function readWidgetHtml(fileName: string): Promise<string> {
     resolve(cwd, 'src/widgets/src', fileName),
     resolve(cwd, 'mcp-server/src/widgets/src', fileName),
   ];
-  const isProduction = process.env.NODE_ENV === 'production';
-
-  const candidates = isProduction
-    ? [...distCandidates, ...srcCandidates]
-    : [...srcCandidates, ...distCandidates];
+  // Prefer source HTML even in production because Vite single-file output can still
+  // emit `modulepreload-polyfill.js` references that are not registered as MCP resources.
+  const candidates = [...srcCandidates, ...distCandidates];
 
   let lastError: unknown;
   for (const candidate of candidates) {
