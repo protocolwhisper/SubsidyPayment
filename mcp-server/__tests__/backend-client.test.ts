@@ -10,6 +10,12 @@ const config = {
   publicUrl: 'http://localhost:3001',
   port: 3001,
   logLevel: 'info',
+  authEnabled: true,
+  x402WeatherUrl: 'http://localhost:4021/weather',
+  x402FacilitatorUrl: 'https://x402.org/facilitator',
+  x402Network: 'eip155:84532',
+  x402PrivateKey: '0x1234',
+  x402RequestTimeoutMs: 15000,
 };
 
 function mockJsonResponse(status: number, body: unknown): Response {

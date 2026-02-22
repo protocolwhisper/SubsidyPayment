@@ -6,9 +6,12 @@ MCP サーバーの E2E フロー（サービス検索 → 認証 → タスク�
 
 ## 2. 事前準備
 
-1. `mcp-server/.env` を用意し、以下を設定する。
+1. `mcp-server/.env` を用意し、以下を設定する（`mcp-server/.env.example` をコピーして編集）。
    - `RUST_BACKEND_URL`
    - `MCP_INTERNAL_API_KEY`
+   - `X402_WEATHER_URL`（例: `http://localhost:4021/weather`）
+   - `X402_NETWORK`（例: `eip155:84532`）
+   - `X402_PRIVATE_KEY`（x402支払い用）
    - `AUTH0_DOMAIN`（OAuth有効時のみ必須）
    - `AUTH0_AUDIENCE`（OAuth有効時のみ必須）
    - `PUBLIC_URL`（ngrok URL）
@@ -17,9 +20,16 @@ MCP サーバーの E2E フロー（サービス検索 → 認証 → タスク�
 3. MCP サーバーを起動する。
    - `cd mcp-server`
    - `npm run dev`
-4. ngrok トンネルを作成する。
+4. x402 weather サンプルサーバーを起動する（weatherツール検証時）。
+   - `cd x402server`
+   - `pnpm run dev`
+5. ngrok トンネルを作成する。
    - `ngrok http 3001`
-5. ngrok の公開 URL を `PUBLIC_URL` に反映し、MCP サーバーを再起動する。
+6. ngrok の公開 URL を `PUBLIC_URL` に反映し、MCP サーバーを再起動する。
+
+補足:
+- MCP サーバーは起動時に `mcp-server/.env` と `mcp-server/.env.local` を自動読込します。
+- `X402_PRIVATE_KEY` が未設定の場合、`weather` ツールは `x402_config_error` を返します。
 
 ### AUTH_ENABLED の判定ロジック
 
@@ -76,6 +86,8 @@ AUTH_ENABLED=false npm run dev
    - 期待: ユーザー情報、完了タスク一覧、利用可能サービス一覧が表示される。
 6. ready なサービスの「実行」を押す。
    - 期待: `run_service` が呼ばれ、結果が返る。
+7. `weather(city: "San Francisco")` を実行する。
+   - 期待: x402支払い処理後に天気情報が返る。
 
 ## 5. UI チェックリスト
 

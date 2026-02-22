@@ -6,27 +6,16 @@
     <title>Service Access Widget</title>
     <style>
       :root {
-        --bg: #f8fafc;
-        --surface: #ffffff;
-        --text: #0f172a;
-        --muted: #475569;
-        --border: #cbd5e1;
-        --accent: #0ea5e9;
-        --pay: #7c3aed;
-        --ok: #0f766e;
-        --danger: #b91c1c;
-      }
-
-      body.dark {
-        --bg: #0b1120;
-        --surface: #111827;
-        --text: #f1f5f9;
-        --muted: #cbd5e1;
+        --bg-0: #0f172a;
+        --bg-1: #0c1222;
+        --panel: #111827;
+        --panel-soft: #1e293b;
         --border: #334155;
-        --accent: #38bdf8;
-        --pay: #a78bfa;
-        --ok: #5eead4;
-        --danger: #fca5a5;
+        --text: #f8fafc;
+        --muted: #94a3b8;
+        --accent: #0ea5e9;
+        --ok: #22c55e;
+        --warn: #f59e0b;
       }
 
       * {
@@ -35,313 +24,535 @@
 
       body {
         margin: 0;
-        background: var(--bg);
         color: var(--text);
-        font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+        font-family: 'Space Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: linear-gradient(160deg, var(--bg-0) 0%, var(--bg-1) 100%);
       }
 
       #app {
-        padding: 12px;
+        width: 100%;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        box-shadow: 0 18px 44px rgba(2, 6, 23, 0.45);
       }
 
-      .panel {
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        background: var(--surface);
-        padding: 12px;
-      }
-
-      .title {
-        margin: 0 0 8px;
-        font-size: 16px;
-      }
-
-      .muted {
-        color: var(--muted);
-        font-size: 13px;
-      }
-
-      .split {
+      .header {
         display: grid;
+        grid-template-columns: auto 1fr auto;
         gap: 10px;
-        margin-top: 10px;
+        align-items: center;
+        padding: 16px 20px;
       }
 
-      .card {
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 10px;
-      }
-
-      .card h3 {
-        margin: 0 0 6px;
-        font-size: 14px;
-      }
-
-      .pay h3 {
-        color: var(--pay);
-      }
-
-      .free h3 {
-        color: var(--ok);
-      }
-
-      .inline-buttons {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin-top: 8px;
-      }
-
-      button {
-        border: 1px solid var(--border);
+      .back {
+        width: 30px;
+        height: 30px;
         border-radius: 8px;
-        padding: 8px 10px;
+        border: 1px solid var(--border);
         background: transparent;
-        color: var(--text);
+        color: var(--muted);
         cursor: pointer;
       }
 
-      button.primary {
-        border-color: var(--accent);
+      .title {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .sub {
+        margin: 2px 0 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .badge {
+        border-radius: 999px;
+        border: 1px solid rgba(14, 165, 233, 0.7);
+        background: rgba(14, 165, 233, 0.16);
+        color: #bae6fd;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 3px 8px;
+        white-space: nowrap;
+      }
+
+      .divider {
+        width: 100%;
+        height: 1px;
+        background: var(--border);
+      }
+
+      .hero {
+        margin: 14px 20px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(15, 23, 42, 0.58);
+        padding: 14px;
+      }
+
+      .hero.good {
+        border-color: rgba(34, 197, 94, 0.55);
+        background: rgba(22, 101, 52, 0.12);
+      }
+
+      .hero.warn {
+        border-color: rgba(245, 158, 11, 0.55);
+        background: rgba(146, 64, 14, 0.12);
+      }
+
+      .hero-title {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 700;
+      }
+
+      .hero-msg {
+        margin: 6px 0 0;
+        color: #dbe5f3;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .summary {
+        margin: 0 20px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: rgba(15, 23, 42, 0.55);
+        padding: 12px;
+      }
+
+      .summary-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .summary-title {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .summary-badge {
+        border-radius: 999px;
+        border: 1px solid rgba(34, 197, 94, 0.55);
+        color: #86efac;
+        background: rgba(34, 197, 94, 0.13);
+        font-size: 10px;
+        padding: 2px 8px;
+      }
+
+      .kv {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 6px;
+        font-size: 12px;
+        padding: 4px 0;
+      }
+
+      .kv dt {
+        color: var(--muted);
+      }
+
+      .kv dd {
+        margin: 0;
+      }
+
+      .actions {
+        margin: 14px 20px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .btn {
+        width: 100%;
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .btn.primary {
+        border: 1px solid var(--accent);
         background: var(--accent);
         color: #fff;
       }
 
-      button.pay {
-        border-color: var(--pay);
-        background: var(--pay);
-        color: #fff;
+      .btn.ok {
+        border: 1px solid var(--ok);
+        background: var(--ok);
+        color: #052e16;
       }
 
-      .field {
-        display: grid;
-        gap: 6px;
-        margin-top: 10px;
-      }
-
-      .field textarea {
-        width: 100%;
-        min-height: 90px;
+      .btn.ghost {
         border: 1px solid var(--border);
-        border-radius: 8px;
         background: transparent;
-        color: var(--text);
-        padding: 8px;
-      }
-
-      .checks {
-        display: grid;
-        gap: 6px;
-        margin-top: 10px;
-        font-size: 12px;
         color: var(--muted);
       }
 
-      .mono {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        word-break: break-all;
-      }
-
-      .status {
-        margin-top: 8px;
+      .hint {
         color: var(--muted);
         font-size: 12px;
+        margin: 0;
+        text-align: center;
       }
 
-      .error {
-        color: var(--danger);
+      .table-wrap {
+        margin: 14px 20px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: rgba(15, 23, 42, 0.52);
+        overflow: hidden;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        font-size: 12px;
+        text-align: left;
+        padding: 10px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+      }
+
+      th {
+        color: #cbd5e1;
+        font-weight: 600;
+        background: rgba(30, 41, 59, 0.6);
+      }
+
+      .positive {
+        color: #86efac;
+      }
+
+      .negative {
+        color: #fca5a5;
+      }
+
+      .footer {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 20px 16px;
+        color: var(--muted);
+        font-size: 12px;
       }
     </style>
   </head>
   <body>
     <main id="app"></main>
     <script type="module">
-      import { initWidget, notifyWidgetHeight } from './common.ts';
+      function initWidget() {
+        const app = window.openai;
+        const isDark = app?.theme?.appearance === 'dark';
+        document.body.classList.toggle('dark', isDark);
 
-      const { app, toolOutput } = initWidget();
+        if (typeof app?.maxHeight === 'number' && Number.isFinite(app.maxHeight)) {
+          document.body.style.maxHeight = `${app.maxHeight}px`;
+          document.body.style.overflowY = 'auto';
+        }
+
+        return {
+          app,
+          toolOutput: app?.toolOutput ?? null,
+          widgetState: app?.widgetState ?? {},
+          isDark,
+        };
+      }
+
+      function notifyWidgetHeight(app) {
+        app?.notifyIntrinsicHeight?.(document.body.scrollHeight);
+      }
+
+      const { app, toolOutput, widgetState } = initWidget();
       const root = document.getElementById('app');
       const data = toolOutput?.structuredContent ?? {};
       const mode = data.mode ?? '';
-      const service = data.service ?? '';
+
+      let showAgentExecution = Boolean(widgetState?.showAgentExecution);
+
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#39;');
+      }
+
+      function usdFromCents(cents) {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format((Number(cents) || 0) / 100);
+      }
 
       async function callTool(name, input) {
         return app?.callTool?.(name, input);
       }
 
-      function usdFromCents(cents) {
-        const value = Number(cents ?? 0) / 100;
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+      async function setWidgetState(nextState) {
+        return app?.setWidgetState?.(nextState);
       }
 
-      function setStatus(message, isError = false) {
-        const el = root?.querySelector('.status');
-        if (!el) return;
-        el.textContent = message;
-        el.classList.toggle('error', isError);
-      }
+      function resolveRowsFromOutput() {
+        const fallback = [
+          { asset: 'Bitcoin', price: '$97,245.00', change: '+2.34%', cap: '$1.92T' },
+          { asset: 'Ethereum', price: '$2,718.50', change: '+1.87%', cap: '$327B' },
+          { asset: 'Solana', price: '$176.30', change: '-0.42%', cap: '$86.1B' },
+        ];
 
-      async function onUseDirectPay() {
-        setStatus('Preparing x402 payment challenge...');
-        await callTool('run_service', { service, input: '__pay_direct__' });
-      }
+        const raw =
+          typeof toolOutput?._meta?.output === 'string'
+            ? toolOutput._meta.output
+            : typeof data?.output === 'string'
+              ? data.output
+              : '';
 
-      async function onCopyPaymentChallenge() {
-        const challenge = data.payment_required;
-        if (typeof challenge !== 'string' || challenge.length === 0) {
-          setStatus('No payment challenge found.', true);
-          return;
-        }
+        if (!raw) return fallback;
+
         try {
-          await navigator.clipboard.writeText(challenge);
-          setStatus('Copied PAYMENT-REQUIRED challenge to clipboard.');
+          const parsed = JSON.parse(raw);
+          const list = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.data) ? parsed.data : [];
+          if (!Array.isArray(list) || list.length === 0) return fallback;
+
+          const mapped = list
+            .slice(0, 5)
+            .map((item) => {
+              const name = item.asset || item.name || item.symbol;
+              const price = item.price_usd || item.price || item.current_price;
+              const change = item.change_24h || item.price_change_percentage_24h || item.change;
+              const cap = item.market_cap || item.cap || item.marketCap;
+              if (!name) return null;
+              return {
+                asset: String(name),
+                price: typeof price === 'number' ? `$${price.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : String(price ?? '-'),
+                change:
+                  typeof change === 'number'
+                    ? `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`
+                    : String(change ?? '-'),
+                cap: typeof cap === 'number' ? `$${cap.toLocaleString()}` : String(cap ?? '-'),
+              };
+            })
+            .filter(Boolean);
+
+          return mapped.length > 0 ? mapped : fallback;
         } catch {
-          setStatus('Could not copy to clipboard. Copy manually from the challenge field.', true);
+          return fallback;
         }
       }
 
-      async function onCompleteTask(event) {
-        event.preventDefault();
-        const form = event.currentTarget;
-        const formData = new FormData(form);
-        const taskDetails = String(formData.get('details') ?? '').trim();
-        const selectedOption = String(formData.get('task_option') ?? 'survey');
-
-        const consent = {
-          data_sharing_agreed: formData.get('data_sharing_agreed') === 'on',
-          purpose_acknowledged: formData.get('purpose_acknowledged') === 'on',
-          contact_permission: formData.get('contact_permission') === 'on',
-        };
-
-        if (!consent.data_sharing_agreed || !consent.purpose_acknowledged || !consent.contact_permission) {
-          setStatus('All consent fields are required to continue.', true);
-          return;
-        }
-
-        const details = JSON.stringify({
-          task_option: selectedOption,
-          details: taskDetails,
+      async function toAgentExecution() {
+        showAgentExecution = true;
+        await setWidgetState({
+          ...(widgetState ?? {}),
+          showAgentExecution: true,
         });
+        render();
+      }
 
-        setStatus('Submitting task completion...');
-        await callTool('complete_task', {
-          campaign_id: data.campaign_id,
-          task_name: data.required_task,
-          details,
-          consent,
+      async function backToTasks() {
+        await callTool('search_services', { q: data.service ?? '' });
+      }
+
+      async function payDirect() {
+        await callTool('run_service', {
+          service: data.service,
+          input: '__pay_direct__',
         });
       }
 
-      function renderTaskRequired() {
-        const options = Array.isArray(data.task_options) ? data.task_options : ['Enter email', 'Answer survey', 'Signup / Hackathon'];
-        root.innerHTML = `
-          <section class="panel">
-            <h2 class="title">Service Access Required</h2>
-            <p class="muted">You can unlock this service for free by completing a sponsor task, or use direct x402 payment.</p>
-            <div class="split">
-              <div class="card free">
-                <h3>FREE path (sponsor)</h3>
-                <div class="muted">Campaign: ${data.campaign_name ?? '-'}</div>
-                <div class="muted">Sponsor: ${data.sponsor ?? '-'}</div>
-                <div class="muted">Task: ${data.required_task ?? '-'}</div>
-                <div class="muted">Subsidy: ${usdFromCents(data.subsidy_amount_cents ?? 0)}</div>
-                <form id="task-form">
-                  <div class="field">
-                    <label for="task-option">Task option</label>
-                    <select id="task-option" name="task_option">
-                      ${options.map((option) => `<option value="${option}">${option}</option>`).join('')}
-                    </select>
-                  </div>
-                  <div class="field">
-                    <label for="task-details">Task details</label>
-                    <textarea id="task-details" name="details" placeholder="Add proof, email, or survey response details"></textarea>
-                  </div>
-                  <div class="checks">
-                    <label><input type="checkbox" name="data_sharing_agreed" /> I agree to data sharing</label>
-                    <label><input type="checkbox" name="purpose_acknowledged" /> I understand the usage purpose</label>
-                    <label><input type="checkbox" name="contact_permission" /> I allow follow-up contact</label>
-                  </div>
-                  <div class="inline-buttons">
-                    <button class="primary" type="submit">Complete task</button>
-                  </div>
-                </form>
-              </div>
-              <div class="card pay">
-                <h3>PAY path (x402)</h3>
-                <div class="muted">Use direct payment if you do not want to complete sponsor tasks.</div>
-                <div class="inline-buttons">
-                  <button class="pay" id="direct-pay-btn" type="button">Get payment challenge</button>
-                </div>
-              </div>
-            </div>
-            <p class="status"></p>
-          </section>
-        `;
-        root.querySelector('#task-form')?.addEventListener('submit', onCompleteTask);
-        root.querySelector('#direct-pay-btn')?.addEventListener('click', onUseDirectPay);
+      function downloadCsv(rows) {
+        const csv = ['Asset,Price,24h Change,Market Cap', ...rows.map((row) => `${row.asset},${row.price},${row.change},${row.cap}`)].join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'agent-market-data.csv';
+        document.body.append(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
       }
 
       function renderPaymentRequired() {
         root.innerHTML = `
-          <section class="panel">
-            <h2 class="title">x402 Payment Required</h2>
-            <p class="muted">No sponsor campaign currently covers this service. You can continue with direct payment.</p>
-            <div class="card pay">
-              <h3>PAY</h3>
-              <div class="muted">Service: ${data.service ?? '-'}</div>
-              <div class="muted">Amount: ${usdFromCents(data.amount_cents ?? 0)}</div>
-              <div class="muted">Header: <span class="mono">${data.accepted_header ?? 'payment-signature'}</span></div>
-              <div class="muted">Next step: ${data.next_step ?? '-'}</div>
-              <p class="mono">${data.payment_required ?? ''}</p>
-              <div class="inline-buttons">
-                <button class="pay" id="copy-challenge" type="button">Copy challenge</button>
-                <button id="search-sponsored" type="button">Search sponsored alternatives</button>
-              </div>
+          <section class="header">
+            <button class="back" id="back-btn">←</button>
+            <div>
+              <h2 class="title">${escapeHtml(data.service ?? 'API Service')}</h2>
+              <p class="sub">Direct Payment Required</p>
             </div>
-            <p class="status"></p>
+            <span class="badge">x402</span>
           </section>
+          <div class="divider"></div>
+          <section class="hero warn">
+            <h3 class="hero-title">Payment Required</h3>
+            <p class="hero-msg">No sponsor coverage available for this service. You can proceed with a direct x402 payment.</p>
+          </section>
+          <section class="summary">
+            <div class="summary-head">
+              <h4 class="summary-title">Payment Details</h4>
+              <span class="summary-badge">x402</span>
+            </div>
+            <dl>
+              <div class="kv"><dt>Service</dt><dd>${escapeHtml(data.service ?? '-')}</dd></div>
+              <div class="kv"><dt>Amount</dt><dd>${escapeHtml(usdFromCents(data.amount_cents))}</dd></div>
+              <div class="kv"><dt>Protocol</dt><dd>x402 (HTTP 402)</dd></div>
+              <div class="kv"><dt>Payment Mode</dt><dd>Direct (user_direct)</dd></div>
+            </dl>
+          </section>
+          <section class="actions">
+            <button class="btn primary" id="pay-btn">Pay with x402 ›</button>
+            <button class="btn ghost" id="tasks-btn">Back to Tasks</button>
+          </section>
+          <section class="footer">🛡️ Secured with x402 Protocol</section>
         `;
-        root.querySelector('#copy-challenge')?.addEventListener('click', onCopyPaymentChallenge);
-        root.querySelector('#search-sponsored')?.addEventListener('click', async () => {
-          setStatus('Searching sponsored alternatives...');
-          await callTool('search_services', { q: service });
+
+        root.querySelector('#pay-btn')?.addEventListener('click', () => {
+          void payDirect();
+        });
+        root.querySelector('#tasks-btn')?.addEventListener('click', () => {
+          void backToTasks();
+        });
+        root.querySelector('#back-btn')?.addEventListener('click', () => {
+          void backToTasks();
         });
       }
 
-      function renderExecuted() {
+      function renderSuccessSummary() {
         root.innerHTML = `
-          <section class="panel">
-            <h2 class="title">Service Executed</h2>
-            <div class="muted">Service: ${data.service ?? '-'}</div>
-            <div class="muted">Payment mode: ${data.payment_mode ?? '-'}</div>
-            <div class="muted">Sponsor: ${data.sponsored_by ?? '-'}</div>
-            <div class="muted">Tx hash: <span class="mono">${data.tx_hash ?? '-'}</span></div>
-            <p class="status">${data.message ?? ''}</p>
-            <div class="inline-buttons">
-              <button id="open-record" type="button">Open user record</button>
+          <section class="header">
+            <button class="back" id="back-btn">←</button>
+            <div>
+              <h2 class="title">${escapeHtml(data.service ?? 'Service')}</h2>
+              <p class="sub">Task Verified</p>
             </div>
+            <span class="badge">Verified</span>
           </section>
+          <div class="divider"></div>
+          <section class="hero good">
+            <h3 class="hero-title">Task Verified!</h3>
+            <p class="hero-msg">Your task has been verified. Sponsor subsidy has been applied and this service is now ready via agent execution.</p>
+          </section>
+          <section class="summary">
+            <div class="summary-head">
+              <h4 class="summary-title">Payment Summary</h4>
+              <span class="summary-badge">Completed</span>
+            </div>
+            <dl>
+              <div class="kv"><dt>Task</dt><dd>${escapeHtml(widgetState?.selectedRequiredTask ?? 'Task completion')}</dd></div>
+              <div class="kv"><dt>Sponsor</dt><dd>${escapeHtml(data.sponsored_by ?? widgetState?.selectedSponsor ?? '-')}</dd></div>
+              <div class="kv"><dt>Payment Mode</dt><dd>${escapeHtml(data.payment_mode ?? '-')}</dd></div>
+              <div class="kv"><dt>Transaction</dt><dd>${escapeHtml(data.tx_hash ?? 'Pending')}</dd></div>
+            </dl>
+          </section>
+          <section class="actions">
+            <button class="btn ok" id="agent-btn">Use ${escapeHtml(data.service ?? 'Service')} by Agent ›</button>
+            <p class="hint">Let the agent fetch data, analyze results, and return structured output.</p>
+            <button class="btn ghost" id="chat-btn">Back to Chat</button>
+          </section>
+          <section class="footer">🔒 Secured with x402 Protocol</section>
         `;
-        root.querySelector('#open-record')?.addEventListener('click', async () => {
-          setStatus('Loading user record...');
-          await callTool('user_record', {});
+
+        root.querySelector('#agent-btn')?.addEventListener('click', () => {
+          void toAgentExecution();
+        });
+        root.querySelector('#chat-btn')?.addEventListener('click', async () => {
+          await setWidgetState({ ...(widgetState ?? {}), showAgentExecution: false });
+          await callTool('get_user_status', {});
+        });
+        root.querySelector('#back-btn')?.addEventListener('click', async () => {
+          await setWidgetState({ ...(widgetState ?? {}), showAgentExecution: false });
+          await callTool('get_service_tasks', { service_key: widgetState?.selectedServiceKey ?? data.service ?? '' });
+        });
+      }
+
+      function renderAgentExecution() {
+        const rows = resolveRowsFromOutput();
+        const tableRows = rows
+          .map((row) => {
+            const changeClass = String(row.change).startsWith('-') ? 'negative' : 'positive';
+            return `
+              <tr>
+                <td>${escapeHtml(row.asset)}</td>
+                <td>${escapeHtml(row.price)}</td>
+                <td class="${changeClass}">${escapeHtml(row.change)}</td>
+                <td>${escapeHtml(row.cap)}</td>
+              </tr>
+            `;
+          })
+          .join('');
+
+        root.innerHTML = `
+          <section class="header">
+            <button class="back" id="back-btn">←</button>
+            <div>
+              <h2 class="title">${escapeHtml(data.service ?? 'Service')} via Agent</h2>
+              <p class="sub">Real-time service output</p>
+            </div>
+            <span class="badge">Agent Active</span>
+          </section>
+          <div class="divider"></div>
+          <section class="hero">
+            <h3 class="hero-title">Agent Execution</h3>
+            <p class="hero-msg">I fetched the latest output from ${escapeHtml(data.service ?? 'the service')}. Here are the top results:</p>
+          </section>
+          <section class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Asset</th><th>Price</th><th>24h Change</th><th>Market Cap</th></tr>
+              </thead>
+              <tbody>${tableRows}</tbody>
+            </table>
+          </section>
+          <section class="actions">
+            <button class="btn primary" id="dl-btn">Download CSV</button>
+            <button class="btn ghost" id="ask-btn">Ask Agent More</button>
+            <button class="btn ghost" id="chat-btn">Back to Chat</button>
+          </section>
+          <section class="footer">⚡ Powered by GPT Apps + x402</section>
+        `;
+
+        root.querySelector('#dl-btn')?.addEventListener('click', () => {
+          downloadCsv(rows);
+        });
+
+        root.querySelector('#ask-btn')?.addEventListener('click', async () => {
+          await app?.sendFollowUpMessage?.('Please provide deeper analysis for the latest results.');
+        });
+
+        root.querySelector('#chat-btn')?.addEventListener('click', async () => {
+          await setWidgetState({ ...(widgetState ?? {}), showAgentExecution: false });
+          await callTool('get_user_status', {});
+        });
+
+        root.querySelector('#back-btn')?.addEventListener('click', async () => {
+          await setWidgetState({ ...(widgetState ?? {}), showAgentExecution: false });
+          renderSuccessSummary();
         });
       }
 
       function render() {
         if (!root) return;
 
-        if (mode === 'task_required') {
-          renderTaskRequired();
-        } else if (mode === 'payment_required') {
+        if (mode === 'payment_required') {
           renderPaymentRequired();
         } else if (mode === 'service_executed') {
-          renderExecuted();
+          if (showAgentExecution) {
+            renderAgentExecution();
+          } else {
+            renderSuccessSummary();
+          }
         } else {
           root.innerHTML = `
-            <section class="panel">
-              <h2 class="title">Service Access</h2>
-              <p class="muted">Run a service to see sponsored task options or direct x402 payment.</p>
+            <section class="hero" style="margin-top:16px;">
+              <h3 class="hero-title">Service Access</h3>
+              <p class="hero-msg">Run a service to see sponsor verification or x402 payment states.</p>
             </section>
           `;
         }

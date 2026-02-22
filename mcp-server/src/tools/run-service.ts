@@ -90,7 +90,9 @@ function serviceExecutedResult(response: {
       tx_hash: response.tx_hash,
       message: response.message,
     },
-    content: [{ type: 'text' as const, text: response.message }],
+    content: [
+      { type: 'text' as const, text: response.message },
+    ],
     _meta: {
       output: response.output,
     },
@@ -108,7 +110,9 @@ function paymentRequiredResult(payment: PaymentRequiredResponse) {
       next_step: payment.next_step,
       payment_mode: 'user_direct',
     },
-    content: [{ type: 'text' as const, text: `x402 payment required. ${payment.next_step}` }],
+    content: [
+      { type: 'text' as const, text: `x402 payment required. ${payment.next_step}` },
+    ],
     _meta: {
       payment_required: payment,
     },
@@ -138,7 +142,9 @@ async function directPayFallbackResult(
         tx_hash: response.tx_hash,
         message: 'Service executed through proxy.',
       },
-      content: [{ type: 'text' as const, text: 'Service executed through proxy.' }],
+      content: [
+        { type: 'text' as const, text: 'Service executed through proxy.' },
+      ],
       _meta: {
         output: response.output,
       },
@@ -152,6 +158,27 @@ async function directPayFallbackResult(
   }
 }
 
+function deriveTaskOptions(taskInputFormat: { task_type?: string; required_fields?: string[] } | null | undefined): string[] {
+  if (!taskInputFormat) return [];
+
+  const options: string[] = [];
+  const taskType = taskInputFormat.task_type;
+  if (typeof taskType === 'string' && taskType.trim().length > 0) {
+    options.push(taskType.trim());
+  }
+
+  const fields = taskInputFormat.required_fields;
+  if (Array.isArray(fields)) {
+    for (const field of fields) {
+      if (typeof field === 'string' && field.trim().length > 0) {
+        options.push(field.trim());
+      }
+    }
+  }
+
+  return options;
+}
+
 async function taskRequiredResult(client: BackendClient, service: string, sessionToken: string) {
   const searchResponse = await client.searchServices({
     q: service,
@@ -161,6 +188,8 @@ async function taskRequiredResult(client: BackendClient, service: string, sessio
   if (!campaign) return null;
 
   const task = await client.getTaskDetails(campaign.service_id, sessionToken);
+  const taskOptions = deriveTaskOptions(task.task_input_format);
+
   return {
     structuredContent: {
       mode: 'task_required',
@@ -172,7 +201,7 @@ async function taskRequiredResult(client: BackendClient, service: string, sessio
       task_description: task.task_description,
       task_input_format: task.task_input_format,
       subsidy_amount_cents: task.subsidy_amount_cents,
-      task_options: ['Enter email', 'Answer survey', 'Signup / Hackathon'],
+      task_options: taskOptions,
       payment_mode: 'sponsored',
     },
     content: [
@@ -213,6 +242,7 @@ export function registerRunServiceTool(server: McpServer, config: BackendConfig)
         ui: { resourceUri: 'ui://widget/service-access.html' },
         'openai/toolInvocation/invoking': 'Running service...',
         'openai/toolInvocation/invoked': 'Service run completed',
+        'openai/outputTemplate': 'ui://widget/service-access.html',
       },
     },
     async (input, context: any) => {
@@ -228,6 +258,7 @@ export function registerRunServiceTool(server: McpServer, config: BackendConfig)
       if (!sessionToken) {
         return unauthorizedSessionResponse(config.publicUrl);
       }
+
 
       if (input.input.trim().toLowerCase() === DIRECT_PAYMENT_SENTINEL) {
         try {

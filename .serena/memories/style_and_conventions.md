@@ -1,32 +1,35 @@
-# Style and Conventions
+# Style and Conventions（更新: 2026-02-20）
 
 ## 全体
-- 思考は英語、プロジェクト内Markdownは日本語で記述（Kiro spec の `language: ja` に準拠）
+- 思考は英語、プロジェクト内 Markdown は日本語を維持
 - コミットは Conventional Commits（`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`）
-- 既存のモノリシック構成を維持しつつ、小さく安全な変更を優先
+- 互換性を重視し、既存エンドポイントの振る舞いを壊さない
 
-## Rustバックエンド
-- `rustfmt` と `clippy` を前提にする
-- エラーは `ApiError` + `ApiResult<T>` で一元化
-- 共有状態は `SharedState`（`Arc<RwLock<AppState>>`）を利用
-- 設定値は `AppConfig::from_env()` 経由で取得し、ハードコードしない
-- DBアクセスは SQLx の生SQLを利用し、型変換は `types.rs` 側で吸収
+## Rust バックエンド
+- `rustfmt`/`clippy` 前提
+- `ApiError` / `ApiResult<T>` でエラーハンドリングを統一
+- 設定は `AppConfig::from_env()` 経由（ハードコード禁止）
+- ルート追加時は `src/main.rs` と `openapi.yaml` を同期
+- x402 ヘッダー・検証フローを維持
 
-## GPT / Agent API 実装規約
-- GPT ルートは `/gpt/*` に集約し、`build_gpt_router()` 内で定義
-- `GPT_ACTIONS_API_KEY` 設定時は Bearer 認証を必須にする
-- Discovery ルートは `/agent|/claude|/openclaw/discovery/*` に公開
-- `AGENT_DISCOVERY_API_KEY` は設定時のみ必須（未設定時は開発用に許可）
-- レート制限は `RateLimiter` ミドルウェアを使い、設定値で調整可能にする
+## GPT / Discovery API
+- GPT系は `/gpt/*` に集約
+- Discovery系は `/agent|/claude|/openclaw/discovery/*` の互換提供
+- APIキー認証は「設定時のみ必須」の方針を維持
+- レート制限ミドルウェア適用を崩さない
+
+## MCP サーバー（TypeScript）
+- ESM + TypeScript + Express + MCP SDK 構成
+- ツールは `registerAppTool` + Zod スキーマで定義
+- 返却形式は `structuredContent` / `content` / `_meta` を基本に統一
+- ウィジェットは `ui://widget/*.html` リソースURIで登録
+- 認証有効時は OAuth スコープ整合を保つ（`search_services` は noauth 維持）
+
+## DB / Migration
+- `migrations/` は連番追加のみ（既存番号の変更・再利用禁止）
+- スキーマ変更時はテストと型定義を同時更新
 
 ## フロントエンド
-- React 18 + TypeScript + Vite
-- 現状は `frontend/src/App.tsx` 中心の単一ファイル構成
-- CSSフレームワークは使わず `styles.css` を利用
-- ビルド時に OG 画像生成スクリプト（`frontend/scripts/generate-og-image-png.mjs`）を実行
-
-## DB・API
-- マイグレーションは連番SQL（`migrations/0001...`）で追加し、既存番号は変更しない
-- 主要APIは JSON 入出力を維持し、互換性破壊を避ける
-- x402 関連ヘッダー（`payment-signature`, `payment-required`, `payment-response`, `x402-version`）を維持
-- 仕様変更時は `openapi.yaml` と実装ルートの同期を必ず確認
+- 現行は `App.tsx` 主体の構成を前提
+- 破壊的なUI変更時は最小差分で進める
+- ビルド時 OG画像生成（`generate-og-image`）を壊さない

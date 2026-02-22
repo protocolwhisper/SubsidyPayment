@@ -1151,6 +1151,7 @@ dependencies = [
  "axum",
  "base64",
  "chrono",
+ "dotenvy",
  "prometheus",
  "reqwest",
  "serde",

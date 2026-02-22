@@ -1,0 +1,13 @@
+### X402 Server Test Suite - Success Patterns
+
+@baseUrl = http://localhost:4021
+@contentType = application/json
+
+### 1. Health Check
+GET {{baseUrl}}/health
+contentType: {{contentType}}
+
+### 2. send payment and access protected resource
+GET {{baseUrl}}/weather
+contentType: {{contentType}}
+

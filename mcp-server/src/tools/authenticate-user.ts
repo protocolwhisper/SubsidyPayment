@@ -2,8 +2,8 @@ import { registerAppTool } from '@modelcontextprotocol/ext-apps/server';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
-import { BackendClient, BackendClientError } from '../backend-client.ts';
 import { TokenVerifier } from '../auth/token-verifier.ts';
+import { BackendClient, BackendClientError } from '../backend-client.ts';
 import type { BackendConfig } from '../config.ts';
 import { rememberSessionToken } from './session-manager.ts';
 
@@ -79,6 +79,7 @@ export function registerAuthenticateUserTool(server: McpServer, config: BackendC
           : [{ type: 'noauth' }],
         'openai/toolInvocation/invoking': 'Authenticating user...',
         'openai/toolInvocation/invoked': 'Authentication complete',
+        'openai/outputTemplate': 'ui://widget/user-dashboard.html',
       },
     },
     async (input, context) => {
@@ -113,13 +114,16 @@ export function registerAuthenticateUserTool(server: McpServer, config: BackendC
         });
         rememberSessionToken(context, response.session_token, response.email);
 
+
         return {
           structuredContent: {
             user_id: response.user_id,
             email: response.email,
             is_new_user: response.is_new_user,
           },
-          content: [{ type: 'text' as const, text: response.message }],
+          content: [
+            { type: 'text' as const, text: response.message },
+          ],
           _meta: {
             session_token: response.session_token,
           },

@@ -61,6 +61,7 @@ export function registerGetUserStatusTool(server: McpServer, config: BackendConf
         ui: { resourceUri: 'ui://widget/user-dashboard.html' },
         'openai/toolInvocation/invoking': 'Fetching user status...',
         'openai/toolInvocation/invoked': 'User status fetched',
+        'openai/outputTemplate': 'ui://widget/user-dashboard.html',
       },
     },
     async (input, context: any) => {
@@ -79,6 +80,7 @@ export function registerGetUserStatusTool(server: McpServer, config: BackendConf
         }
 
         const response = await client.getUserStatus(sessionToken);
+
         return {
           structuredContent: {
             user_id: response.user_id,
@@ -86,7 +88,9 @@ export function registerGetUserStatusTool(server: McpServer, config: BackendConf
             completed_tasks: response.completed_tasks,
             available_services: response.available_services,
           },
-          content: [{ type: 'text' as const, text: response.message }],
+          content: [
+            { type: 'text' as const, text: response.message },
+          ],
           _meta: {
             full_response: response,
           },

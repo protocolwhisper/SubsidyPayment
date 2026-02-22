@@ -62,6 +62,7 @@ export function registerGetTaskDetailsTool(server: McpServer, config: BackendCon
         ui: { resourceUri: 'ui://widget/task-form.html' },
         'openai/toolInvocation/invoking': 'Fetching task details...',
         'openai/toolInvocation/invoked': 'Task details fetched',
+        'openai/outputTemplate': 'ui://widget/task-form.html',
       },
     },
     async (input, context: any) => {
@@ -80,6 +81,7 @@ export function registerGetTaskDetailsTool(server: McpServer, config: BackendCon
         }
 
         const response = await client.getTaskDetails(input.campaign_id, sessionToken);
+
         return {
           structuredContent: {
             campaign_id: response.campaign_id,
@@ -91,7 +93,9 @@ export function registerGetTaskDetailsTool(server: McpServer, config: BackendCon
             already_completed: response.already_completed,
             subsidy_amount_cents: response.subsidy_amount_cents,
           },
-          content: [{ type: 'text' as const, text: response.message }],
+          content: [
+            { type: 'text' as const, text: response.message },
+          ],
           _meta: {
             full_response: response,
           },

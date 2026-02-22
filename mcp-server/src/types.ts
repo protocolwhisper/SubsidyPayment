@@ -257,3 +257,13 @@ export interface SetPreferencesInput {
   session_token: string;
   preferences: TaskPreference[];
 }
+
+export interface WeatherToolInput {
+  city: string;
+}
+
+export interface WeatherReport {
+  city: string;
+  weather: string;
+  temperature: number;
+}

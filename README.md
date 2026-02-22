@@ -195,3 +195,9 @@ Completion Criteria (Minimum)
 - M5: Improve natural language
 
 ---
+
+あなたにはこれからGPT APPに対応したMCP serverのUI部分を実装してもらいたいと考えています。
+
+以下は前提条件です。
+
+MCPサーバーの実装はすでに

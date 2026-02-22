@@ -6,23 +6,21 @@
     <title>Services List Widget</title>
     <style>
       :root {
-        --bg: #f5f7fb;
-        --surface: #ffffff;
-        --text: #101828;
-        --muted: #475467;
-        --border: #d0d5dd;
-        --accent: #0f766e;
-        --accent-soft: #ccfbf1;
+        --bg-0: #0f172a;
+        --bg-1: #0c1222;
+        --panel: #111827;
+        --panel-soft: #1e293b;
+        --border: #334155;
+        --text: #f8fafc;
+        --muted: #94a3b8;
+        --chip: #1f2937;
+        --accent: #0ea5e9;
+        --accent-soft: rgba(14, 165, 233, 0.16);
       }
 
       body.dark {
-        --bg: #0b1220;
-        --surface: #111827;
-        --text: #f3f4f6;
-        --muted: #cbd5e1;
-        --border: #334155;
-        --accent: #5eead4;
-        --accent-soft: #134e4a;
+        --bg-0: #0b1220;
+        --bg-1: #080e1a;
       }
 
       * {
@@ -31,209 +29,245 @@
 
       body {
         margin: 0;
-        background: var(--bg);
+        font-family: 'Space Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: linear-gradient(160deg, var(--bg-0) 0%, var(--bg-1) 100%);
         color: var(--text);
-        font-family: system-ui, -apple-system, Segoe UI, sans-serif;
       }
 
       #app {
-        padding: 12px;
-        max-width: 100%;
-      }
-
-      .heading {
-        margin: 0 0 10px 0;
-        font-size: 16px;
-        font-weight: 700;
-      }
-
-      .summary-grid {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 10px;
-        margin-bottom: 12px;
-      }
-
-      .summary-panel {
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        background: var(--surface);
-        padding: 10px;
-      }
-
-      .summary-title {
-        margin: 0 0 8px 0;
-        font-size: 13px;
-        font-weight: 700;
-        color: var(--muted);
-      }
-
-      .chip-list {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-      }
-
-      .chip {
-        border: 1px solid var(--border);
-        border-radius: 999px;
-        padding: 3px 8px;
-        font-size: 12px;
-      }
-
-      .cards {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 10px;
-      }
-
-      .candidate-services {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 10px;
-        margin-bottom: 12px;
-      }
-
-      .candidate-card {
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        background: var(--surface);
-        padding: 12px;
-      }
-
-      .candidate-title {
-        margin: 0;
-        font-size: 15px;
-        font-weight: 700;
-      }
-
-      .candidate-reason {
-        margin-top: 4px;
-        color: var(--muted);
-        font-size: 12px;
-      }
-
-      .offer-list {
-        margin-top: 10px;
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 8px;
-      }
-
-      .offer-row {
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        padding: 8px;
-      }
-
-      .offer-meta {
-        margin: 2px 0;
-        color: var(--muted);
-        font-size: 12px;
-      }
-
-      .use-service-btn {
-        margin-top: 6px;
-        border: 1px solid var(--accent);
-        background: var(--accent-soft);
-        color: var(--text);
-        border-radius: 8px;
-        padding: 6px 10px;
-        font-size: 12px;
-        cursor: pointer;
-      }
-
-      .card {
         width: 100%;
-        text-align: left;
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        background: var(--surface);
-        color: var(--text);
-        padding: 12px;
-        cursor: pointer;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        box-shadow: 0 18px 44px rgba(2, 6, 23, 0.45);
       }
 
-      .card.selected {
-        border-color: var(--accent);
-        background: var(--accent-soft);
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 20px 24px;
+      }
+
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .sparkles {
+        color: var(--accent);
+        display: inline-flex;
       }
 
       .title {
         margin: 0;
-        font-size: 15px;
+        font-size: 18px;
         font-weight: 700;
+        letter-spacing: -0.25px;
       }
 
-      .meta {
-        margin-top: 6px;
+      .badge {
+        padding: 4px 10px;
+        border: 1px solid var(--accent);
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .search-wrap {
+        padding: 0 24px 12px;
+      }
+
+      .search {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--panel-soft);
         color: var(--muted);
         font-size: 13px;
       }
 
-      .tags {
-        margin-top: 8px;
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
+      .divider {
+        width: 100%;
+        height: 1px;
+        background: var(--border);
       }
 
-      .tag {
-        padding: 2px 8px;
-        border: 1px solid var(--border);
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 12px 24px;
+      }
+
+      .chip {
         border-radius: 999px;
+        border: 1px solid var(--border);
+        background: var(--chip);
+        color: #dbe5f3;
+        padding: 8px 14px;
+        font-size: 12px;
+      }
+
+      .chip.active {
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        color: #bae6fd;
+      }
+
+      .card-list {
+        display: grid;
+        gap: 10px;
+        padding: 8px 24px 18px;
+      }
+
+      .service-card {
+        width: 100%;
+        text-align: left;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: rgba(15, 23, 42, 0.5);
+        color: inherit;
+        cursor: pointer;
+        padding: 12px;
+      }
+
+      .service-card:hover {
+        border-color: rgba(14, 165, 233, 0.6);
+      }
+
+      .service-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .service-main {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+      }
+
+      .service-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: #1e293b;
+        border: 1px solid #334155;
+        color: #e2e8f0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .service-name {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 700;
+      }
+
+      .service-desc {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .arrow {
+        color: #64748b;
+      }
+
+      .task-tags {
+        margin-top: 10px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .task-tag {
+        border-radius: 999px;
+        background: rgba(51, 65, 85, 0.45);
+        color: #cbd5e1;
+        font-size: 11px;
+        padding: 3px 8px;
+      }
+
+      .footer {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 24px 18px;
+        color: var(--muted);
         font-size: 12px;
       }
 
       .empty {
-        padding: 20px;
+        margin: 8px 24px 18px;
         border: 1px dashed var(--border);
-        border-radius: 10px;
+        border-radius: 12px;
+        background: rgba(15, 23, 42, 0.4);
         color: var(--muted);
+        padding: 18px;
+        font-size: 13px;
       }
     </style>
   </head>
   <body>
     <main id="app"></main>
     <script type="module">
-      import { initWidget, notifyWidgetHeight } from './common.ts';
+      function initWidget() {
+        const app = window.openai;
+        const isDark = app?.theme?.appearance === 'dark';
+        document.body.classList.toggle('dark', isDark);
+
+        if (typeof app?.maxHeight === 'number' && Number.isFinite(app.maxHeight)) {
+          document.body.style.maxHeight = `${app.maxHeight}px`;
+          document.body.style.overflowY = 'auto';
+        }
+
+        return {
+          app,
+          toolOutput: app?.toolOutput ?? null,
+          widgetState: app?.widgetState ?? {},
+          isDark,
+        };
+      }
+
+      function notifyWidgetHeight(app) {
+        app?.notifyIntrinsicHeight?.(document.body.scrollHeight);
+      }
 
       const { app, toolOutput, widgetState } = initWidget();
       const root = document.getElementById('app');
-      const selectedServiceId = widgetState.selectedServiceId ?? null;
-      const services = toolOutput?.structuredContent?.services ?? [];
-      const candidateServices = toolOutput?.structuredContent?.candidate_services ?? [];
-      const serviceCatalog = toolOutput?.structuredContent?.service_catalog ?? [];
-      const sponsorCatalog = toolOutput?.structuredContent?.sponsor_catalog ?? [];
 
-      function formatYen(cents) {
-        const yen = Math.floor((Number(cents) || 0) / 100);
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'JPY' }).format(yen);
-      }
+      const structuredContent = toolOutput?.structuredContent ?? {};
+      const candidateServices = Array.isArray(structuredContent.candidate_services) ? structuredContent.candidate_services : [];
+      const services = Array.isArray(structuredContent.services) ? structuredContent.services : [];
+      const serviceCatalog = Array.isArray(structuredContent.service_catalog) ? structuredContent.service_catalog : [];
+      const selectedServiceKey = typeof widgetState?.selectedServiceKey === 'string' ? widgetState.selectedServiceKey : '';
+      const keyword = typeof structuredContent?.applied_filters?.keyword === 'string' ? structuredContent.applied_filters.keyword : '';
 
-      async function setWidgetState(nextState) {
-        return app?.setWidgetState?.(nextState);
-      }
-
-      async function callTool(name, input) {
-        return app?.callTool?.(name, input);
-      }
-
-      function resolvePrimaryServiceKey(service) {
-        if (Array.isArray(service?.category) && service.category.length > 0) {
-          const first = service.category[0];
-          if (typeof first === 'string' && first.trim().length > 0) {
-            return first.trim();
-          }
-        }
-        if (typeof service?.name === 'string' && service.name.trim().length > 0) {
-          return service.name.trim().toLowerCase().replace(/\s+/g, '-');
-        }
-        return '';
+      function escapeHtml(value) {
+        return String(value ?? '')
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#39;');
       }
 
       function toDisplayLabel(value) {
-        if (typeof value !== 'string' || value.trim().length === 0) return '-';
+        if (typeof value !== 'string' || value.trim().length === 0) return 'Unknown';
         return value
           .trim()
           .split(/[-_\s]+/)
@@ -242,146 +276,157 @@
           .join(' ');
       }
 
-      function renderSummaryPanels() {
-        const serviceChips = Array.isArray(serviceCatalog)
-          ? serviceCatalog.map(
-              (item) =>
-                `<span class="chip">${item.display_name ?? toDisplayLabel(item.service_key)} (${item.sponsor_count ?? 0} sponsor)</span>`
-            )
-          : [];
-        const sponsorChips = Array.isArray(sponsorCatalog)
-          ? sponsorCatalog.map(
-              (item) =>
-                `<span class="chip">${item.sponsor_name ?? '-'} (${item.sponsor_archetype ?? 'general sponsor'})</span>`
-            )
-          : [];
-
-        return `
-          <div class="summary-grid">
-            <section class="summary-panel">
-              <p class="summary-title">Services Users Actually Use</p>
-              <div class="chip-list">
-                ${serviceChips.length > 0 ? serviceChips.join('') : '<span class="chip">No services found</span>'}
-              </div>
-            </section>
-            <section class="summary-panel">
-              <p class="summary-title">Sponsors Funding Access</p>
-              <div class="chip-list">
-                ${sponsorChips.length > 0 ? sponsorChips.join('') : '<span class="chip">No sponsors found</span>'}
-              </div>
-            </section>
-          </div>
-        `;
-      }
-
-      function findServiceByCampaignId(campaignId) {
-        if (!campaignId) return null;
-        return services.find((item) => item.service_id === campaignId) ?? null;
-      }
-
-      async function onSelect(service, preferredServiceKey = null) {
-        const selectedServiceKey =
-          (typeof preferredServiceKey === 'string' && preferredServiceKey.trim().length > 0)
-            ? preferredServiceKey.trim()
-            : resolvePrimaryServiceKey(service);
-        const nextState = {
-          selectedServiceId: service.service_id,
-          selectedServiceKey,
-          selectedServiceName: service.name ?? '',
-        };
-        await setWidgetState(nextState);
-        await callTool('get_task_details', { campaign_id: service.service_id });
-      }
-
-      function renderCandidateServices() {
-        if (!Array.isArray(candidateServices) || candidateServices.length === 0) {
-          return '';
+      function resolveServiceKey(item) {
+        if (typeof item?.service_key === 'string' && item.service_key.length > 0) return item.service_key;
+        if (Array.isArray(item?.category) && item.category.length > 0 && typeof item.category[0] === 'string') {
+          return item.category[0];
         }
+        if (typeof item?.name === 'string' && item.name.length > 0) {
+          return item.name.toLowerCase().replace(/\s+/g, '-');
+        }
+        return '';
+      }
 
-        const cards = candidateServices
-          .map((candidate) => {
+      function buildCards() {
+        if (candidateServices.length > 0) {
+          return candidateServices.map((candidate) => {
             const offers = Array.isArray(candidate.offers) ? candidate.offers : [];
-            const rows = offers
-              .map((offer) => {
-                return `
-                  <div class="offer-row">
-                    <div class="offer-meta"><strong>Sponsor:</strong> ${offer.sponsor ?? '-'}</div>
-                    <div class="offer-meta"><strong>Required Task:</strong> ${offer.required_task ?? 'None'}</div>
-                    <div class="offer-meta"><strong>Subsidy:</strong> ${formatYen(offer.subsidy_amount_cents)}</div>
-                    <button
-                      class="use-service-btn"
-                      data-campaign-id="${offer.campaign_id}"
-                      data-service-key="${candidate.service_key ?? ''}"
-                    >
-                      Use This Service
-                    </button>
-                  </div>
-                `;
-              })
-              .join('');
+            const firstOffer = offers[0] ?? null;
+            const requiredTasks = offers
+              .map((offer) => offer.required_task)
+              .filter((value) => typeof value === 'string' && value.length > 0)
+              .slice(0, 3);
 
-            return `
-              <section class="candidate-card">
-                <p class="candidate-title">${candidate.display_name ?? toDisplayLabel(candidate.service_key)}</p>
-                <div class="candidate-reason">${candidate.reason ?? 'Relevant option for your request.'}</div>
-                <div class="offer-list">${rows}</div>
-              </section>
-            `;
-          })
-          .join('');
-
-        return `<p class="heading">Suggested Services For Your Request</p><div class="candidate-services">${cards}</div>`;
-      }
-
-      function renderCards() {
-        if (!root) return;
-
-        if (!Array.isArray(services) || services.length === 0) {
-          root.innerHTML = `${renderCandidateServices()}<p class="heading">Available Services</p>${renderSummaryPanels()}<div class="empty">No services match the current criteria.</div>`;
-          notifyWidgetHeight(app);
-          return;
-        }
-
-        const cards = services
-          .map((service) => {
-            const categories = Array.isArray(service.category) ? service.category : [];
-            const selectedClass = selectedServiceId === service.service_id ? 'selected' : '';
-            const primaryService = resolvePrimaryServiceKey(service);
-            return `
-              <button class="card ${selectedClass}" data-campaign-id="${service.service_id}">
-                <p class="title">${service.name ?? '-'}</p>
-                <div class="meta"><strong>Service:</strong> ${toDisplayLabel(primaryService)}</div>
-                <div class="meta"><strong>Sponsor:</strong> ${service.sponsor ?? '-'}</div>
-                <div class="meta"><strong>Required Task:</strong> ${service.required_task ?? 'None'}</div>
-                <div class="meta"><strong>Subsidy Amount:</strong> ${formatYen(service.subsidy_amount_cents)}</div>
-                <div class="meta">Relevance: ${service.relevance_score ?? '-'}</div>
-                <div class="tags">
-                  ${categories.map((tag) => `<span class="tag">${tag}</span>`).join('')}
-                </div>
-              </button>
-            `;
-          })
-          .join('');
-
-        root.innerHTML = `${renderCandidateServices()}<p class="heading">Available Services</p>${renderSummaryPanels()}<div class="cards">${cards}</div>`;
-
-        for (const button of root.querySelectorAll('.use-service-btn')) {
-          button.addEventListener('click', () => {
-            const campaignId = button.getAttribute('data-campaign-id');
-            const serviceKey = button.getAttribute('data-service-key') ?? '';
-            const service = findServiceByCampaignId(campaignId);
-            if (service) {
-              onSelect(service, serviceKey);
-            }
+            return {
+              campaign_id: firstOffer?.campaign_id ?? '',
+              service_key: candidate.service_key,
+              display_name: candidate.display_name ?? toDisplayLabel(candidate.service_key),
+              sponsor: offers[0]?.sponsor ?? 'Sponsor',
+              description: candidate.reason ?? 'Recommended for your request',
+              subsidy_amount_cents: firstOffer?.subsidy_amount_cents ?? 0,
+              category: [candidate.service_key],
+              relevance_score: null,
+              tasks: requiredTasks,
+            };
           });
         }
 
-        for (const button of root.querySelectorAll('.card')) {
-          button.addEventListener('click', () => {
-            const campaignId = button.getAttribute('data-campaign-id');
-            const service = findServiceByCampaignId(campaignId);
-            if (service) {
-              onSelect(service);
+        return services.map((service) => {
+          const tags = Array.isArray(service.tags) ? service.tags : [];
+          return {
+            campaign_id: service.service_id,
+            service_key: resolveServiceKey(service),
+            display_name: service.name ?? service.display_name ?? toDisplayLabel(resolveServiceKey(service)),
+            sponsor: service.sponsor ?? 'Sponsor',
+            description: `Sponsored by ${service.sponsor ?? 'sponsor'}`,
+            subsidy_amount_cents: service.subsidy_amount_cents ?? 0,
+            category: Array.isArray(service.category) ? service.category : [],
+            relevance_score: service.relevance_score ?? null,
+            tasks: [service.required_task, ...tags].filter((value) => typeof value === 'string' && value.length > 0).slice(0, 3),
+          };
+        });
+      }
+
+      async function callTool(name, input) {
+        return app?.callTool?.(name, input);
+      }
+
+      async function setWidgetState(nextState) {
+        return app?.setWidgetState?.(nextState);
+      }
+
+      async function selectService(campaignId, serviceKey, serviceName) {
+        if (!campaignId) return;
+        await setWidgetState({
+          ...(widgetState ?? {}),
+          selectedServiceId: campaignId,
+          selectedServiceKey: serviceKey,
+          selectedServiceName: serviceName,
+        });
+        await callTool('get_task_details', { campaign_id: campaignId });
+      }
+
+      function render() {
+        if (!root) return;
+
+        const cards = buildCards();
+        const serviceCount = cards.length;
+        const chips = [
+          { label: 'All', key: 'all' },
+          ...serviceCatalog.slice(0, 4).map((item) => ({
+            label: item.display_name ?? toDisplayLabel(item.service_key),
+            key: item.service_key,
+          })),
+        ];
+
+        const cardsHtml = cards.length
+          ? cards
+              .map((service) => {
+                const initials = String(service.display_name || 'SV')
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((token) => token.charAt(0).toUpperCase())
+                  .join('');
+                return `
+                  <button class="service-card" data-campaign-id="${escapeHtml(service.campaign_id)}" data-service-key="${escapeHtml(service.service_key)}" data-service-name="${escapeHtml(service.display_name)}">
+                    <div class="service-row">
+                      <div class="service-main">
+                        <span class="service-icon">${escapeHtml(initials || 'SV')}</span>
+                        <div>
+                          <p class="service-name">${escapeHtml(service.display_name)}</p>
+                          <p class="service-desc">${escapeHtml(service.description)}</p>
+                        </div>
+                      </div>
+                      <span class="arrow">&rsaquo;</span>
+                    </div>
+                    <div class="task-tags">
+                      <span class="task-tag">Subsidy ${escapeHtml((Number(service.subsidy_amount_cents || 0) / 100).toFixed(2))} USD</span>
+                      <span class="task-tag">Relevance ${escapeHtml(service.relevance_score ?? '-')}</span>
+                      ${(service.category ?? []).slice(0, 2).map((cat) => `<span class="task-tag">${escapeHtml(cat)}</span>`).join('')}
+                    </div>
+                    <div class="task-tags">
+                      ${service.tasks.length > 0
+                        ? service.tasks.map((task) => `<span class="task-tag">${escapeHtml(task)}</span>`).join('')
+                        : '<span class="task-tag">No task metadata</span>'}
+                    </div>
+                  </button>
+                `;
+              })
+              .join('')
+          : '<div class="empty">No services match the current criteria.</div>';
+
+        root.innerHTML = `
+          <section class="header">
+            <div class="header-left">
+              <span class="sparkles">✦</span>
+              <h2 class="title">Recommended Services</h2>
+            </div>
+            <span class="badge">${serviceCount} service${serviceCount === 1 ? '' : 's'}</span>
+          </section>
+          <section class="search-wrap">
+            <div class="search">🔎 ${escapeHtml(keyword || 'Search services...')}</div>
+          </section>
+          <div class="divider"></div>
+          <section class="chips">
+            ${chips
+              .map((chip, index) => {
+                const active = index === 0 || chip.key === selectedServiceKey;
+                return `<span class="chip ${active ? 'active' : ''}">${escapeHtml(chip.label)}</span>`;
+              })
+              .join('')}
+          </section>
+          <section class="card-list">${cardsHtml}</section>
+          <section class="footer">💬 Suggested based on your conversation</section>
+        `;
+
+        for (const card of root.querySelectorAll('.service-card')) {
+          card.addEventListener('click', () => {
+            const campaignId = card.getAttribute('data-campaign-id');
+            const serviceKey = card.getAttribute('data-service-key');
+            const serviceName = card.getAttribute('data-service-name');
+            if (campaignId && serviceKey) {
+              void selectService(campaignId, serviceKey, serviceName ?? serviceKey);
             }
           });
         }
@@ -389,7 +434,7 @@
         notifyWidgetHeight(app);
       }
 
-      renderCards();
+      render();
       notifyWidgetHeight(app);
     </script>
   </body>

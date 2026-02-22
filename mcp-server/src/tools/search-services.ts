@@ -34,7 +34,9 @@ function toSearchServicesResult(response: GptSearchResponse) {
       applied_filters: response.applied_filters,
       available_categories: response.available_categories,
     },
-    content: [{ type: 'text' as const, text: message }],
+    content: [
+      { type: 'text' as const, text: message },
+    ],
     _meta: {
       full_response: response,
     },
@@ -61,6 +63,7 @@ export function registerSearchServicesTool(server: McpServer, config: BackendCon
         ui: { resourceUri: 'ui://widget/services-list.html' },
         'openai/toolInvocation/invoking': 'Searching services...',
         'openai/toolInvocation/invoked': 'Services found',
+        'openai/outputTemplate': 'ui://widget/services-list.html',
       },
     },
     async (input: SearchServicesParams) => {

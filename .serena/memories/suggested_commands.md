@@ -1,16 +1,16 @@
-# Suggested Commands
+# Suggested Commands（更新: 2026-02-20）
 
-## バックエンド（Rust / Axum）
+## バックエンド（Rust）
 ```bash
 cargo check
 cargo build
 cargo run
 cargo test
 cargo fmt
-cargo clippy
+cargo clippy -- -D warnings
 ```
 
-## フロントエンド（React / Vite）
+## フロントエンド（frontend）
 ```bash
 cd frontend && npm install
 cd frontend && npm run dev
@@ -18,35 +18,44 @@ cd frontend && npm run build
 cd frontend && npm run preview
 ```
 
-## DB（PostgreSQL + SQLx）
+## MCP サーバー（mcp-server）
+```bash
+cd mcp-server && npm install
+cd mcp-server && npm run dev
+cd mcp-server && npm run build
+cd mcp-server && npm test
+cd mcp-server && npm run typecheck
+```
+
+## DB（PostgreSQL + migration）
 ```bash
 docker compose -f docker-compose.postgres.yml up -d
 docker compose -f docker-compose.postgres.yml down
-sqlx migrate run
 sqlx migrate info
+sqlx migrate run
 ```
 
-## ドキュメント（HonKit）
-```bash
-cd docs && npm install
-cd docs && npm run serve
-cd docs && npm run build
-```
-
-## API確認
+## API疎通確認
 ```bash
 curl -s http://localhost:3000/health
-curl -s http://localhost:3000/.well-known/openapi.yaml | head
 curl -s "http://localhost:3000/gpt/services?q=design"
 curl -s "http://localhost:3000/agent/discovery/services?q=design"
+curl -s http://localhost:3000/.well-known/openapi.yaml | head
+curl -s http://localhost:3001/health
 ```
 
 ## リポジトリ探索
 ```bash
 git status --short
-git log -n 10 --oneline
-git diff
 rg --files
 rg -n "route\\(" src/main.rs
-rg -n "gpt_|discovery" src/main.rs src/gpt.rs src/types.rs
+rg -n "registerAllTools|registerAppTool" mcp-server/src
+rg -n "000[0-9]+_" migrations
+```
+
+## サンプル x402 サーバー
+```bash
+cd x402server && pnpm install
+cd x402server && pnpm run dev
+cd x402server && pnpm run demo
 ```
