@@ -48,7 +48,12 @@ export async function readWidgetHtml(fileName: string): Promise<string> {
     }
   }
 
-  throw lastError ?? new Error(`Widget HTML not found: ${fileName}`);
+  const pathsTried = candidates.join(', ');
+  if (lastError instanceof Error) {
+    lastError.message = `${lastError.message} | widget=${fileName} | tried=${pathsTried}`;
+    throw lastError;
+  }
+  throw new Error(`Widget HTML not found: ${fileName} | tried=${pathsTried}`);
 }
 
 function registerWidgetResource(server: McpServer, name: string, uri: string, fileName: string): void {
