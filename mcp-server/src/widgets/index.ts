@@ -9,19 +9,32 @@ export { registerAppResource, RESOURCE_MIME_TYPE };
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const widgetsDistDir = resolve(__dirname, '../../dist/widgets');
-
 export async function readWidgetHtml(fileName: string): Promise<string> {
-  const distCandidates = [
-    resolve(widgetsDistDir, 'src/widgets/src', fileName),
-    resolve(widgetsDistDir, fileName),
+  // Support both layouts:
+  // 1) `tsx src/main.ts` (module lives in `src/widgets`)
+  // 2) bundled `node dist/main.js` (module is bundled into `dist/main.js`)
+  const cwd = process.cwd();
+  const widgetDistBases = [
+    resolve(__dirname, '../../dist/widgets'),
+    resolve(__dirname, 'widgets'),
+    resolve(cwd, 'dist/widgets'),
+    resolve(cwd, 'mcp-server/dist/widgets'),
   ];
-  const srcCandidate = resolve(__dirname, 'src', fileName);
+  const distCandidates = widgetDistBases.flatMap((base) => [
+    resolve(base, 'src/widgets/src', fileName),
+    resolve(base, fileName),
+  ]);
+  const srcCandidates = [
+    resolve(__dirname, 'src', fileName),
+    resolve(__dirname, 'widgets/src', fileName),
+    resolve(cwd, 'src/widgets/src', fileName),
+    resolve(cwd, 'mcp-server/src/widgets/src', fileName),
+  ];
   const isProduction = process.env.NODE_ENV === 'production';
 
   const candidates = isProduction
-    ? [...distCandidates, srcCandidate]
-    : [srcCandidate, ...distCandidates];
+    ? [...distCandidates, ...srcCandidates]
+    : [...srcCandidates, ...distCandidates];
 
   let lastError: unknown;
   for (const candidate of candidates) {
