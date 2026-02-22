@@ -12,24 +12,24 @@ const __dirname = dirname(__filename);
 
 function resolveWidgetUiMeta() {
   const rawPublicUrl = process.env.PUBLIC_URL?.trim() ?? '';
-  let domain = rawPublicUrl;
+  let domain = '';
   try {
     if (rawPublicUrl) {
       const parsed = new URL(rawPublicUrl);
-      domain = parsed.origin;
+      // Avoid pinning widgets to localhost in production if PUBLIC_URL is missing/misconfigured.
+      if (parsed.hostname !== 'localhost' && parsed.hostname !== '127.0.0.1') {
+        domain = parsed.origin;
+      }
     }
   } catch {
-    // Keep raw value as fallback; widget can still work without a perfect origin.
+    // Omit domain metadata if PUBLIC_URL is invalid.
   }
 
   return {
     ui: {
       prefersBorder: true,
       ...(domain ? { domain } : {}),
-      csp: {
-        connectDomains: domain ? [domain] : [],
-        resourceDomains: ['https://esm.sh', 'https://api.qrserver.com'],
-      },
+      // Let ChatGPT use its default widget CSP; custom CSP can block runtime resources.
     },
   };
 }
