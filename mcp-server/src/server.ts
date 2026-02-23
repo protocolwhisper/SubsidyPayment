@@ -7,7 +7,7 @@ import { registerAllResources } from './widgets/index.ts';
 export function createServer(config: BackendConfig): McpServer {
   const server = new McpServer({
     name: 'subsidypayment',
-    version: process.env.npm_package_version ?? '1.0.1',
+    version: '1.0.0',
   });
 
   registerAllTools(server, config);

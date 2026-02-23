@@ -139,10 +139,10 @@ describe('MCP tools unit tests (task 9.1)', () => {
     mocked.verifyToken.mockReset();
   });
 
-  it('registers all 12 tools with expected security schemes', () => {
+  it('registers all 13 tools with expected security schemes', () => {
     registerAndCaptureTools();
 
-    expect(mocked.registrations.size).toBe(12);
+    expect(mocked.registrations.size).toBe(13);
     expect(getRegistered('search_services').definition._meta.securitySchemes).toEqual([{ type: 'noauth' }]);
     expect(getRegistered('weather').definition._meta.securitySchemes).toEqual([{ type: 'noauth' }]);
 
