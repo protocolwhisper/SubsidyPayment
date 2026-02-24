@@ -4,15 +4,15 @@ import type { BackendConfig } from '../config.ts';
 import { registerAuthenticateUserTool } from './authenticate-user.ts';
 import { registerCompleteTaskTool } from './complete-task.ts';
 import { registerCreateCampaignFromGoalTool } from './create-campaign-from-goal.ts';
-import { registerCreateGithubIssueTool } from './github-issue.ts';
 import { registerGetPreferencesTool } from './get-preferences.ts';
 import { registerGetServiceTasksTool } from './get-service-tasks.ts';
 import { registerGetTaskDetailsTool } from './get-task-details.ts';
 import { registerGetUserStatusTool } from './get-user-status.ts';
+import { registerCreateGithubIssueTool } from './github-issue.ts';
 import { registerRunServiceTool } from './run-service.ts';
 import { registerSearchServicesTool } from './search-services.ts';
-import { registerStartZkpassportVerificationTool } from './start-zkpassport-verification.ts';
 import { registerSetPreferencesTool } from './set-preferences.ts';
+import { registerStartZkpassportVerificationTool } from './start-zkpassport-verification.ts';
 import { registerUserRecordTool } from './user-record.ts';
 import { registerWeatherTool } from './weather.ts';
 
