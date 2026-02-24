@@ -95,6 +95,23 @@
         font-size: 13px;
       }
 
+      .search-icon {
+        opacity: 0.85;
+      }
+
+      .search-input {
+        width: 100%;
+        border: 0;
+        outline: none;
+        background: transparent;
+        color: var(--text);
+        font: inherit;
+      }
+
+      .search-input::placeholder {
+        color: var(--muted);
+      }
+
       .divider {
         width: 100%;
         height: 1px;
@@ -332,6 +349,11 @@
         const structuredContent = currentStructuredContent();
         const candidateServices = Array.isArray(structuredContent.candidate_services) ? structuredContent.candidate_services : [];
         const services = Array.isArray(structuredContent.services) ? structuredContent.services : [];
+        const serviceByCampaignId = new Map(
+          services
+            .filter((service) => typeof service?.service_id === 'string' && service.service_id.length > 0)
+            .map((service) => [service.service_id, service])
+        );
         if (candidateServices.length > 0) {
           return candidateServices.map((candidate) => {
             const offers = Array.isArray(candidate.offers) ? candidate.offers : [];
@@ -340,6 +362,16 @@
               .map((offer) => offer.required_task)
               .filter((value) => typeof value === 'string' && value.length > 0)
               .slice(0, 3);
+            const aggregatedCategories = new Set(
+              [candidate.service_key].filter((value) => typeof value === 'string' && value.length > 0)
+            );
+            for (const offer of offers) {
+              const matchedService = serviceByCampaignId.get(offer?.campaign_id);
+              const categories = Array.isArray(matchedService?.category) ? matchedService.category : [];
+              for (const category of categories) {
+                if (typeof category === 'string' && category.length > 0) aggregatedCategories.add(category);
+              }
+            }
 
             return {
               campaign_id: firstOffer?.campaign_id ?? '',
@@ -348,7 +380,7 @@
               sponsor: offers[0]?.sponsor ?? 'Sponsor',
               description: candidate.reason ?? 'Recommended for your request',
               subsidy_amount_cents: firstOffer?.subsidy_amount_cents ?? 0,
-              category: [candidate.service_key],
+              category: Array.from(aggregatedCategories),
               relevance_score: null,
               tasks: requiredTasks,
             };
@@ -372,12 +404,22 @@
       }
 
       async function callTool(name, input) {
-        return app?.callTool?.(name, input);
+        if (!app?.callTool) {
+          throw new Error('This widget runtime does not support tool calls.');
+        }
+        return app.callTool(name, input);
       }
 
-      async function setWidgetState(nextState) {
+      function persistWidgetState(nextState) {
         widgetState = nextState;
-        return app?.setWidgetState?.(nextState);
+        try {
+          const maybePromise = app?.setWidgetState?.(nextState);
+          if (maybePromise && typeof maybePromise.catch === 'function') {
+            maybePromise.catch((error) => console.warn('services-list widget setWidgetState failed', error));
+          }
+        } catch (error) {
+          console.warn('services-list widget setWidgetState failed', error);
+        }
       }
 
       function activeCategoryKey() {
@@ -385,12 +427,26 @@
         return typeof value === 'string' && value.length > 0 ? value : 'all';
       }
 
+      function localSearchQuery() {
+        const value = currentWidgetState()?.localSearchQuery;
+        return typeof value === 'string' ? value : '';
+      }
+
       async function selectCategory(categoryKey) {
         const nextKey = typeof categoryKey === 'string' && categoryKey.length > 0 ? categoryKey : 'all';
         selectionError = '';
-        await setWidgetState({
+        persistWidgetState({
           ...(currentWidgetState() ?? {}),
           activeCategoryKey: nextKey,
+        });
+        safeRender();
+      }
+
+      function updateLocalSearch(query) {
+        selectionError = '';
+        persistWidgetState({
+          ...(currentWidgetState() ?? {}),
+          localSearchQuery: typeof query === 'string' ? query : '',
         });
         safeRender();
       }
@@ -399,7 +455,7 @@
         if (!campaignId) return;
         selectionError = '';
         selectingCampaignId = campaignId;
-        await setWidgetState({
+        persistWidgetState({
           ...(currentWidgetState() ?? {}),
           selectedServiceId: campaignId,
           selectedServiceKey: serviceKey,
@@ -427,18 +483,32 @@
         const selectedServiceKey =
           typeof currentWidgetState()?.selectedServiceKey === 'string' ? currentWidgetState().selectedServiceKey : '';
         const activeCategory = activeCategoryKey();
+        const searchQuery = localSearchQuery().trim().toLowerCase();
         const keyword =
           typeof structuredContent?.applied_filters?.keyword === 'string' ? structuredContent.applied_filters.keyword : '';
 
         const allCards = buildCards();
+        const chipSource =
+          candidateServices.length > 0
+            ? Array.from(
+                new Map(
+                  allCards
+                    .filter((card) => typeof card?.service_key === 'string' && card.service_key.length > 0)
+                    .map((card) => [card.service_key, { service_key: card.service_key, display_name: card.display_name }])
+                ).values()
+              )
+            : serviceCatalog.map((item) => ({
+                service_key: item.service_key,
+                display_name: item.display_name ?? toDisplayLabel(item.service_key),
+              }));
         const chips = [
           { label: 'All', key: 'all' },
-          ...serviceCatalog.slice(0, 4).map((item) => ({
+          ...chipSource.slice(0, 6).map((item) => ({
             label: item.display_name ?? toDisplayLabel(item.service_key),
             key: item.service_key,
           })),
         ];
-        const cards =
+        const categoryFilteredCards =
           activeCategory === 'all'
             ? allCards
             : allCards.filter((service) => {
@@ -446,6 +516,20 @@
                 const byCategory = Array.isArray(service.category) && service.category.includes(activeCategory);
                 return byKey || byCategory;
               });
+        const cards = searchQuery
+          ? categoryFilteredCards.filter((service) => {
+              const haystack = [
+                service.display_name,
+                service.sponsor,
+                service.description,
+                ...(Array.isArray(service.category) ? service.category : []),
+                ...(Array.isArray(service.tasks) ? service.tasks : []),
+              ]
+                .join(' ')
+                .toLowerCase();
+              return haystack.includes(searchQuery);
+            })
+          : categoryFilteredCards;
         const serviceCount = cards.length;
 
         const cardsHtml = cards.length
@@ -501,7 +585,15 @@
             <span class="badge">${serviceCount} service${serviceCount === 1 ? '' : 's'}</span>
           </section>
           <section class="search-wrap">
-            <div class="search">🔎 ${escapeHtml(keyword || 'Search services...')}</div>
+            <label class="search" aria-label="Search services">
+              <span class="search-icon">🔎</span>
+              <input
+                type="search"
+                class="search-input"
+                placeholder="${escapeHtml(keyword || 'Search services...')}"
+                value="${escapeHtml(localSearchQuery())}"
+              />
+            </label>
           </section>
           <div class="divider"></div>
           <section class="chips">
@@ -527,6 +619,14 @@
           chip.addEventListener('click', () => {
             const chipKey = chip.getAttribute('data-chip-key') || 'all';
             void selectCategory(chipKey);
+          });
+        }
+
+        const searchInput = root.querySelector('.search-input');
+        if (searchInput) {
+          searchInput.addEventListener('input', (event) => {
+            const nextValue = event && event.target ? event.target.value : '';
+            updateLocalSearch(nextValue);
           });
         }
 
