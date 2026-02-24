@@ -109,12 +109,20 @@
       }
 
       .chip {
+        appearance: none;
+        cursor: pointer;
+        font: inherit;
+        line-height: 1;
         border-radius: 999px;
         border: 1px solid var(--border);
         background: var(--chip);
         color: #dbe5f3;
         padding: 8px 14px;
         font-size: 12px;
+      }
+
+      .chip:hover {
+        border-color: rgba(14, 165, 233, 0.35);
       }
 
       .chip.active {
@@ -140,8 +148,18 @@
         padding: 12px;
       }
 
+      .service-card:disabled {
+        cursor: wait;
+        opacity: 0.8;
+      }
+
       .service-card:hover {
         border-color: rgba(14, 165, 233, 0.6);
+      }
+
+      .service-card.is-active {
+        border-color: rgba(14, 165, 233, 0.75);
+        box-shadow: 0 0 0 1px rgba(14, 165, 233, 0.2) inset;
       }
 
       .service-row {
@@ -211,6 +229,10 @@
         font-size: 12px;
       }
 
+      .footer.error {
+        color: #fecaca;
+      }
+
       .empty {
         margin: 8px 24px 18px;
         border: 1px dashed var(--border);
@@ -257,6 +279,8 @@
       const root = document.getElementById('app');
       let toolOutput = globals.toolOutput;
       let widgetState = globals.widgetState;
+      let selectingCampaignId = '';
+      let selectionError = '';
 
       function normalizeStructuredContent(value) {
         if (!value || typeof value !== 'object') return {};
@@ -352,18 +376,46 @@
       }
 
       async function setWidgetState(nextState) {
+        widgetState = nextState;
         return app?.setWidgetState?.(nextState);
+      }
+
+      function activeCategoryKey() {
+        const value = currentWidgetState()?.activeCategoryKey;
+        return typeof value === 'string' && value.length > 0 ? value : 'all';
+      }
+
+      async function selectCategory(categoryKey) {
+        const nextKey = typeof categoryKey === 'string' && categoryKey.length > 0 ? categoryKey : 'all';
+        selectionError = '';
+        await setWidgetState({
+          ...(currentWidgetState() ?? {}),
+          activeCategoryKey: nextKey,
+        });
+        safeRender();
       }
 
       async function selectService(campaignId, serviceKey, serviceName) {
         if (!campaignId) return;
+        selectionError = '';
+        selectingCampaignId = campaignId;
         await setWidgetState({
           ...(currentWidgetState() ?? {}),
           selectedServiceId: campaignId,
           selectedServiceKey: serviceKey,
           selectedServiceName: serviceName,
         });
-        await callTool('get_task_details', { campaign_id: campaignId });
+        safeRender();
+
+        try {
+          await callTool('get_task_details', { campaign_id: campaignId });
+        } catch (error) {
+          selectionError = error?.message || 'Unable to open task details.';
+          console.error('services-list widget selectService error', error);
+        } finally {
+          selectingCampaignId = '';
+          safeRender();
+        }
       }
 
       function render() {
@@ -374,11 +426,11 @@
         const serviceCatalog = Array.isArray(structuredContent.service_catalog) ? structuredContent.service_catalog : [];
         const selectedServiceKey =
           typeof currentWidgetState()?.selectedServiceKey === 'string' ? currentWidgetState().selectedServiceKey : '';
+        const activeCategory = activeCategoryKey();
         const keyword =
           typeof structuredContent?.applied_filters?.keyword === 'string' ? structuredContent.applied_filters.keyword : '';
 
-        const cards = buildCards();
-        const serviceCount = cards.length;
+        const allCards = buildCards();
         const chips = [
           { label: 'All', key: 'all' },
           ...serviceCatalog.slice(0, 4).map((item) => ({
@@ -386,6 +438,15 @@
             key: item.service_key,
           })),
         ];
+        const cards =
+          activeCategory === 'all'
+            ? allCards
+            : allCards.filter((service) => {
+                const byKey = service.service_key === activeCategory;
+                const byCategory = Array.isArray(service.category) && service.category.includes(activeCategory);
+                return byKey || byCategory;
+              });
+        const serviceCount = cards.length;
 
         const cardsHtml = cards.length
           ? cards
@@ -397,7 +458,14 @@
                   .map((token) => token.charAt(0).toUpperCase())
                   .join('');
                 return `
-                  <button class="service-card" data-campaign-id="${escapeHtml(service.campaign_id)}" data-service-key="${escapeHtml(service.service_key)}" data-service-name="${escapeHtml(service.display_name)}">
+                  <button
+                    type="button"
+                    class="service-card ${service.campaign_id === selectingCampaignId ? 'is-active' : ''}"
+                    data-campaign-id="${escapeHtml(service.campaign_id)}"
+                    data-service-key="${escapeHtml(service.service_key)}"
+                    data-service-name="${escapeHtml(service.display_name)}"
+                    ${service.campaign_id === selectingCampaignId ? 'disabled' : ''}
+                  >
                     <div class="service-row">
                       <div class="service-main">
                         <span class="service-icon">${escapeHtml(initials || 'SV')}</span>
@@ -438,15 +506,29 @@
           <div class="divider"></div>
           <section class="chips">
             ${chips
-              .map((chip, index) => {
-                const active = index === 0 || chip.key === selectedServiceKey;
-                return `<span class="chip ${active ? 'active' : ''}">${escapeHtml(chip.label)}</span>`;
+              .map((chip) => {
+                const active =
+                  chip.key === activeCategory || (activeCategory === 'all' && chip.key === 'all') || chip.key === selectedServiceKey;
+                return `<button type="button" class="chip ${active ? 'active' : ''}" data-chip-key="${escapeHtml(chip.key)}">${escapeHtml(chip.label)}</button>`;
               })
               .join('')}
           </section>
           <section class="card-list">${cardsHtml}</section>
-          <section class="footer">💬 Suggested based on your conversation</section>
+          <section class="footer ${selectionError ? 'error' : ''}">${
+            selectionError
+              ? `⚠️ ${escapeHtml(selectionError)}`
+              : activeCategory === 'all'
+                ? '💬 Suggested based on your conversation'
+                : `💬 Filtered by ${escapeHtml(toDisplayLabel(activeCategory))}`
+          }</section>
         `;
+
+        for (const chip of root.querySelectorAll('.chip')) {
+          chip.addEventListener('click', () => {
+            const chipKey = chip.getAttribute('data-chip-key') || 'all';
+            void selectCategory(chipKey);
+          });
+        }
 
         for (const card of root.querySelectorAll('.service-card')) {
           card.addEventListener('click', () => {

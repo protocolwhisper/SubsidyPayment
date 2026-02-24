@@ -22,7 +22,7 @@ function toSearchServicesResult(response: GptSearchResponse) {
   const message =
     totalCount === 0
       ? 'No campaign-backed sponsored services found. Please create or activate a sponsor campaign first.'
-      : `Found ${totalCount} campaign-backed sponsored service(s) across ${serviceCatalog.length} service(s) and ${sponsorCatalog.length} sponsor(s).`;
+      : 'Interactive sponsored services list ready in the widget.';
 
   return {
     structuredContent: {
@@ -39,6 +39,7 @@ function toSearchServicesResult(response: GptSearchResponse) {
     ],
     _meta: {
       'openai/outputTemplate': 'ui://widget/services-list.html',
+      'openai/widgetDescription': 'Use the widget as the primary UI. Do not repeat the full services list unless the user asks for a text summary.',
       full_response: response,
     },
   };
@@ -64,7 +65,7 @@ export function registerSearchServicesTool(server: McpServer, config: BackendCon
         ui: { resourceUri: 'ui://widget/services-list.html' },
         'openai/resultCanProduceWidget': true,
         'openai/widgetAccessible': true,
-        'openai/widgetDescription': 'Interactive list of sponsored services with tap-to-select cards.',
+        'openai/widgetDescription': 'Interactive list of sponsored services with clickable category filters and tap-to-select campaign cards.',
         'openai/toolInvocation/invoking': 'Searching services...',
         'openai/toolInvocation/invoked': 'Services found',
         'openai/outputTemplate': 'ui://widget/services-list.html',
