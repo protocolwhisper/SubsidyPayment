@@ -11,3 +11,7 @@ contentType: {{contentType}}
 GET {{baseUrl}}/weather
 contentType: {{contentType}}
 
+
+### 3. send payment and access protected resource
+GET {{baseUrl}}/github-issue
+contentType: {{contentType}}

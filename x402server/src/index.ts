@@ -2,6 +2,7 @@ import { serve } from "@hono/node-server";
 import { paymentMiddleware } from "@x402/hono";
 import { config } from "dotenv";
 import { Hono } from "hono";
+import { createGithubIssue } from "./demo/github";
 import { routes } from "./routes";
 import { resourceServer } from "./util/config";
 config();
@@ -27,6 +28,14 @@ app.get("/weather", (c) => {
     },
   });
 });
+
+// 支払いが必要なエンドポイントの定義(GitHubのイシュー作成)
+app.get("/github-issue", async (c) => {
+  // GitHubのイシューを作成する関数を呼び出す
+  await createGithubIssue();
+  return c.json({ status: "issue created" });
+});
+
 
 serve({
   fetch: app.fetch,

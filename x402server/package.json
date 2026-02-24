@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "demo": "tsx src/demo/sample-client.ts",
+    "demo:github": "tsx src/demo/github.ts",
     "format": "pnpm exec biome format --write ."
   },
   "dependencies": {

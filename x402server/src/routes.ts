@@ -14,4 +14,16 @@ export const routes = {
     description: "Weather data",
     mimeType: "application/json",
   },
+  "GET /github-issue": {
+    accepts: [
+      {
+        scheme: "exact",
+        price: "$0.02",
+        network: network,
+        payTo: evmAddress,
+      },
+    ],
+    description: "GitHub issue creation",
+    mimeType: "application/json",
+  },
 };
