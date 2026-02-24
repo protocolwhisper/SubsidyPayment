@@ -4,6 +4,7 @@ export interface BackendConfig {
   auth0Domain: string;
   auth0Audience: string;
   publicUrl: string;
+  frontendUrl: string;
   port: number;
   logLevel: string;
   authEnabled: boolean;
@@ -41,6 +42,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): BackendConfig 
     auth0Domain: env.AUTH0_DOMAIN || '',
     auth0Audience: env.AUTH0_AUDIENCE || '',
     publicUrl: env.PUBLIC_URL || 'http://localhost:3001',
+    frontendUrl:
+      env.FRONTEND_URL ||
+      env.WEB_APP_URL ||
+      env.PUBLIC_FRONTEND_URL ||
+      env.RUST_BACKEND_URL ||
+      'http://localhost:5173',
     port: parsePort(env.PORT),
     logLevel: env.LOG_LEVEL || 'info',
     authEnabled: resolveAuthEnabled(env),

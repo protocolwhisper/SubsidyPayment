@@ -250,6 +250,11 @@
         color: #fecaca;
       }
 
+      .footer.loading {
+        color: var(--accent);
+        font-weight: 500;
+      }
+
       .empty {
         margin: 8px 24px 18px;
         border: 1px dashed var(--border);
@@ -299,7 +304,7 @@
       let selectingCampaignId = '';
       let selectionError = '';
       let selectionNotice = '';
-      let selectionNotice = '';
+      let selectionLoading = false;
 
       function normalizeStructuredContent(value) {
         if (!value || typeof value !== 'object') return {};
@@ -463,6 +468,7 @@
         if (!campaignId && !serviceKey) return;
         selectionError = '';
         selectionNotice = '';
+        selectionLoading = false;
         const shouldOpenServiceTasks = cardKind === 'service' && !!serviceKey;
         if (!shouldOpenServiceTasks && (!campaignId || typeof campaignId !== 'string' || campaignId.trim() === '')) {
           selectionError = 'No campaign selected. Please choose a task from the list.';
@@ -471,6 +477,7 @@
         }
         const clickKey = campaignId || serviceKey || '';
         selectingCampaignId = clickKey;
+        selectionLoading = true;
         persistWidgetState({
           ...(currentWidgetState() ?? {}),
           selectedServiceId: campaignId,
@@ -480,6 +487,10 @@
         safeRender();
 
         try {
+          if (!app?.callTool) {
+            selectionError = 'This view cannot open details here. Use the chat to ask for task details.';
+            return;
+          }
           const toolName = shouldOpenServiceTasks ? 'get_service_tasks' : 'get_task_details';
           const toolInput = shouldOpenServiceTasks ? { service_key: serviceKey } : { campaign_id: campaignId };
           const response = await callTool(toolName, toolInput);
@@ -490,17 +501,20 @@
                 ? response.content.find((item) => item && item.type === 'text')?.text
                 : '';
             selectionError = text || 'Unable to open the selected item.';
+          } else if (response == null) {
+            selectionError = 'No response. Try again or ask in chat: "Show task details for [service]".';
           } else {
             selectionNotice =
               toolName === 'get_service_tasks'
-                ? `Opening tasks for ${serviceName || serviceKey || 'selected service'}...`
-                : `Opening campaign details for ${serviceName || serviceKey || 'selected campaign'}...`;
+                ? `Opening tasks for ${serviceName || serviceKey || 'selected service'}… If the view did not change, ask in chat to open tasks.`
+                : `Opening campaign details for ${serviceName || serviceKey || 'selected campaign'}… If the view did not change, ask in chat.`;
           }
         } catch (error) {
-          selectionError = error?.message || 'Unable to open task details.';
+          selectionError = error?.message || 'Unable to open task details. Try asking in chat instead.';
           console.error('services-list widget selectService error', error);
         } finally {
           selectingCampaignId = '';
+          selectionLoading = false;
           safeRender();
         }
       }
@@ -638,14 +652,16 @@
               .join('')}
           </section>
           <section class="card-list">${cardsHtml}</section>
-          <section class="footer ${selectionError ? 'error' : ''}">${
-            selectionError
-              ? `⚠️ ${escapeHtml(selectionError)}`
-              : selectionNotice
-                ? `⏳ ${escapeHtml(selectionNotice)}`
-              : activeCategory === 'all'
-                ? '💬 Suggested based on your conversation'
-                : `💬 Filtered by ${escapeHtml(toDisplayLabel(activeCategory))}`
+          <section class="footer ${selectionError ? 'error' : ''} ${selectionLoading ? 'loading' : ''}">${
+            selectionLoading
+              ? '⏳ Loading…'
+              : selectionError
+                ? `⚠️ ${escapeHtml(selectionError)}`
+                : selectionNotice
+                  ? `⏳ ${escapeHtml(selectionNotice)}`
+                  : activeCategory === 'all'
+                    ? '💬 Suggested based on your conversation'
+                    : `💬 Filtered by ${escapeHtml(toDisplayLabel(activeCategory))}`
           }</section>
         `;
 

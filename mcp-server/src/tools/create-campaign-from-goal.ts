@@ -133,16 +133,23 @@ function buildCreateCampaignRequest(
 }
 
 function buildStructuredContent(
+  config: BackendConfig,
   response: CreateCampaignResponse,
   searchResponse: GptSearchResponse,
   selection: CandidateSelection,
   subsidyPerCallCents: number,
   requiredTask: string
 ) {
+  const frontendDashboardUrl = buildFrontendDashboardUrl(config.frontendUrl, response.campaign.id);
+  const frontendCampaignUrl = buildFrontendCampaignUrl(config.frontendUrl, response.campaign.id);
   // モデル向けの構造化レスポンスを組み立てる
   return {
     campaign_id: response.campaign.id,
     campaign: response.campaign,
+    frontend_dashboard_url: frontendDashboardUrl,
+    frontend_campaign_url: frontendCampaignUrl,
+    backend_campaign_url: response.campaign_url,
+    backend_dashboard_api_url: response.dashboard_url,
     selected_service_key: selection.service_key,
     selected_offer: selection.offer,
     selected_services: searchResponse.candidate_services ?? searchResponse.services,
@@ -155,6 +162,36 @@ function buildStructuredContent(
         ? 'Selected the highest-subsidy offer from candidate services.'
         : 'Selected the highest-subsidy campaign from search results.',
   };
+}
+
+function normalizeBaseUrl(value: string): string {
+  return value.trim().replace(/\/+$/, '');
+}
+
+function buildFrontendDashboardUrl(frontendUrl: string, campaignId: string): string {
+  const base = normalizeBaseUrl(frontendUrl);
+  if (!base) return '';
+  try {
+    const url = new URL(base);
+    url.searchParams.set('view', 'dashboard');
+    url.searchParams.set('campaign_id', campaignId);
+    return url.toString();
+  } catch {
+    return '';
+  }
+}
+
+function buildFrontendCampaignUrl(frontendUrl: string, campaignId: string): string {
+  const base = normalizeBaseUrl(frontendUrl);
+  if (!base) return '';
+  try {
+    const url = new URL(base);
+    url.searchParams.set('view', 'dashboard');
+    url.searchParams.set('campaign_id', campaignId);
+    return url.toString();
+  } catch {
+    return '';
+  }
 }
 
 export function registerCreateCampaignFromGoalTool(server: McpServer, config: BackendConfig): void {
@@ -248,8 +285,10 @@ export function registerCreateCampaignFromGoalTool(server: McpServer, config: Ba
         }
 
         const response = await client.createCampaign(request);
+        const frontendDashboardUrl = buildFrontendDashboardUrl(config.frontendUrl, response.campaign.id);
         return {
           structuredContent: buildStructuredContent(
+            config,
             response,
             searchResponse,
             selection,
@@ -259,7 +298,9 @@ export function registerCreateCampaignFromGoalTool(server: McpServer, config: Ba
           content: [
             {
               type: 'text' as const,
-              text: `Campaign created: ${response.campaign.name}`,
+              text: frontendDashboardUrl
+                ? `Campaign created: ${response.campaign.name}. Open in frontend dashboard: ${frontendDashboardUrl}`
+                : `Campaign created: ${response.campaign.name}`,
             },
           ],
           _meta: {

@@ -29,6 +29,8 @@ type Campaign = {
   created_at: string;
 };
 
+type AppView = "landing" | "signup" | "dashboard" | "create-campaign" | "login" | "caller";
+
 type Profile = {
   id: string;
   email: string;
@@ -220,6 +222,21 @@ function formatDuration(ms: number): string {
   return `${minutes}m ${seconds}s`;
 }
 
+function parseAppDeepLink(search: string): { view: AppView | null; campaignId: string | null } {
+  const params = new URLSearchParams(search);
+  const rawView = (params.get("view") || "").trim();
+  const rawCampaignId = (params.get("campaign_id") || "").trim();
+  const validViews: AppView[] = ["landing", "signup", "dashboard", "create-campaign", "login", "caller"];
+  const parsedView = validViews.includes(rawView as AppView) ? (rawView as AppView) : null;
+  const campaignId = rawCampaignId.length > 0 ? rawCampaignId : null;
+
+  if (campaignId) {
+    return { view: "dashboard", campaignId };
+  }
+
+  return { view: parsedView, campaignId: null };
+}
+
 function taskCategoryFromText(task: string): string {
   const lower = task.toLowerCase();
   if (lower.includes("email") || lower.includes("telegram") || lower.includes("contact")) {
@@ -268,6 +285,7 @@ function taskCategoryFromText(task: string): string {
 }
 
 function App() {
+  const initialDeepLink = useMemo(() => parseAppDeepLink(window.location.search), []);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [creator, setCreator] = useState<CreatorSummary | null>(null);
@@ -283,7 +301,7 @@ function App() {
   });
   const [isLoggedIn, setIsLoggedIn] = useState(false); // Start logged out (public dashboard)
   const [showProfile, setShowProfile] = useState(false);
-  const [currentView, setCurrentView] = useState<"landing" | "signup" | "dashboard" | "create-campaign" | "login" | "caller">("landing");
+  const [currentView, setCurrentView] = useState<AppView>(initialDeepLink.view ?? "landing");
   const [loginForm, setLoginForm] = useState({ email: "", password: "" });
   const [signupForm, setSignupForm] = useState({ email: "", company: "", password: "", confirmPassword: "" });
   const [sponsoredApis, setSponsoredApis] = useState<SponsoredApi[]>([]);
@@ -304,6 +322,8 @@ function App() {
   const [showServiceDropdown, setShowServiceDropdown] = useState(false);
   const [dashboardMode, setDashboardMode] = useState<"general" | "user">("general");
   const [dataWarnings, setDataWarnings] = useState<string[]>([]);
+  const [dashboardDeepLinkCampaignId, setDashboardDeepLinkCampaignId] = useState<string | null>(initialDeepLink.campaignId);
+  const [highlightedCampaignId] = useState<string | null>(initialDeepLink.campaignId);
   const [currentUserEmail, setCurrentUserEmail] = useState(() => {
     return localStorage.getItem("currentUserEmail") || "";
   });
@@ -395,6 +415,7 @@ function App() {
       const campaignData = campaignResult.status === "fulfilled" ? campaignResult.value : [];
       const profileData = profileResult.status === "fulfilled" ? profileResult.value : [];
       const creatorData = creatorResult.status === "fulfilled" ? creatorResult.value : null;
+      let nextCampaigns = [...campaignData];
 
       if (campaignResult.status === "rejected") {
         warnings.push("Could not load campaigns.");
@@ -406,8 +427,23 @@ function App() {
         warnings.push("Creator metrics endpoint is unavailable right now.");
       }
 
+      if (
+        dashboardDeepLinkCampaignId &&
+        !nextCampaigns.some((campaign) => campaign.id === dashboardDeepLinkCampaignId)
+      ) {
+        try {
+          const deepLinkedCampaign = await fetchJson<Campaign>(`/campaigns/${dashboardDeepLinkCampaignId}`, {
+            method: "GET"
+          });
+          nextCampaigns = [deepLinkedCampaign, ...nextCampaigns.filter((campaign) => campaign.id !== deepLinkedCampaign.id)];
+          setDashboardDeepLinkCampaignId(null);
+        } catch {
+          warnings.push("Could not load the deep-linked campaign on the dashboard.");
+        }
+      }
+
       const dashboardResults = await Promise.allSettled(
-        campaignData.map((campaign) =>
+        nextCampaigns.map((campaign) =>
           fetchJson<SponsorDashboardData>(`/dashboard/sponsor/${campaign.id}`, {
             method: "GET"
           })
@@ -418,7 +454,7 @@ function App() {
       let dashboardFailures = 0;
       dashboardResults.forEach((result, index) => {
         if (result.status === "fulfilled") {
-          nextCampaignDashboards[campaignData[index].id] = result.value;
+          nextCampaignDashboards[nextCampaigns[index].id] = result.value;
         } else {
           dashboardFailures += 1;
         }
@@ -427,14 +463,14 @@ function App() {
         warnings.push(`Some sponsor dashboard rows failed to load (${dashboardFailures}).`);
       }
 
-      setCampaigns(campaignData);
+      setCampaigns(nextCampaigns);
       setProfiles(profileData);
       setCreator(creatorData);
       setCampaignDashboards(nextCampaignDashboards);
       setDataWarnings(warnings);
       setLastSyncAt(new Date().toISOString());
 
-      if (!silent && campaignData.length === 0 && profileData.length === 0 && warnings.length > 0) {
+      if (!silent && nextCampaigns.length === 0 && profileData.length === 0 && warnings.length > 0) {
         setError("Backend responded with partial/empty data. Check API health and DB records.");
       }
     } catch (err) {
@@ -2061,7 +2097,10 @@ function App() {
                     </tr>
                   ) : (
                     campaigns.map((campaign) => (
-                      <tr key={campaign.id}>
+                      <tr
+                        key={campaign.id}
+                        style={campaign.id === highlightedCampaignId ? { background: "rgba(14, 165, 233, 0.08)" } : undefined}
+                      >
                         <td>{campaign.name}</td>
                         <td>{campaign.sponsor}</td>
                         <td>
