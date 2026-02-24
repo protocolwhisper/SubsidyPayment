@@ -38,7 +38,7 @@ function toSearchServicesResult(response: GptSearchResponse) {
       { type: 'text' as const, text: message },
     ],
     _meta: {
-      'openai/outputTemplate': 'ui://widget/services-list.html',
+      'openai/outputTemplate': 'ui://widget/services-list-v2.html',
       'openai/widgetDescription': 'Use the widget as the primary UI. Do not repeat the full services list unless the user asks for a text summary.',
       full_response: response,
     },
@@ -62,13 +62,13 @@ export function registerSearchServicesTool(server: McpServer, config: BackendCon
       },
       _meta: {
         securitySchemes: [{ type: 'noauth' }],
-        ui: { resourceUri: 'ui://widget/services-list.html' },
+        ui: { resourceUri: 'ui://widget/services-list-v2.html' },
         'openai/resultCanProduceWidget': true,
         'openai/widgetAccessible': true,
         'openai/widgetDescription': 'Interactive list of sponsored services with clickable category filters and tap-to-select campaign cards.',
         'openai/toolInvocation/invoking': 'Searching services...',
         'openai/toolInvocation/invoked': 'Services found',
-        'openai/outputTemplate': 'ui://widget/services-list.html',
+        'openai/outputTemplate': 'ui://widget/services-list-v2.html',
       },
     },
     async (input: SearchServicesParams) => {

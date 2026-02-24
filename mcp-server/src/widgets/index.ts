@@ -103,6 +103,7 @@ function registerWidgetResource(server: McpServer, name: string, uri: string, fi
 
 export function registerAllResources(server: McpServer): void {
   registerWidgetResource(server, 'services-list', 'ui://widget/services-list.html', 'services-list.html');
+  registerWidgetResource(server, 'services-list-v2', 'ui://widget/services-list-v2.html', 'services-list.html');
   registerWidgetResource(server, 'service-tasks', 'ui://widget/service-tasks.html', 'service-tasks.html');
   registerWidgetResource(server, 'task-form', 'ui://widget/task-form.html', 'task-form.html');
   registerWidgetResource(server, 'service-access', 'ui://widget/service-access.html', 'service-access.html');
