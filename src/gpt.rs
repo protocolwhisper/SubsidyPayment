@@ -73,6 +73,9 @@ pub struct RateLimiter {
     refill_interval: Duration,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct GptRateLimitExempt;
+
 impl RateLimiter {
     pub fn new(max_tokens: u32, refill_interval: Duration) -> Self {
         Self {
@@ -113,6 +116,14 @@ pub async fn rate_limit_middleware(
     request: axum::extract::Request,
     next: axum::middleware::Next,
 ) -> Result<Response, ApiError> {
+    if request
+        .extensions()
+        .get::<GptRateLimitExempt>()
+        .is_some()
+    {
+        return Ok(next.run(request).await);
+    }
+
     let retry_after = {
         let mut lim = limiter.lock().await;
         if lim.try_acquire() {
@@ -131,7 +142,7 @@ pub async fn rate_limit_middleware(
 pub async fn verify_gpt_api_key(
     State(state): State<SharedState>,
     headers: HeaderMap,
-    request: axum::extract::Request,
+    mut request: axum::extract::Request,
     next: axum::middleware::Next,
 ) -> Result<Response, ApiError> {
     let expected_key = {
@@ -157,6 +168,7 @@ pub async fn verify_gpt_api_key(
         return Err(ApiError::forbidden("Invalid API key"));
     }
 
+    request.extensions_mut().insert(GptRateLimitExempt);
     Ok(next.run(request).await)
 }
 

@@ -51,12 +51,12 @@ fn build_gpt_router(state: SharedState) -> Router<SharedState> {
             get(gpt::gpt_get_preferences).post(gpt::gpt_set_preferences),
         )
         .layer(axum::middleware::from_fn_with_state(
-            state,
-            gpt::verify_gpt_api_key,
-        ))
-        .layer(axum::middleware::from_fn_with_state(
             limiter,
             gpt::rate_limit_middleware,
+        ))
+        .layer(axum::middleware::from_fn_with_state(
+            state,
+            gpt::verify_gpt_api_key,
         ))
 }
 
