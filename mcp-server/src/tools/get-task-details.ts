@@ -8,9 +8,14 @@ import type { BackendConfig } from '../config.ts';
 import { resolveOrCreateNoAuthSessionToken } from './session-manager.ts';
 
 const getTaskDetailsInputSchema = z.object({
-  campaign_id: z.string().uuid(),
+  campaign_id: z.string().min(1, 'campaign_id is required'),
   session_token: z.string().optional(),
 });
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+function isUuid(s: string): boolean {
+  return UUID_REGEX.test(s);
+}
 
 function unauthorizedSessionResponse(publicUrl: string) {
   return {
@@ -77,6 +82,14 @@ export function registerGetTaskDetailsTool(server: McpServer, config: BackendCon
       }
 
       try {
+        if (!isUuid(input.campaign_id)) {
+          return {
+            content: [{ type: 'text' as const, text: 'Invalid campaign ID format. Please select a task from the list.' }],
+            _meta: { code: 'invalid_campaign_id' },
+            isError: true,
+          };
+        }
+
         const sessionToken = await resolveOrCreateNoAuthSessionToken(client, config, input, context);
         if (!sessionToken) {
           return unauthorizedSessionResponse(config.publicUrl);

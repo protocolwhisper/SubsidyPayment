@@ -463,6 +463,12 @@
         if (!campaignId && !serviceKey) return;
         selectionError = '';
         selectionNotice = '';
+        const shouldOpenServiceTasks = cardKind === 'service' && !!serviceKey;
+        if (!shouldOpenServiceTasks && (!campaignId || typeof campaignId !== 'string' || campaignId.trim() === '')) {
+          selectionError = 'No campaign selected. Please choose a task from the list.';
+          safeRender();
+          return;
+        }
         const clickKey = campaignId || serviceKey || '';
         selectingCampaignId = clickKey;
         persistWidgetState({
@@ -474,7 +480,6 @@
         safeRender();
 
         try {
-          const shouldOpenServiceTasks = cardKind === 'service' && !!serviceKey;
           const toolName = shouldOpenServiceTasks ? 'get_service_tasks' : 'get_task_details';
           const toolInput = shouldOpenServiceTasks ? { service_key: serviceKey } : { campaign_id: campaignId };
           const response = await callTool(toolName, toolInput);
