@@ -1877,7 +1877,10 @@ async fn gpt_complete_task_rejects_invalid_feedback_rating_details() {
             sqlx::migrate!("./migrations").run(&pool).await.ok();
 
             let user_id = Uuid::new_v4();
-            let email = format!("gpt_complete_invalid_feedback_{}@example.com", Uuid::new_v4());
+            let email = format!(
+                "gpt_complete_invalid_feedback_{}@example.com",
+                Uuid::new_v4()
+            );
             sqlx::query(
                 "INSERT INTO users (id, email, region, roles, tools_used, attributes, source) \
                  VALUES ($1, $2, 'JP', '{}', '{}', '{}'::jsonb, 'gpt_apps')",
@@ -1948,7 +1951,10 @@ async fn gpt_complete_task_rejects_invalid_feedback_rating_details() {
             .fetch_one(&pool)
             .await
             .unwrap();
-            assert_eq!(completion_count, 0, "invalid details should not be inserted");
+            assert_eq!(
+                completion_count, 0,
+                "invalid details should not be inserted"
+            );
 
             sqlx::query("DELETE FROM task_completions WHERE campaign_id = $1")
                 .bind(campaign_id)

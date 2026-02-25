@@ -116,11 +116,7 @@ pub async fn rate_limit_middleware(
     request: axum::extract::Request,
     next: axum::middleware::Next,
 ) -> Result<Response, ApiError> {
-    if request
-        .extensions()
-        .get::<GptRateLimitExempt>()
-        .is_some()
-    {
+    if request.extensions().get::<GptRateLimitExempt>().is_some() {
         return Ok(next.run(request).await);
     }
 
