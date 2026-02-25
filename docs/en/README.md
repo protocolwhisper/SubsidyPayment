@@ -35,6 +35,51 @@ PayloadExchange addresses this through a marketplace model:
 
 ---
 
+## Current Implementation Status (as of 2026-02-25)
+
+### Rust backend (`src/`)
+- Core routes: `/campaigns`, `/proxy/{service}/run`, `/sponsored-apis`, `/payments`, `/creator/metrics`
+- GPT routes: `/gpt/services`, `/gpt/auth`, `/gpt/tasks/{campaign_id}`, `/gpt/tasks/{campaign_id}/complete`, `/gpt/tasks/{campaign_id}/zkpassport/init`, `/gpt/user/status`, `/gpt/user/record`, `/gpt/preferences`
+- Discovery aliases: `/agent/discovery/services`, `/claude/discovery/services`, `/openclaw/discovery/services`
+- zkPassport routes: `/verify/zkpassport`, `/zkpassport/session/{verification_token}`, `/zkpassport/session/{verification_token}/submit`
+
+### MCP server (`mcp-server/`)
+- Transport/API: Streamable HTTP on `/mcp`, plus `/health` and OAuth metadata endpoints
+- Registered tools (14):
+  - `search_services`
+  - `authenticate_user`
+  - `create_campaign_from_goal`
+  - `get_service_tasks`
+  - `get_task_details`
+  - `start_zkpassport_verification`
+  - `complete_task`
+  - `run_service`
+  - `get_user_status`
+  - `get_user_record`
+  - `get_preferences`
+  - `set_preferences`
+  - `weather`
+  - `github_issue`
+- Widget resources (6):
+  - `services-list`
+  - `services-list-v2`
+  - `service-tasks`
+  - `task-form`
+  - `service-access`
+  - `user-dashboard`
+
+### Database / migration status
+- Latest migration: `0014_zkpassport_verifications.sql`
+- Smart suggestion migrations (`0011`, `0012`, `0013`) are already applied in the codebase
+
+### Kiro specs progress
+- `gpt-apps-integration`: 33/33 completed
+- `smart-service-suggestion`: 32/32 completed
+- `refactor-to-gpt-app-sdk`: 27/27 completed
+- `autonomous-agent-execution`: 0/41 (not implemented yet)
+
+---
+
 ## Core Concepts
 
 ### Skills and Tools

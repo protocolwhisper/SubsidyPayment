@@ -1,187 +1,75 @@
-# Render環境変数設定例（バックエンド用）
+# Render 環境変数設定例（現行）
 
-このファイルは、Renderでバックエンドをデプロイする際に設定する環境変数の例です。
+このページは 2026-02-25 時点の実装に基づいています。
 
-## 📋 必要な環境変数一覧
+## 1. Rust バックエンドサービス（`payloadexchange-backend`）
 
-Renderのダッシュボードで、以下の環境変数を設定してください。
+### 必須
 
----
+| Key | 設定例 | 補足 |
+|---|---|---|
+| `DATABASE_URL` | `postgres://...` | Render Postgres の **Internal Database URL** を使用 |
+| `PUBLIC_BASE_URL` | `https://payloadexchange-backend.onrender.com` | 公開バックエンド URL |
 
-## 🔧 環境変数の設定方法
+### 推奨
 
-1. Renderダッシュボードで `payloadexchange-backend` サービスを開く
-2. 左メニューから **"Environment"** をクリック
-3. **"Add Environment Variable"** をクリック
-4. 以下の変数を1つずつ追加
+| Key | 設定例 | 補足 |
+|---|---|---|
+| `RUST_LOG` | `payloadexchange_mvp=info,tower_http=info` | ログ設定 |
+| `CORS_ALLOW_ORIGINS` | `https://your-frontend.vercel.app,https://chatgpt.com,https://chat.openai.com` | カンマ区切り |
+| `MCP_SERVER_URL` | `https://your-mcp-server.onrender.com` | CORS 許可に追加 |
+| `X402_FACILITATOR_URL` | `https://x402.org/facilitator` | x402 設定 |
+| `X402_VERIFY_PATH` | `/verify` | x402 設定 |
+| `X402_SETTLE_PATH` | `/settle` | x402 設定 |
+| `X402_NETWORK` | `base-sepolia` | x402 設定 |
+| `SPONSORED_API_CREATE_PRICE_CENTS` | `25` | Sponsored API 作成価格 |
+| `SPONSORED_API_TIMEOUT_SECS` | `12` | 上流タイムアウト |
+| `GPT_ACTIONS_API_KEY` | `your-secret-api-key` | 設定時のみ GPT API キー認証を有効化 |
+| `AGENT_DISCOVERY_API_KEY` | `your-agent-api-key` | Discovery API 任意認証 |
+| `AGENT_DISCOVERY_RATE_LIMIT_PER_MIN` | `120` | Discovery API レート制限 |
+| `ZKPASSPORT_VERIFIER_URL` | `https://your-mcp-server.onrender.com/internal/zkpassport/verify` | 検証エンドポイント |
+| `ZKPASSPORT_VERIFIER_API_KEY` | `your-zkpassport-key` | 有効化時は MCP 側キーと一致させる |
+| `ZKPASSPORT_VERIFY_PAGE_URL` | `https://payloadexchange-backend.onrender.com/verify/zkpassport` | 公開検証ページ |
+| `ZKPASSPORT_SCOPE` | `snapfuel-gpt-age-country-v1` | スコープ名 |
+| `ZKPASSPORT_VERIFICATION_TTL_SECS` | `900` | トークン TTL |
+| `ZKPASSPORT_HASH_SALT` | `replace-in-production` | 識別子ハッシュ用ソルト |
 
----
+## 2. MCP サーバーサービス（`subsidypayment-mcp-server`）
 
-## 📝 環境変数の詳細
+### 必須
 
-### 1. DATABASE_URL（必須）
+| Key | 設定例 | 補足 |
+|---|---|---|
+| `RUST_BACKEND_URL` | `https://payloadexchange-backend.onrender.com` | バックエンド URL |
+| `PUBLIC_URL` | `https://your-mcp-server.onrender.com` | MCP 公開 URL |
 
-**Key:** `DATABASE_URL`
+### 任意 / 機能依存
 
-**Value:** PostgreSQLのInternal Database URL
+| Key | 設定例 | 補足 |
+|---|---|---|
+| `AUTH0_DOMAIN` | `your-tenant.auth0.com` | OAuth |
+| `AUTH0_AUDIENCE` | `https://api.your-domain` | OAuth |
+| `AUTH_ENABLED` | `true` / `false` | 自動判定を上書き |
+| `MCP_INTERNAL_API_KEY` | `your-mcp-internal-api-key` | バックエンドへ Bearer 送信 |
+| `FRONTEND_URL` | `https://your-frontend.vercel.app` | ツールが返すリンク先 |
+| `LOG_LEVEL` | `info` | ログレベル |
+| `X402_WEATHER_URL` | `https://your-x402-sample/weather` | Weather ツール用 |
+| `X402_GITHUB_ISSUE_URL` | `https://your-x402-sample/github-issue` | Github Issue ツール用 |
+| `X402_FACILITATOR_URL` | `https://x402.org/facilitator` | x402 設定 |
+| `X402_NETWORK` | `eip155:84532` | x402 ネットワーク ID |
+| `X402_PRIVATE_KEY` | `0x...` | x402 署名付きリクエストで利用 |
+| `X402_REQUEST_TIMEOUT_MS` | `15000` | タイムアウト |
+| `ZKPASSPORT_DOMAIN` | `your-mcp-server.onrender.com` | zkPassport verifier のドメイン |
+| `ZKPASSPORT_VERIFIER_API_KEY` | `your-zkpassport-key` | 有効化時は backend 側と一致させる |
 
-**取得方法:**
-1. RenderダッシュボードでPostgreSQLデータベースを開く
-2. **"Connections"** タブをクリック
-3. **"Internal Database URL"** をコピー
+## デプロイ後の確認
 
-**例:**
-```
-postgres://payloadexchange_user:your_password@dpg-xxxxxxxxxxxx-a.oregon-postgres.render.com/payloadexchange
-```
-
-**⚠️ 重要:**
-- **Internal Database URL** を使用してください（External URLではありません）
-- パスワード部分は実際のパスワードに置き換えてください
-
----
-
-### 2. PUBLIC_BASE_URL（必須）
-
-**Key:** `PUBLIC_BASE_URL`
-
-**Value:** Renderが発行するバックエンドのURL
-
-**取得方法:**
-1. Webサービスのデプロイが完了したら、画面右上に表示されるURLをコピー
-2. そのURLをそのまま使用
-
-**例（デプロイ前の仮の値）:**
-```
-https://payloadexchange-backend.onrender.com
-```
-
-**例（デプロイ後の実際の値）:**
-```
-https://payloadexchange-backend-xxxx.onrender.com
-```
-
-**⚠️ 重要:**
-- デプロイ完了後に実際のURLに更新してください
-- プロトコル（`https://`）を含めてください
-- 末尾のスラッシュ（`/`）は不要です
-
----
-
-### 3. RUST_LOG（推奨）
-
-**Key:** `RUST_LOG`
-
-**Value:** ログレベル
-
-**例:**
-```
-info
+```bash
+curl -s https://your-backend.onrender.com/health
+curl -s https://your-mcp-server.onrender.com/health
+curl -s https://your-backend.onrender.com/.well-known/openapi.yaml | head
 ```
 
-**オプション:**
-- `error`: エラーのみ
-- `warn`: 警告とエラー
-- `info`: 情報、警告、エラー（推奨）
-- `debug`: 詳細なデバッグ情報
-- `trace`: 最も詳細な情報
-
----
-
-### 4. PORT（設定不要）
-
-**Key:** `PORT`
-
-**Value:** （設定不要）
-
-**説明:**
-- Renderが自動的に `PORT` 環境変数を設定します
-- 手動で設定する必要はありません
-- コード内で `std::env::var("PORT")` で取得できます
-
----
-
-## 📋 Renderダッシュボードでの設定例
-
-Renderの環境変数設定画面では、以下のように表示されます：
-
-```
-Environment Variables
-┌─────────────────────┬──────────────────────────────────────────────┐
-│ Key                 │ Value                                         │
-├─────────────────────┼──────────────────────────────────────────────┤
-│ DATABASE_URL        │ postgres://user:pass@host:5432/dbname        │
-│ PUBLIC_BASE_URL     │ https://payloadexchange-backend.onrender.com │
-│ RUST_LOG            │ info                                          │
-└─────────────────────┴──────────────────────────────────────────────┘
-```
-
----
-
-## 🔄 設定後の手順
-
-1. すべての環境変数を設定したら、**"Save Changes"** をクリック
-2. Renderが自動的に再デプロイを開始します
-3. デプロイが完了するまで待ちます（5-10分）
-4. デプロイ完了後、`/health` エンドポイントで動作確認
-
----
-
-## ✅ 動作確認
-
-デプロイ完了後、以下のURLにアクセスして確認：
-
-```
-https://your-backend-url.onrender.com/health
-```
-
-成功すると、以下のJSONが返ってきます：
-
-```json
-{"message":"ok"}
-```
-
----
-
-## 🆘 トラブルシューティング
-
-### エラー: "Postgres not configured; set DATABASE_URL"
-
-**原因:** `DATABASE_URL` が正しく設定されていない
-
-**対処法:**
-1. Renderの環境変数で `DATABASE_URL` が設定されているか確認
-2. Internal Database URLを使用しているか確認（External URLではない）
-3. URLにスペースや改行が含まれていないか確認
-
-### エラー: デプロイが失敗する
-
-**原因:** 環境変数の設定ミスやビルドエラー
-
-**対処法:**
-1. Renderのログを確認（サービスページの「Logs」タブ）
-2. 環境変数の値に誤りがないか確認
-3. `PUBLIC_BASE_URL` に実際のURLが設定されているか確認
-
----
-
-## 📝 チェックリスト
-
-設定前に以下を確認：
-
-- [ ] PostgreSQLデータベースが作成済み
-- [ ] Internal Database URLをコピー済み
-- [ ] Webサービスのデプロイが完了し、URLが確定している
-- [ ] すべての環境変数を正しく設定した
-- [ ] "Save Changes" をクリックした
-- [ ] 再デプロイが完了した
-- [ ] `/health` エンドポイントで動作確認した
-
----
-
-## 🔗 関連ドキュメント
-
-- 詳細なデプロイ手順: `BACKEND_DEPLOY.md`
-- クイックスタート: `RENDER_QUICK_START.md`
-- デプロイ確認: `RENDER_DEPLOY_CHECK.md`
-
+期待値:
+- backend health: `{"message":"ok"}`
+- MCP health: `{ "status": "ok", ... }`
