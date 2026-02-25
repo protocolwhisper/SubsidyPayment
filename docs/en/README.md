@@ -460,6 +460,35 @@ This tool auto-creates campaigns by taking a purpose and target audience and sel
 - "Create a campaign for B2B onboarding improvements. Target roles are product managers, budget is $300."
 - "Auto-select the tasks and tools for an AI chat improvement campaign and create it."
 
+### Task Feedback Contract (`complete_task`)
+
+When calling `complete_task`, the client keeps API backward compatibility by sending task evidence in `details` as a JSON string.
+
+**Required consent fields**
+- `data_sharing_agreed`
+- `purpose_acknowledged`
+- `contact_permission`
+
+**Product feedback fields in `details` (current UI contract)**
+- `product_link`: product page URL used in the task
+- `feedback_rating`: 1-5 star rating
+- `feedback_tags`: comma-separated selected tags
+- `feedback_reason`: free-text reason for selected tags
+
+**Example payload (tool input)**
+```json
+{
+  "campaign_id": "2f6d2c0b-3c7a-4a0a-9a2e-6f2b6b7e8d90",
+  "task_name": "share_feedback",
+  "details": "{\"email\":\"you@example.com\",\"feedback_rating\":\"4\",\"feedback_tags\":\"Cost, Usability\",\"feedback_reason\":\"Onboarding copy is ambiguous; please add setup examples.\",\"product_link\":\"https://example.com/product\"}",
+  "consent": {
+    "data_sharing_agreed": true,
+    "purpose_acknowledged": true,
+    "contact_permission": true
+  }
+}
+```
+
 ### Verification System
 
 **Proof of Action**

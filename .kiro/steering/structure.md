@@ -121,8 +121,8 @@ SubsidyPayment/
 | テーブル | 用途 |
 |---|---|
 | `users` | GPT Apps ユーザー |
-| `resources` | x402 保護リソース |
-| `offers` | スポンサーオファー |
+| `sponsored_apis` | スポンサー API 定義 |
+| `sponsored_api_calls` | スポンサー API 呼び出し履歴 |
 | `campaigns` | スポンサーキャンペーン |
 | `task_completions` | タスク完了記録 |
 | `payments` | 支払い記録 |
@@ -130,7 +130,6 @@ SubsidyPayment/
 | `consents` | 同意レコード |
 | `gpt_sessions` | GPT セッション |
 | `user_task_preferences` | 嗜好設定 |
-| `campaign_tags` | キャンペーンタグ |
 | `gpt_service_runs` | GPT サービス実行履歴 |
 | `zkpassport_verifications` | zkPassport 検証 |
 
