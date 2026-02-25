@@ -145,3 +145,9 @@ SubsidyPayment/
 - **zkPassport 連携**: 検証ページ + セッション API を提供
 - **MCP App 構成**: OAuth + MCP Tools + Vite singlefile ウィジェットを同一リポジトリで運用
 - **フロントエンド**: `App.tsx` + 3D コンポーネント分割構成
+
+## Sync Notes（2026-02-25）
+
+- **Task Widget 拡張パターン**: `mcp-server/src/widgets/src/task-form.html` では、タスク実行UIの下流に「Product Feedback」ブロックを追加し、`details` に構造化保存する。
+- **保存フォーマット方針**: `details` は JSON 文字列として維持し、後方互換のため API スキーマ（`complete_task`）は変更しない。
+- **DB 記述ドリフト注意**: 現行 migration では `resources` / `offers` / `campaign_tags` テーブルは存在せず、該当情報は `campaigns` や関連カラムで管理される。DB概要を参照する際は `migrations/` を正とする。

@@ -163,3 +163,9 @@ cd docs && npm run serve
 - TypeScript: Vite デフォルト設定
 - コミット: Conventional Commits (feat:, fix:, docs:, test:, refactor:, chore:)
 - エラー: `thiserror` で型安全なエラー定義、`ApiError` / `ApiResult` パターン
+
+## Sync Notes（2026-02-25）
+
+- MCP ウィジェット `task-form.html` は、`complete_task` 送信前にフロント側で必須バリデーションを実施する。
+- `complete_task` の既存入力契約（`details: string`）は維持し、追加情報は JSON 文字列化して後方互換を保つ。
+- タスクUI実装では「フォーム入力」「同意チェック」「検証（zkPassport）」「フィードバック入力」を同一画面で段階的に扱うパターンを標準とする。
