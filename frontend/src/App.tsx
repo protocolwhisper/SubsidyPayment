@@ -322,7 +322,7 @@ function App() {
       console.log("Connected wallet:", address);
 
       // Create a message to sign for authentication
-      const message = `Sign in to SnapFuel\n\nWallet: ${address}\nTimestamp: ${Date.now()}`;
+      const message = `Sign in to SapienFuel\n\nWallet: ${address}\nTimestamp: ${Date.now()}`;
       
       // Convert message to hex (browser-compatible)
       const messageHex = "0x" + Array.from(new TextEncoder().encode(message))
@@ -830,8 +830,8 @@ function App() {
       <header className="header">
         <div className="header-left">
           <div className="logo" onClick={() => setCurrentView("landing")} style={{ cursor: "pointer" }} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setCurrentView("landing"); } }} aria-label="Go to home">
-            <img src={logoImage} alt="SnapFuel" className="logo-icon" />
-            <span className="logo-text">SnapFuel</span>
+            <img src={logoImage} alt="SapienFuel" className="logo-icon" />
+            <span className="logo-text">SapienFuel</span>
           </div>
           {!["landing", "login", "signup"].includes(currentView) && (
             <nav className="header-nav-tabs">
@@ -916,9 +916,9 @@ function App() {
           <section className="lp-hero">
             <div className="lp-hero-top">
               <div className="lp-hero-content">
-                <img src={logoImage} alt="SnapFuel" className="lp-hero-logo" />
+                <img src={logoImage} alt="SapienFuel" className="lp-hero-logo" />
                 <h1 className="lp-hero-title">
-                  SnapFuel®<br />
+                  SapienFuel®<br />
                   Sponsor the services<br />
                   your users rely on.
                 </h1>
@@ -1003,8 +1003,8 @@ function App() {
             <div className="login-card">
               <div className="login-header">
                 <div className="login-logo" onClick={() => setCurrentView("landing")}>
-                  <img src={logoImage} alt="SnapFuel" className="logo-icon-large" />
-                  <h1>SnapFuel</h1>
+                  <img src={logoImage} alt="SapienFuel" className="logo-icon-large" />
+                  <h1>SapienFuel</h1>
                 </div>
                 <p className="login-subtitle">Create your account</p>
               </div>
@@ -1110,8 +1110,8 @@ function App() {
             <div className="login-card">
               <div className="login-header">
                 <div className="login-logo" onClick={() => setCurrentView("landing")}>
-                  <img src={logoImage} alt="SnapFuel" className="logo-icon-large" />
-                  <h1>SnapFuel</h1>
+                  <img src={logoImage} alt="SapienFuel" className="logo-icon-large" />
+                  <h1>SapienFuel</h1>
                 </div>
                 <p className="login-subtitle">Sign in to manage your campaigns</p>
               </div>
