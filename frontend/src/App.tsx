@@ -1,7 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import logoImage from "./logo.jpg";
-import { GetStartedButton3D } from "./GetStartedButton3D";
-import { LandingBackground3D } from "./LandingBackground3D";
+import { LandingBackground3D } from "./components/LandingBackground3D";
+import logoImage from "/logo.jpg";
 
 // Extend Window interface for MetaMask
 declare global {
@@ -203,6 +202,12 @@ const TASK_CATEGORIES: TaskCategory[] = [
   }
 ];
 
+/**
+ * percentile method
+ * @param values 
+ * @param pct 
+ * @returns 
+ */
 function percentile(values: number[], pct: number): number {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
@@ -213,6 +218,11 @@ function percentile(values: number[], pct: number): number {
   return sorted[index];
 }
 
+/**
+ * formatDuration method
+ * @param ms 
+ * @returns 
+ */
 function formatDuration(ms: number): string {
   if (!Number.isFinite(ms) || ms <= 0) return "0s";
   const totalSeconds = Math.round(ms / 1000);
@@ -222,6 +232,11 @@ function formatDuration(ms: number): string {
   return `${minutes}m ${seconds}s`;
 }
 
+/**
+ * parseAppDeepLink method
+ * @param search 
+ * @returns 
+ */
 function parseAppDeepLink(search: string): { view: AppView | null; campaignId: string | null } {
   const params = new URLSearchParams(search);
   const rawView = (params.get("view") || "").trim();
@@ -237,6 +252,11 @@ function parseAppDeepLink(search: string): { view: AppView | null; campaignId: s
   return { view: parsedView, campaignId: null };
 }
 
+/**
+ * taskCategoryFromText method
+ * @param task 
+ * @returns 
+ */
 function taskCategoryFromText(task: string): string {
   const lower = task.toLowerCase();
   if (lower.includes("email") || lower.includes("telegram") || lower.includes("contact")) {
@@ -284,6 +304,10 @@ function taskCategoryFromText(task: string): string {
   return "Other";
 }
 
+/**
+ * App Component
+ * @returns 
+ */
 function App() {
   const initialDeepLink = useMemo(() => parseAppDeepLink(window.location.search), []);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);

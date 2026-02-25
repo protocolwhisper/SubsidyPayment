@@ -80,7 +80,7 @@
 
 | 項目 | 技術 | バージョン |
 |---|---|---|
-| **ランタイム** | Node.js | 22+ |
+| **ランタイム** | Node.js | 20+ |
 | **言語** | TypeScript | 5.6.0 |
 | **フレームワーク** | Express | 4.21.0 |
 | **MCP SDK** | @modelcontextprotocol/sdk | 1.26.0 |
@@ -105,6 +105,13 @@
 | `PORT` | MCP サーバーポート | `3001` |
 | `LOG_LEVEL` | ログレベル | `info` |
 | `AUTH_ENABLED` | OAuth 認証トグル (`true`/`false`)。未設定時は AUTH0_DOMAIN と AUTH0_AUDIENCE が両方あれば有効、なければ無効 | 自動判定 |
+| `FRONTEND_URL` / `WEB_APP_URL` / `PUBLIC_FRONTEND_URL` | ウィジェット内リンク用フロント URL | `http://localhost:5173`（最終的に解決された値） |
+| `X402_WEATHER_URL` | x402 サンプル `weather` エンドポイント URL | `http://localhost:4021/weather` |
+| `X402_GITHUB_ISSUE_URL` | x402 サンプル `github-issue` エンドポイント URL | `http://localhost:4021/github-issue` |
+| `X402_FACILITATOR_URL` | x402 Facilitator URL | `https://x402.org/facilitator` |
+| `X402_NETWORK` | x402 ネットワーク識別子 | `eip155:84532` |
+| `X402_PRIVATE_KEY` | x402 署名用秘密鍵 | — |
+| `X402_REQUEST_TIMEOUT_MS` | x402 リクエストタイムアウト（ms） | `15000` |
 
 ## x402 サンプルサーバー (x402server)
 

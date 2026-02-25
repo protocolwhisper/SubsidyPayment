@@ -20,18 +20,27 @@ SubsidyPayment/
 │   ├── error.rs           # ApiError / ApiResult エラー型
 │   ├── onchain.rs         # x402 オンチェーン決済ロジック
 │   ├── utils.rs           # ユーティリティ関数
-│   └── test.rs            # テスト
+│   ├── test.rs            # テスト
 │   └── zkpassport_verify.html # zkPassport 検証ページ
 ├── frontend/              # React + Vite フロントエンド
 │   ├── src/
-│   │   ├── App.tsx        # メインアプリケーション（単一ファイル構成）
+│   │   ├── App.tsx        # ランディングページ本体
+│   │   ├── GetStartedButton3D.tsx # 3D CTA ボタン
+│   │   ├── LandingBackground3D.tsx # 3D 背景
 │   │   ├── main.tsx       # エントリポイント
 │   │   └── styles.css     # スタイルシート
+│   ├── public/            # 静的アセット（logo / OG画像）
+│   ├── scripts/           # OG画像生成スクリプト
 │   ├── index.html         # HTML テンプレート
 │   ├── vite.config.ts     # Vite 設定
 │   ├── vercel.json        # Vercel デプロイ設定
 │   └── package.json       # npm 依存関係
 ├── mcp-server/            # MCP サーバー (Node/Express)
+│   ├── src/               # サーバー本体（tools/auth/widgets）
+│   ├── src/widgets/       # GPT Apps 向けウィジェット実装
+│   ├── __tests__/         # ユニットテスト
+│   ├── tests/             # タスク単位の検証テスト
+│   └── app-metadata.json  # MCP アプリメタデータ
 ├── x402server/            # x402 サンプルサーバー / クライアント
 ├── migrations/            # SQLx PostgreSQL マイグレーション
 │   ├── 0001_init.sql              # 初期スキーマ
@@ -107,11 +116,10 @@ SubsidyPayment/
 
 ## DB スキーマ概要
 
-マイグレーションファイルから推測される主要テーブル:
+マイグレーションファイルから確認できる主要テーブル:
 
 | テーブル | 用途 |
 |---|---|
-| `profiles` | ユーザープロフィール |
 | `users` | GPT Apps ユーザー |
 | `resources` | x402 保護リソース |
 | `offers` | スポンサーオファー |
@@ -133,5 +141,7 @@ SubsidyPayment/
 - **型安全エラー**: `thiserror` ベースの `ApiError` → HTTP ステータスコード変換
 - **x402 プロキシパターン**: 402 レスポンスをインターセプト → Paywall 表示 → スポンサー決済 → リソース返却
 - **GPT Apps 連携**: `/gpt` ルート配下に GPT Apps 向け API を集約
+- **Agent Discovery 連携**: `/agent/discovery` `/claude/discovery` `/openclaw/discovery` を共通ロジックで提供
 - **zkPassport 連携**: 検証ページ + セッション API を提供
-- **フロントエンド**: 単一 `App.tsx` ファイル構成（将来的にコンポーネント分割推奨）
+- **MCP App 構成**: OAuth + MCP Tools + Vite singlefile ウィジェットを同一リポジトリで運用
+- **フロントエンド**: `App.tsx` + 3D コンポーネント分割構成

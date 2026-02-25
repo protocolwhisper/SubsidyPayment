@@ -1,8 +1,13 @@
 // @ts-nocheck
-import { useRef, useState, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
+import { Suspense, useRef, useState } from "react";
 import * as THREE from "three";
 
+/**
+ * ButtonShape Component
+ * @param param0 
+ * @returns 
+ */
 function ButtonShape({ isHovered }: { isHovered: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null);
   useFrame((_, delta) => {
@@ -31,6 +36,11 @@ function ButtonShape({ isHovered }: { isHovered: boolean }) {
   );
 }
 
+/**
+ * GetStartedButton3D Component
+ * @param param0 
+ * @returns 
+ */
 export function GetStartedButton3D({
   onClick,
   className = "",

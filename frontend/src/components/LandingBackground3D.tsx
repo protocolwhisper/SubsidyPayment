@@ -1,8 +1,12 @@
 // @ts-nocheck
-import { useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
+import { useRef } from "react";
 import * as THREE from "three";
 
+/**
+ * AmbientShape Component
+ * @returns 
+ */
 function AmbientShape() {
   const meshRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
@@ -55,6 +59,10 @@ function AmbientShape() {
   );
 }
 
+/**
+ * LandingBackground3D Component
+ * @returns 
+ */
 export function LandingBackground3D() {
   return (
     <div className="landing-background-3d" aria-hidden>
