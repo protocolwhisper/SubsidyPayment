@@ -21,6 +21,26 @@ Required env:
 DATABASE_URL=postgres://postgres:postgres@localhost:55432/payloadexchange
 ```
 
+## Clear all data (operations script)
+
+Clears all table data in the `public` schema and resets identities.
+Table definitions are preserved (`_sqlx_migrations` is kept).
+
+```bash
+# With confirmation (recommended)
+./scripts/clear-db-data.sh
+
+# Without confirmation (for CI/automation)
+./scripts/clear-db-data.sh --yes
+
+# Explicit target DB
+DATABASE_URL=postgres://postgres:postgres@localhost:55432/payloadexchange ./scripts/clear-db-data.sh --yes
+```
+
+Notes:
+- This operation is irreversible. Verify the target DB before running.
+- `psql` command is required.
+
 ## Current tables
 
 | Table | Added in | Purpose |

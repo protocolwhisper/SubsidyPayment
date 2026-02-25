@@ -21,6 +21,26 @@ sqlx migrate run
 DATABASE_URL=postgres://postgres:postgres@localhost:55432/payloadexchange
 ```
 
+## 全データを削除する（運用スクリプト）
+
+`public` スキーマ内の全テーブルデータを削除し、シーケンスをリセットします。
+テーブル定義は維持されます（`_sqlx_migrations` は保持）。
+
+```bash
+# 確認あり（推奨）
+./scripts/clear-db-data.sh
+
+# 確認なし（CI/自動処理向け）
+./scripts/clear-db-data.sh --yes
+
+# 接続先を明示して実行
+DATABASE_URL=postgres://postgres:postgres@localhost:55432/payloadexchange ./scripts/clear-db-data.sh --yes
+```
+
+注意:
+- この操作は取り消せません。実行前に対象DBを必ず確認してください。
+- `psql` コマンドが必要です。
+
 ## 現在のテーブル一覧
 
 | テーブル | 追加マイグレーション | 用途 |
