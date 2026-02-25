@@ -69,7 +69,10 @@ function App() {
   const apiBaseUrl = useMemo(() => {
     const configured = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
     if (configured) {
-      return configured.replace(/\/+$/, "");
+      const normalized = configured.replace(/^['"]+|['";\s]+$/g, "");
+      if (normalized) {
+        return normalized.replace(/\/+$/, "");
+      }
     }
     return "/api";
   }, []);

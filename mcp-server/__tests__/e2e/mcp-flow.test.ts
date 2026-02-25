@@ -92,6 +92,8 @@ function registerTools() {
 }
 
 describe('MCP E2E flow (task 9.3)', () => {
+  const campaignId = '00000000-0000-4000-8000-000000000001';
+
   beforeEach(() => {
     mocked.registrations.clear();
     mocked.registerAppTool.mockReset();
@@ -113,7 +115,7 @@ describe('MCP E2E flow (task 9.3)', () => {
       services: [
         {
           service_type: 'campaign',
-          service_id: 'campaign-1',
+          service_id: campaignId,
           name: 'Design Campaign',
           sponsor: 'Sponsor A',
           required_task: 'survey',
@@ -146,7 +148,7 @@ describe('MCP E2E flow (task 9.3)', () => {
     });
 
     mocked.getTaskDetails.mockResolvedValue({
-      campaign_id: 'campaign-1',
+      campaign_id: campaignId,
       campaign_name: 'Design Campaign',
       sponsor: 'Sponsor A',
       required_task: 'survey',
@@ -159,7 +161,7 @@ describe('MCP E2E flow (task 9.3)', () => {
 
     mocked.completeTask.mockResolvedValue({
       task_completion_id: 'tc-1',
-      campaign_id: 'campaign-1',
+      campaign_id: campaignId,
       consent_recorded: true,
       can_use_service: true,
       message: 'task completed',
@@ -185,12 +187,12 @@ describe('MCP E2E flow (task 9.3)', () => {
     const context = { auth: { token: 'oauth-token' } };
     const taskDetails = await mocked.registrations
       .get('get_task_details')!
-      .handler({ campaign_id: 'campaign-1', session_token: auth._meta.session_token }, context);
-    expect(taskDetails.structuredContent.campaign_id).toBe('campaign-1');
+      .handler({ campaign_id: campaignId, session_token: auth._meta.session_token }, context);
+    expect(taskDetails.structuredContent.campaign_id).toBe(campaignId);
 
     const complete = await mocked.registrations.get('complete_task')!.handler(
       {
-        campaign_id: 'campaign-1',
+        campaign_id: campaignId,
         session_token: auth._meta.session_token,
         task_name: 'survey',
         details: 'age=20',
