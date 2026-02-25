@@ -12,6 +12,7 @@
 * [Render Deploy Check](deployment/RENDER_DEPLOY_CHECK.md)
 * [Render Env Example](deployment/RENDER_ENV_EXAMPLE.md)
 * [Local Setup](deployment/SETUP.md)
+* [GPT App Integration Test Prompts](testing/gpt-app-integration-prompts.md)
 * [Postgres Schema](postgres.md)
 * [What is PayloadExchange?](getting-started/what-is-payloadexchange.md)
 * [Why It Exists](getting-started/why-it-exists.md)

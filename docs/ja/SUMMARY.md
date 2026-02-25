@@ -12,6 +12,7 @@
 * [Render デプロイ確認](deployment/RENDER_DEPLOY_CHECK.md)
 * [Render 環境変数例](deployment/RENDER_ENV_EXAMPLE.md)
 * [ローカルセットアップ](deployment/SETUP.md)
+* [GPT App 結合テストプロンプト](testing/gpt-app-integration-prompts.md)
 * [Postgres スキーマ](postgres.md)
 * [PayloadExchangeとは？](getting-started/what-is-payloadexchange.md)
 * [なぜ必要か](getting-started/why-it-exists.md)
