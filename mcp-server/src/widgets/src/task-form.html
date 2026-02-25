@@ -179,6 +179,102 @@
         font-size: 12px;
       }
 
+      .feedback-card {
+        margin-top: 10px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: #111827;
+        padding: 12px;
+        display: grid;
+        gap: 10px;
+      }
+
+      .feedback-title {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .feedback-sub {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .feedback-label {
+        margin: 0;
+        color: #cbd5e1;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .feedback-link {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--panel-soft);
+        color: #38bdf8;
+        padding: 8px 10px;
+        font-size: 12px;
+        width: 100%;
+      }
+
+      .stars {
+        display: flex;
+        gap: 6px;
+      }
+
+      .star-btn {
+        width: 24px;
+        height: 24px;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: #475569;
+        cursor: pointer;
+        font-size: 18px;
+        line-height: 1;
+        padding: 0;
+      }
+
+      .star-btn.active {
+        color: #f59e0b;
+      }
+
+      .tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .tag-chip {
+        border-radius: 999px;
+        border: 1px solid #475569;
+        background: #1e293b;
+        color: #cbd5e1;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 6px 10px;
+        cursor: pointer;
+      }
+
+      .tag-chip.active {
+        border-color: #0ea5e9;
+        background: rgba(14, 165, 233, 0.22);
+        color: #bae6fd;
+      }
+
+      .feedback-reason {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: #0b1220;
+        color: var(--text);
+        padding: 10px;
+        font-size: 12px;
+        min-height: 74px;
+        resize: vertical;
+      }
+
       .zk-panel {
         margin-top: 10px;
         border-radius: 12px;
@@ -380,6 +476,10 @@
           : {};
       const isZkpassportTask = taskType === 'zkpassport_age_country';
       const selectedServiceName = typeof widgetState?.selectedServiceName === 'string' ? widgetState.selectedServiceName : selectedServiceKey || 'service';
+      const feedbackProductLink =
+        typeof widgetState?.selectedServiceUrl === 'string' && widgetState.selectedServiceUrl.length > 0
+          ? widgetState.selectedServiceUrl
+          : 'https://example.com/product';
 
       function escapeHtml(value) {
         return String(value ?? '')
@@ -416,6 +516,73 @@
         return payload;
       }
 
+      function collectFeedback() {
+        const ratingInput = root?.querySelector('#feedback-rating');
+        const tagsInput = root?.querySelector('#feedback-tags');
+        const reasonInput = root?.querySelector('#feedback-reason');
+        const productLinkInput = root?.querySelector('#feedback-product-link');
+
+        return {
+          product_link: productLinkInput?.value ?? '',
+          feedback_rating: ratingInput?.value ?? '',
+          feedback_tags: tagsInput?.value ?? '',
+          feedback_reason: reasonInput?.value ?? '',
+        };
+      }
+
+      function validateFeedback() {
+        const feedbackRoot = root?.querySelector('#product-feedback');
+        if (!feedbackRoot) return null;
+
+        const feedback = collectFeedback();
+        const rating = Number(feedback.feedback_rating || 0);
+        if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+          return 'Please select a star rating (1-5).';
+        }
+        if (!feedback.feedback_tags || feedback.feedback_tags.trim().length === 0) {
+          return 'Please select at least one evaluation tag.';
+        }
+        if (!feedback.feedback_reason || feedback.feedback_reason.trim().length < 6) {
+          return 'Please describe the reason for your selected tags.';
+        }
+        return null;
+      }
+
+      function updateTagInput() {
+        const activeTags = [...(root?.querySelectorAll('.tag-chip.active') ?? [])]
+          .map((chip) => chip.getAttribute('data-tag'))
+          .filter(Boolean);
+        const tagsInput = root?.querySelector('#feedback-tags');
+        if (tagsInput) {
+          tagsInput.value = activeTags.join(', ');
+        }
+      }
+
+      function setupFeedbackInteractions() {
+        const stars = root?.querySelectorAll('.star-btn') ?? [];
+        stars.forEach((star) => {
+          star.addEventListener('click', () => {
+            const rating = Number(star.getAttribute('data-rating') || 0);
+            const ratingInput = root?.querySelector('#feedback-rating');
+            if (ratingInput) {
+              ratingInput.value = String(rating);
+            }
+            stars.forEach((item) => {
+              const itemRating = Number(item.getAttribute('data-rating') || 0);
+              item.classList.toggle('active', itemRating <= rating);
+            });
+          });
+        });
+
+        const tags = root?.querySelectorAll('.tag-chip') ?? [];
+        tags.forEach((chip) => {
+          chip.addEventListener('click', () => {
+            chip.classList.toggle('active');
+            updateTagInput();
+          });
+        });
+      }
+
       function allConsentsChecked(form) {
         const formData = new FormData(form);
         return (
@@ -442,6 +609,15 @@
         event.preventDefault();
         const form = event.currentTarget;
         const err = root?.querySelector('.error');
+
+        const feedbackError = validateFeedback();
+        if (feedbackError) {
+          if (err) {
+            err.textContent = feedbackError;
+            err.style.color = 'var(--danger)';
+          }
+          return;
+        }
 
         if (!allConsentsChecked(form)) {
           if (err) {
@@ -527,6 +703,7 @@
         }
 
         const detailsPayload = collectFields(form);
+        Object.assign(detailsPayload, collectFeedback());
         detailsPayload._task_description = taskDescription;
 
         await callTool('complete_task', {
@@ -630,6 +807,47 @@
         `;
       }
 
+      function buildFeedbackPanel() {
+        if (isZkpassportTask) {
+          return '';
+        }
+
+        return `
+          <section class="feedback-card" id="product-feedback">
+            <h4 class="feedback-title">Product Feedback (Required)</h4>
+            <p class="feedback-sub">Please review the product used for this task before verification.</p>
+            <p class="feedback-label">0. Product Link</p>
+            <input id="feedback-product-link" class="feedback-link" value="${escapeHtml(feedbackProductLink)}" />
+            <p class="feedback-label">1. 5-star Rating</p>
+            <div class="stars">
+              <button type="button" class="star-btn" data-rating="1">★</button>
+              <button type="button" class="star-btn" data-rating="2">★</button>
+              <button type="button" class="star-btn" data-rating="3">★</button>
+              <button type="button" class="star-btn" data-rating="4">★</button>
+              <button type="button" class="star-btn" data-rating="5">★</button>
+            </div>
+            <p class="feedback-label">2. Select Evaluation Tags</p>
+            <div class="tag-list">
+              <button type="button" class="tag-chip" data-tag="Cost">Cost</button>
+              <button type="button" class="tag-chip" data-tag="Usability">Usability</button>
+              <button type="button" class="tag-chip" data-tag="Visibility">Visibility</button>
+              <button type="button" class="tag-chip" data-tag="Features">Features</button>
+              <button type="button" class="tag-chip" data-tag="Easy to Adopt">Easy to Adopt</button>
+              <button type="button" class="tag-chip" data-tag="Security">Security</button>
+              <button type="button" class="tag-chip" data-tag="Other">Other</button>
+            </div>
+            <p class="feedback-label">3. Explain Why (Required)</p>
+            <textarea
+              id="feedback-reason"
+              class="feedback-reason"
+              placeholder="Example: X is ambiguous in onboarding docs, and I want Y feature for better visibility."
+            ></textarea>
+            <input type="hidden" id="feedback-rating" value="" />
+            <input type="hidden" id="feedback-tags" value="" />
+          </section>
+        `;
+      }
+
       function render() {
         if (!root) return;
 
@@ -674,6 +892,7 @@
           <div class="divider"></div>
           <section class="verify">
             <div class="verify-note">ℹ️ ${escapeHtml(taskDescription)}</div>
+            ${buildFeedbackPanel()}
             <button class="verify-btn" id="verify-btn">${isZkpassportTask ? 'Verify age & country' : 'Submit for Verification'}</button>
             ${buildZkVerificationPanel()}
             <button class="alt" id="direct-payment">Use direct payment instead</button>
@@ -720,6 +939,7 @@
           void onSubmit(event);
         });
 
+        setupFeedbackInteractions();
         notifyWidgetHeight(app);
       }
 

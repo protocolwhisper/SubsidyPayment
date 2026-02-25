@@ -2910,11 +2910,461 @@
                   "fill": "#94A3B8",
                   "textGrowth": "fixed-width",
                   "width": "fill_container",
-                  "content": "After signing up, click below to verify your account and earn $5.",
+                  "content": "After signup and feedback submission, click below to verify your account and earn $5.",
                   "lineHeight": 1.5,
                   "fontFamily": "Space Grotesk",
                   "fontSize": 12,
                   "fontWeight": "normal"
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "YWtNS",
+              "name": "ProductFeedbackSection",
+              "width": "fill_container",
+              "fill": "#111827",
+              "cornerRadius": 12,
+              "stroke": {
+                "align": "inside",
+                "thickness": 1,
+                "fill": "#334155"
+              },
+              "layout": "vertical",
+              "gap": 12,
+              "padding": [
+                14,
+                16
+              ],
+              "children": [
+                {
+                  "type": "text",
+                  "id": "zUEsg",
+                  "name": "pfTitle",
+                  "fill": "#F8FAFC",
+                  "content": "Product Feedback (Required)",
+                  "fontFamily": "Space Grotesk",
+                  "fontSize": 14,
+                  "fontWeight": "700"
+                },
+                {
+                  "type": "text",
+                  "id": "tKBCV",
+                  "name": "pfHint",
+                  "fill": "#94A3B8",
+                  "content": "Please review the product used for this task before verification.",
+                  "fontFamily": "Space Grotesk",
+                  "fontSize": 12,
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "71VsV",
+                  "name": "pfLinkLabel",
+                  "fill": "#CBD5E1",
+                  "content": "0. Product Link",
+                  "fontFamily": "Space Grotesk",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "KDDbX",
+                  "name": "pfLinkRow",
+                  "width": "fill_container",
+                  "fill": "#1E293B",
+                  "cornerRadius": 10,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "#334155"
+                  },
+                  "gap": 8,
+                  "padding": [
+                    10,
+                    12
+                  ],
+                  "justifyContent": "space_between",
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "vSfKR",
+                      "name": "pfLinkText",
+                      "fill": "#38BDF8",
+                      "content": "https://example.com/product",
+                      "fontFamily": "JetBrains Mono",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "mOli0",
+                      "name": "pfLinkIcon",
+                      "width": 14,
+                      "height": 14,
+                      "iconFontName": "external-link",
+                      "iconFontFamily": "lucide",
+                      "fill": "#38BDF8"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "27sbS",
+                  "name": "pfRatingLabel",
+                  "fill": "#CBD5E1",
+                  "content": "1. 5-star Rating",
+                  "fontFamily": "Space Grotesk",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "i0bzY",
+                  "name": "pfStars",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "padding": [
+                    2,
+                    0
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "icon_font",
+                      "id": "PP0ii",
+                      "name": "pfStar1",
+                      "width": 20,
+                      "height": 20,
+                      "iconFontName": "star",
+                      "iconFontFamily": "lucide",
+                      "fill": "#F59E0B"
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "XFUxy",
+                      "name": "pfStar2",
+                      "width": 20,
+                      "height": 20,
+                      "iconFontName": "star",
+                      "iconFontFamily": "lucide",
+                      "fill": "#F59E0B"
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "raLSw",
+                      "name": "pfStar3",
+                      "width": 20,
+                      "height": 20,
+                      "iconFontName": "star",
+                      "iconFontFamily": "lucide",
+                      "fill": "#F59E0B"
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "w6Qfn",
+                      "name": "pfStar4",
+                      "width": 20,
+                      "height": 20,
+                      "iconFontName": "star",
+                      "iconFontFamily": "lucide",
+                      "fill": "#F59E0B"
+                    },
+                    {
+                      "type": "icon_font",
+                      "id": "S1W8z",
+                      "name": "pfStar5",
+                      "width": 20,
+                      "height": 20,
+                      "iconFontName": "star",
+                      "iconFontFamily": "lucide",
+                      "fill": "#475569"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "BXeTQ",
+                  "name": "pfTagsLabel",
+                  "fill": "#CBD5E1",
+                  "content": "2. Select Evaluation Tags",
+                  "fontFamily": "Space Grotesk",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "924Pg",
+                  "name": "pfTagsRow",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "qzVF4",
+                      "name": "pfTagCost",
+                      "fill": "#0C4A6E33",
+                      "cornerRadius": 999,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#0EA5E933"
+                      },
+                      "padding": [
+                        6,
+                        10
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "5ySCy",
+                          "name": "pfTagCostText",
+                          "fill": "#67E8F9",
+                          "content": "Cost",
+                          "fontFamily": "Space Grotesk",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "9dDBK",
+                      "name": "pfTagUsability",
+                      "fill": "#14532D33",
+                      "cornerRadius": 999,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#22C55E33"
+                      },
+                      "padding": [
+                        6,
+                        10
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "pp4mq",
+                          "name": "pfTagUsabilityText",
+                          "fill": "#86EFAC",
+                          "content": "Usability",
+                          "fontFamily": "Space Grotesk",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "GhQdN",
+                      "name": "pfTagVisibility",
+                      "fill": "#5B21B633",
+                      "cornerRadius": 999,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#A78BFA33"
+                      },
+                      "padding": [
+                        6,
+                        10
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Q4Nyd",
+                          "name": "pfTagVisibilityText",
+                          "fill": "#C4B5FD",
+                          "content": "Visibility",
+                          "fontFamily": "Space Grotesk",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "qAZRZ",
+                      "name": "pfTagFeatures",
+                      "fill": "#78350F33",
+                      "cornerRadius": 999,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#F59E0B33"
+                      },
+                      "padding": [
+                        6,
+                        10
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "s8Rco",
+                          "name": "pfTagFeaturesText",
+                          "fill": "#FCD34D",
+                          "content": "Features",
+                          "fontFamily": "Space Grotesk",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "yCFos",
+                  "name": "pfTagsRow2",
+                  "width": "fill_container",
+                  "gap": 8,
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "Yre6Y",
+                      "name": "pfTagAdoption",
+                      "fill": "#0F766E33",
+                      "cornerRadius": 999,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#14B8A633"
+                      },
+                      "padding": [
+                        6,
+                        10
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "dFGoQ",
+                          "name": "pfTagAdoptionText",
+                          "fill": "#5EEAD4",
+                          "content": "Easy to Adopt",
+                          "fontFamily": "Space Grotesk",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "LrCO2",
+                      "name": "pfTagSecurity",
+                      "fill": "#7F1D1D33",
+                      "cornerRadius": 999,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#EF444433"
+                      },
+                      "padding": [
+                        6,
+                        10
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "Vp5Zm",
+                          "name": "pfTagSecurityText",
+                          "fill": "#FCA5A5",
+                          "content": "Security",
+                          "fontFamily": "Space Grotesk",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "frame",
+                      "id": "rVBvO",
+                      "name": "pfTagOther",
+                      "fill": "#1E293B",
+                      "cornerRadius": 999,
+                      "stroke": {
+                        "align": "inside",
+                        "thickness": 1,
+                        "fill": "#475569"
+                      },
+                      "padding": [
+                        6,
+                        10
+                      ],
+                      "children": [
+                        {
+                          "type": "text",
+                          "id": "xYUsw",
+                          "name": "pfTagOtherText",
+                          "fill": "#CBD5E1",
+                          "content": "Other",
+                          "fontFamily": "Space Grotesk",
+                          "fontSize": 11,
+                          "fontWeight": "600"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "id": "6difz",
+                  "name": "pfReasonLabel",
+                  "fill": "#CBD5E1",
+                  "content": "3. Explain Why (Required)",
+                  "fontFamily": "Space Grotesk",
+                  "fontSize": 12,
+                  "fontWeight": "600"
+                },
+                {
+                  "type": "frame",
+                  "id": "MjwbS",
+                  "name": "pfReasonBox",
+                  "width": "fill_container",
+                  "fill": "#0B1220",
+                  "cornerRadius": 10,
+                  "stroke": {
+                    "align": "inside",
+                    "thickness": 1,
+                    "fill": "#334155"
+                  },
+                  "layout": "vertical",
+                  "gap": 6,
+                  "padding": [
+                    10,
+                    12
+                  ],
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "VkCNZ",
+                      "name": "pfReasonPlaceholder",
+                      "fill": "#64748B",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Example: X is ambiguous in onboarding docs, and I want Y feature for better visibility.",
+                      "lineHeight": 1.5,
+                      "fontFamily": "Space Grotesk",
+                      "fontSize": 12,
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "aaPBw",
+                      "name": "pfReasonHint",
+                      "fill": "#475569",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Write concrete feedback such as unclear wording, missing options, or desired additions.",
+                      "lineHeight": 1.4,
+                      "fontFamily": "Space Grotesk",
+                      "fontSize": 11,
+                      "fontWeight": "normal"
+                    }
+                  ]
                 }
               ]
             },
