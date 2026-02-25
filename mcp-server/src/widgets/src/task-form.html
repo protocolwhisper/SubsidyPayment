@@ -480,6 +480,68 @@
         typeof widgetState?.selectedServiceUrl === 'string' && widgetState.selectedServiceUrl.length > 0
           ? widgetState.selectedServiceUrl
           : 'https://example.com/product';
+      const fallbackFeedbackTags = ['Cost', 'Usability', 'Visibility', 'Features', 'Easy to Adopt', 'Security', 'Other'];
+
+      function resolveFeedbackConfig() {
+        const candidate = (
+          taskConstraints?.feedback ??
+          task_input_format?.feedback ??
+          task_input_format?.feedback_form ??
+          data?.feedback
+        );
+        const raw = candidate && typeof candidate === 'object' ? candidate : {};
+        const tagsRaw = Array.isArray(raw.tags) ? raw.tags : fallbackFeedbackTags;
+        const tags = tagsRaw
+          .map((item) => {
+            if (typeof item === 'string') {
+              return { value: item, label: item };
+            }
+            if (item && typeof item === 'object') {
+              const value = typeof item.value === 'string' && item.value.trim().length > 0
+                ? item.value.trim()
+                : (typeof item.label === 'string' ? item.label.trim() : '');
+              const label = typeof item.label === 'string' && item.label.trim().length > 0 ? item.label.trim() : value;
+              if (value.length > 0 && label.length > 0) {
+                return { value, label };
+              }
+            }
+            return null;
+          })
+          .filter(Boolean);
+
+        const reasonMinLengthRaw = Number(raw.reason_min_length ?? 6);
+        const ratingMaxRaw = Number(raw.rating_max ?? 5);
+        const requiredTagsMinRaw = Number(raw.required_tags_min ?? 1);
+        const clampedRatingMax = Number.isFinite(ratingMaxRaw) ? Math.max(1, Math.min(5, Math.floor(ratingMaxRaw))) : 5;
+        const reasonMinLength = Number.isFinite(reasonMinLengthRaw) ? Math.max(1, Math.floor(reasonMinLengthRaw)) : 6;
+        const requiredTagsMin = Number.isFinite(requiredTagsMinRaw) ? Math.max(1, Math.floor(requiredTagsMinRaw)) : 1;
+
+        return {
+          enabled: raw.enabled !== false,
+          title: typeof raw.title === 'string' && raw.title.length > 0 ? raw.title : 'Product Feedback (Required)',
+          subtitle: typeof raw.subtitle === 'string' && raw.subtitle.length > 0
+            ? raw.subtitle
+            : 'Please review the product used for this task before verification.',
+          productLinkLabel: typeof raw.product_link_label === 'string' && raw.product_link_label.length > 0
+            ? raw.product_link_label
+            : '0. Product Link',
+          productLink: typeof raw.product_link === 'string' && raw.product_link.length > 0 ? raw.product_link : feedbackProductLink,
+          ratingLabel: typeof raw.rating_label === 'string' && raw.rating_label.length > 0
+            ? raw.rating_label
+            : `1. ${clampedRatingMax}-star Rating`,
+          tagLabel: typeof raw.tag_label === 'string' && raw.tag_label.length > 0 ? raw.tag_label : '2. Select Evaluation Tags',
+          reasonLabel: typeof raw.reason_label === 'string' && raw.reason_label.length > 0 ? raw.reason_label : '3. Explain Why (Required)',
+          reasonPlaceholder: typeof raw.reason_placeholder === 'string' && raw.reason_placeholder.length > 0
+            ? raw.reason_placeholder
+            : 'Example: X is ambiguous in onboarding docs, and I want Y feature for better visibility.',
+          reasonMinLength,
+          requiredTagsMin,
+          ratingMax: clampedRatingMax,
+          tags: tags.length > 0 ? tags : fallbackFeedbackTags.map((tag) => ({ value: tag, label: tag })),
+        };
+      }
+
+      const feedbackConfig = resolveFeedbackConfig();
 
       function escapeHtml(value) {
         return String(value ?? '')
@@ -517,6 +579,9 @@
       }
 
       function collectFeedback() {
+        const feedbackRoot = root?.querySelector('#product-feedback');
+        if (!feedbackRoot) return null;
+
         const ratingInput = root?.querySelector('#feedback-rating');
         const tagsInput = root?.querySelector('#feedback-tags');
         const reasonInput = root?.querySelector('#feedback-reason');
@@ -535,14 +600,24 @@
         if (!feedbackRoot) return null;
 
         const feedback = collectFeedback();
+        if (!feedback) return null;
+
         const rating = Number(feedback.feedback_rating || 0);
-        if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
-          return 'Please select a star rating (1-5).';
+        if (!Number.isFinite(rating) || rating < 1 || rating > feedbackConfig.ratingMax) {
+          return `Please select a star rating (1-${feedbackConfig.ratingMax}).`;
         }
-        if (!feedback.feedback_tags || feedback.feedback_tags.trim().length === 0) {
-          return 'Please select at least one evaluation tag.';
+        const selectedTags = String(feedback.feedback_tags || '')
+          .split(',')
+          .map((tag) => tag.trim())
+          .filter(Boolean);
+        if (selectedTags.length < feedbackConfig.requiredTagsMin) {
+          return `Please select at least ${feedbackConfig.requiredTagsMin} evaluation tag(s).`;
         }
-        if (!feedback.feedback_reason || feedback.feedback_reason.trim().length < 6) {
+        const productLink = String(feedback.product_link || '').trim();
+        if (!/^https?:\/\//i.test(productLink)) {
+          return 'Please enter a valid product link (http:// or https://).';
+        }
+        if (!feedback.feedback_reason || feedback.feedback_reason.trim().length < feedbackConfig.reasonMinLength) {
           return 'Please describe the reason for your selected tags.';
         }
         return null;
@@ -703,7 +778,10 @@
         }
 
         const detailsPayload = collectFields(form);
-        Object.assign(detailsPayload, collectFeedback());
+        const feedback = collectFeedback();
+        if (feedback) {
+          Object.assign(detailsPayload, feedback);
+        }
         detailsPayload._task_description = taskDescription;
 
         await callTool('complete_task', {
@@ -811,36 +889,34 @@
         if (isZkpassportTask) {
           return '';
         }
+        if (feedbackConfig.enabled === false) {
+          return '';
+        }
+
+        const stars = Array.from({ length: feedbackConfig.ratingMax }, (_, index) => {
+          const rating = index + 1;
+          return `<button type="button" class="star-btn" data-rating="${rating}">★</button>`;
+        }).join('');
+
+        const tags = feedbackConfig.tags
+          .map((tag) => `<button type="button" class="tag-chip" data-tag="${escapeHtml(tag.value)}">${escapeHtml(tag.label)}</button>`)
+          .join('');
 
         return `
           <section class="feedback-card" id="product-feedback">
-            <h4 class="feedback-title">Product Feedback (Required)</h4>
-            <p class="feedback-sub">Please review the product used for this task before verification.</p>
-            <p class="feedback-label">0. Product Link</p>
-            <input id="feedback-product-link" class="feedback-link" value="${escapeHtml(feedbackProductLink)}" />
-            <p class="feedback-label">1. 5-star Rating</p>
-            <div class="stars">
-              <button type="button" class="star-btn" data-rating="1">★</button>
-              <button type="button" class="star-btn" data-rating="2">★</button>
-              <button type="button" class="star-btn" data-rating="3">★</button>
-              <button type="button" class="star-btn" data-rating="4">★</button>
-              <button type="button" class="star-btn" data-rating="5">★</button>
-            </div>
-            <p class="feedback-label">2. Select Evaluation Tags</p>
-            <div class="tag-list">
-              <button type="button" class="tag-chip" data-tag="Cost">Cost</button>
-              <button type="button" class="tag-chip" data-tag="Usability">Usability</button>
-              <button type="button" class="tag-chip" data-tag="Visibility">Visibility</button>
-              <button type="button" class="tag-chip" data-tag="Features">Features</button>
-              <button type="button" class="tag-chip" data-tag="Easy to Adopt">Easy to Adopt</button>
-              <button type="button" class="tag-chip" data-tag="Security">Security</button>
-              <button type="button" class="tag-chip" data-tag="Other">Other</button>
-            </div>
-            <p class="feedback-label">3. Explain Why (Required)</p>
+            <h4 class="feedback-title">${escapeHtml(feedbackConfig.title)}</h4>
+            <p class="feedback-sub">${escapeHtml(feedbackConfig.subtitle)}</p>
+            <p class="feedback-label">${escapeHtml(feedbackConfig.productLinkLabel)}</p>
+            <input id="feedback-product-link" class="feedback-link" value="${escapeHtml(feedbackConfig.productLink)}" />
+            <p class="feedback-label">${escapeHtml(feedbackConfig.ratingLabel)}</p>
+            <div class="stars">${stars}</div>
+            <p class="feedback-label">${escapeHtml(feedbackConfig.tagLabel)}</p>
+            <div class="tag-list">${tags}</div>
+            <p class="feedback-label">${escapeHtml(feedbackConfig.reasonLabel)}</p>
             <textarea
               id="feedback-reason"
               class="feedback-reason"
-              placeholder="Example: X is ambiguous in onboarding docs, and I want Y feature for better visibility."
+              placeholder="${escapeHtml(feedbackConfig.reasonPlaceholder)}"
             ></textarea>
             <input type="hidden" id="feedback-rating" value="" />
             <input type="hidden" id="feedback-tags" value="" />

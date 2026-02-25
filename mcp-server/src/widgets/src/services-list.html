@@ -421,10 +421,14 @@
         return app.callTool(name, input);
       }
 
+      async function setWidgetState(nextState) {
+        return app?.setWidgetState?.(nextState);
+      }
+
       function persistWidgetState(nextState) {
         widgetState = nextState;
         try {
-          const maybePromise = app?.setWidgetState?.(nextState);
+          const maybePromise = setWidgetState(nextState);
           if (maybePromise && typeof maybePromise.catch === 'function') {
             maybePromise.catch((error) => console.warn('services-list widget setWidgetState failed', error));
           }
@@ -491,9 +495,9 @@
             selectionError = 'This view cannot open details here. Use the chat to ask for task details.';
             return;
           }
-          const toolName = shouldOpenServiceTasks ? 'get_service_tasks' : 'get_task_details';
-          const toolInput = shouldOpenServiceTasks ? { service_key: serviceKey } : { campaign_id: campaignId };
-          const response = await callTool(toolName, toolInput);
+          const response = shouldOpenServiceTasks
+            ? await callTool('get_service_tasks', { service_key: serviceKey })
+            : await callTool('get_task_details', { campaign_id: campaignId });
 
           if (response && typeof response === 'object' && response.isError) {
             const text =
@@ -505,7 +509,7 @@
             selectionError = 'No response. Try again or ask in chat: "Show task details for [service]".';
           } else {
             selectionNotice =
-              toolName === 'get_service_tasks'
+              shouldOpenServiceTasks
                 ? `Opening tasks for ${serviceName || serviceKey || 'selected service'}… If the view did not change, ask in chat to open tasks.`
                 : `Opening campaign details for ${serviceName || serviceKey || 'selected campaign'}… If the view did not change, ask in chat.`;
           }
