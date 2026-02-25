@@ -43,8 +43,8 @@ VALUES (
   'GitHub Issue Creation Campaign',
   'GitHub Enterprise',
   '0x8346288c03Ab0f8de9916fb7A778d757dfb7832e',
-  ARRAY['developer','maintainer','oss-contributor']::text[],
-  ARRAY['github','issue-tracker','open-source']::text[],
+  ARRAY['developer']::text[],
+  ARRAY['github']::text[],
   'Create one issue in the designated repository and submit the issue URL.',
   '{
     "type": "github_issue_create",
