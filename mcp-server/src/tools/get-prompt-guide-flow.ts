@@ -10,7 +10,7 @@ const getPromptGuideFlowInputSchema = z.object({
   campaign_id: z.string().optional(),
 });
 
-type FlowStep = '0' | '1' | '2' | '3' | '4' | '5';
+type FlowStep = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7';
 
 interface FlowDefinition {
   step: FlowStep;
@@ -22,6 +22,7 @@ interface FlowDefinition {
 
 const ALLOWED_ACTIONS = [
   'get_prompt_guide_flow',
+  'create_campaign_from_goal',
   'search_services',
   'authenticate_user',
   'get_service_tasks',
@@ -39,7 +40,15 @@ const ALLOWED_ACTIONS = [
 
 function normalizeStep(raw?: string): FlowStep {
   const normalized = String(raw ?? '').trim();
-  if (normalized === '1' || normalized === '2' || normalized === '3' || normalized === '4' || normalized === '5') {
+  if (
+    normalized === '1' ||
+    normalized === '2' ||
+    normalized === '3' ||
+    normalized === '4' ||
+    normalized === '5' ||
+    normalized === '6' ||
+    normalized === '7'
+  ) {
     return normalized;
   }
   return '0';
@@ -51,6 +60,23 @@ function buildFlow(step: FlowStep, service?: string, campaignId?: string): FlowD
 
   switch (step) {
     case '1':
+      return {
+        step,
+        goal: 'キャンペーンを作成して、以降のタスク導線を有効化する。',
+        recommendedNextPrompt: `create_campaign_from_goal を使って ${resolvedService} 向けキャンペーンを作成してください。`,
+        copyPastePrompts: [
+          `create_campaign_from_goal を purpose=GitHub Issue作成導線の検証, sponsor=SubsidyPayment Demo, target_roles=[\"developer\"], target_tools=[\"${resolvedService}\"], budget_cents=50000 で実行してください。`,
+          '作成後に campaign_id と selected_service_key を1行で報告してください。',
+        ],
+        nextActions: [
+          {
+            action: 'キャンペーン作成',
+            prompt: `Please run create_campaign_from_goal for service=${resolvedService}.`,
+            tool: 'create_campaign_from_goal',
+          },
+        ],
+      };
+    case '2':
       return {
         step,
         goal: '候補サービスを比較して、次に進む1件を選ぶ。',
@@ -67,7 +93,7 @@ function buildFlow(step: FlowStep, service?: string, campaignId?: string): FlowD
           },
         ],
       };
-    case '2':
+    case '3':
       return {
         step,
         goal: '対象キャンペーンの必須タスク詳細を確定する。',
@@ -84,7 +110,7 @@ function buildFlow(step: FlowStep, service?: string, campaignId?: string): FlowD
           },
         ],
       };
-    case '3':
+    case '4':
       return {
         step,
         goal: 'テンプレに沿って回答し、タスク完了を登録する。',
@@ -102,7 +128,7 @@ function buildFlow(step: FlowStep, service?: string, campaignId?: string): FlowD
           },
         ],
       };
-    case '4':
+    case '5':
       return {
         step,
         goal: '完了後に解放されたサービス実行可否を確認する。',
@@ -119,7 +145,7 @@ function buildFlow(step: FlowStep, service?: string, campaignId?: string): FlowD
           },
         ],
       };
-    case '5':
+    case '6':
       return {
         step,
         goal: 'サービスを実行し、結果を確認する。',
@@ -136,22 +162,39 @@ function buildFlow(step: FlowStep, service?: string, campaignId?: string): FlowD
           },
         ],
       };
+    case '7':
+      return {
+        step,
+        goal: '最終確認として実行結果と次の推奨操作を明示する。',
+        recommendedNextPrompt: '実行結果の要約と、次に試せる1つの操作を表示してください。',
+        copyPastePrompts: [
+          'run_service の最終結果を 3 行で要約してください。',
+          '次に実行できる操作を 1 つだけ提示してください。',
+        ],
+        nextActions: [
+          {
+            action: '利用履歴の確認',
+            prompt: 'Please run user_record and summarize the latest execution.',
+            tool: 'user_record',
+          },
+        ],
+      };
     case '0':
     default:
       return {
         step: '0',
         goal: '迷わないよう、最初に固定ガイドで開始する。',
-        recommendedNextPrompt: `search_services を使って ${resolvedService} の候補を出してください。`,
+        recommendedNextPrompt: `create_campaign_from_goal で ${resolvedService} 向けキャンペーンを作成し、その後に search_services を実行してください。`,
         copyPastePrompts: [
-          `search_services を q=${resolvedService} で実行してください。`,
-          `候補を見て、次に使う service_key を1つ選んでください。`,
+          `create_campaign_from_goal を purpose=GitHub Issue作成導線の検証, sponsor=SubsidyPayment Demo, target_roles=[\"developer\"], target_tools=[\"${resolvedService}\"], budget_cents=50000 で実行してください。`,
+          `次に search_services を q=${resolvedService}, intent=GitHub Issueを作成したい, max_budget_cents=50000 で実行してください。`,
           '迷ったら get_prompt_guide_flow を context_step=1 で再実行してください。',
         ],
         nextActions: [
           {
-            action: 'サービス検索を開始',
-            prompt: `Please run search_services with q=${resolvedService}.`,
-            tool: 'search_services',
+            action: 'キャンペーンを作成',
+            prompt: `Please run create_campaign_from_goal for ${resolvedService}.`,
+            tool: 'create_campaign_from_goal',
           },
         ],
       };

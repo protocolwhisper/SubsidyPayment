@@ -60,7 +60,15 @@
 ### 入力例（コピペ可）
 
 ```text
-キャンペーンを新規作成したいです。create_campaign を service_key=github, title=GitHub Issue 作成キャンペーン, task_type=product_feedback, reward_summary=タスク完了でGitHub機能を利用可能 にして実行してください。
+キャンペーンを新規作成したいです。create_campaign_from_goal を
+purpose=GitHub Issue作成導線の検証,
+sponsor=SubsidyPayment Demo,
+target_roles=["developer"],
+target_tools=["github"],
+required_task=product_feedback,
+subsidy_per_call_cents=5000,
+budget_cents=50000
+で実行してください。
 ```
 
 ### 成功条件
@@ -241,7 +249,7 @@ run_service がうまく通らないので切り分けをお願いします。
 
 ```text
 7ステップの結果を次の形式でまとめてください。
-- Step1 create_campaign: pass/fail（理由1行）
+- Step1 create_campaign_from_goal: pass/fail（理由1行）
 - Step2 search_services: pass/fail（理由1行）
 - Step3 get_service_tasks: pass/fail（理由1行）
 - Step4 get_task_details: pass/fail（理由1行）

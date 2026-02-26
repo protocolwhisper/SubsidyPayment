@@ -20,6 +20,8 @@ const createCampaignFromGoalInputSchema = z.object({
   sponsor: z.string().trim().min(1),
   target_roles: z.array(z.string().trim().min(1)).min(1),
   target_tools: z.array(z.string().trim().min(1)).optional(),
+  required_task: z.string().trim().min(1).optional(),
+  subsidy_per_call_cents: z.number().int().positive().optional(),
   budget_cents: z.number().int().positive(),
   query_urls: z.array(z.string().url()).optional(),
   region: z.string().optional(),
@@ -114,12 +116,16 @@ function buildSearchParams(input: z.infer<typeof createCampaignFromGoalInputSche
 
 function buildCreateCampaignRequest(
   input: z.infer<typeof createCampaignFromGoalInputSchema>,
-  selection: CandidateSelection,
+  selection: CandidateSelection | null,
   subsidyPerCallCents: number,
   requiredTask: string
 ): CreateCampaignRequest {
-  // target_tools が未指定の場合は選定した service_key を補完する
-  const targetTools = input.target_tools?.length ? input.target_tools : [selection.service_key].filter(Boolean);
+  // target_tools が未指定の場合は候補の service_key を補完する
+  const targetTools = input.target_tools?.length
+    ? input.target_tools
+    : selection
+      ? [selection.service_key].filter(Boolean)
+      : [];
   return {
     name: buildCampaignName(input.purpose, input.sponsor),
     sponsor: input.sponsor,
@@ -226,26 +232,34 @@ export function registerCreateCampaignFromGoalTool(server: McpServer, config: Ba
         const searchParams = buildSearchParams(input);
         const searchResponse = await client.searchServices(searchParams);
         const selection = selectCandidate(searchResponse);
+        let requiredTask = selection?.offer.required_task ?? null;
+        let subsidyPerCallCents = selection?.offer.subsidy_amount_cents ?? 0;
+
+        // 候補が見つからない場合でも、入力が十分なら直接キャンペーン作成を許可する
         if (!selection) {
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: 'No suitable sponsored services found. Try a more specific purpose or adjust the budget.',
-              },
-            ],
-            _meta: { code: 'no_candidate_service', details: searchResponse },
-            isError: true,
-          };
+          if (!input.target_tools?.length) {
+            return {
+              content: [
+                {
+                  type: 'text' as const,
+                  text: 'No suitable sponsored services found. Provide target_tools to create a campaign directly, or refine purpose/budget.',
+                },
+              ],
+              _meta: { code: 'no_candidate_service', details: searchResponse },
+              isError: true,
+            };
+          }
+
+          requiredTask = input.required_task ?? 'product_feedback';
+          subsidyPerCallCents = input.subsidy_per_call_cents ?? Math.min(input.budget_cents, 5000);
         }
 
-        const requiredTask = selection.offer.required_task;
         if (!requiredTask) {
           return {
             content: [
               {
                 type: 'text' as const,
-                text: 'The selected service does not include a required task. Please refine the purpose.',
+                text: 'The selected service does not include a required task. Please refine the purpose or set required_task.',
               },
             ],
             _meta: { code: 'missing_required_task', details: selection },
@@ -253,7 +267,6 @@ export function registerCreateCampaignFromGoalTool(server: McpServer, config: Ba
           };
         }
 
-        const subsidyPerCallCents = selection.offer.subsidy_amount_cents;
         if (input.budget_cents < subsidyPerCallCents) {
           return {
             content: [
@@ -291,7 +304,17 @@ export function registerCreateCampaignFromGoalTool(server: McpServer, config: Ba
             config,
             response,
             searchResponse,
-            selection,
+            selection ?? {
+              service_key: request.target_tools[0] ?? '',
+              offer: {
+                campaign_id: response.campaign.id,
+                campaign_name: response.campaign.name,
+                sponsor: response.campaign.sponsor,
+                required_task: response.campaign.required_task,
+                subsidy_amount_cents: response.campaign.subsidy_per_call_cents,
+              },
+              source: 'service',
+            },
             subsidyPerCallCents,
             requiredTask
           ),
