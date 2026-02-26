@@ -1,12 +1,12 @@
 {
   "appName": "SubsidyPayment MCP",
-  "description": "x402対応サービスの検索、タスク完了、スポンサー支払い付き実行をChatGPT上で提供するMCPアプリ。",
+  "description": "An MCP app that lets you run x402-enabled services without hesitation. From service search → task selection → template response → completion → execution, it clearly shows the next prompt to enter through a 6-step flow.",
   "category": "Productivity",
   "privacyPolicyUrl": "https://subsidypayment.example.com/privacy",
   "termsOfServiceUrl": "https://subsidypayment.example.com/terms",
   "icon": {
     "format": "PNG",
     "size": "1024x1024",
-    "notes": "背景透過なし。四隅に十分な余白を確保し、アプリアイコン用途で視認性を優先。"
+    "notes": "No transparent background. Ensure sufficient padding in all four corners and prioritize legibility for app icon usage."
   }
 }
