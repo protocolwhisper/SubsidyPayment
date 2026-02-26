@@ -43,6 +43,7 @@ pub struct AppConfig {
     pub x402_asset: Option<String>,
     pub public_base_url: String,
     pub gpt_actions_api_key: Option<String>,
+    pub gpt_api_key_enforcement: bool,
     pub agent_discovery_api_key: Option<String>,
     pub agent_discovery_rate_limit_per_min: u32,
     pub zkpassport_verifier_url: String,
@@ -81,6 +82,7 @@ impl AppConfig {
             x402_asset: std::env::var("X402_ASSET").ok(),
             public_base_url: public_base_url.clone(),
             gpt_actions_api_key: std::env::var("GPT_ACTIONS_API_KEY").ok(),
+            gpt_api_key_enforcement: read_env_bool("GPT_API_KEY_ENFORCEMENT", false),
             agent_discovery_api_key: std::env::var("AGENT_DISCOVERY_API_KEY").ok(),
             agent_discovery_rate_limit_per_min: read_env_u64(
                 "AGENT_DISCOVERY_RATE_LIMIT_PER_MIN",
@@ -1009,5 +1011,15 @@ fn read_env_u64(key: &str, default: u64) -> u64 {
     std::env::var(key)
         .ok()
         .and_then(|value| value.parse::<u64>().ok())
+        .unwrap_or(default)
+}
+
+fn read_env_bool(key: &str, default: bool) -> bool {
+    std::env::var(key)
+        .ok()
+        .map(|value| {
+            let normalized = value.trim().to_ascii_lowercase();
+            matches!(normalized.as_str(), "1" | "true" | "yes" | "on")
+        })
         .unwrap_or(default)
 }

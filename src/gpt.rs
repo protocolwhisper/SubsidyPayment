@@ -141,6 +141,15 @@ pub async fn verify_gpt_api_key(
     mut request: axum::extract::Request,
     next: axum::middleware::Next,
 ) -> Result<Response, ApiError> {
+    let enforce_api_key = {
+        let s = state.inner.read().await;
+        s.config.gpt_api_key_enforcement
+    };
+
+    if !enforce_api_key {
+        return Ok(next.run(request).await);
+    }
+
     let expected_key = {
         let s = state.inner.read().await;
         s.config.gpt_actions_api_key.clone()

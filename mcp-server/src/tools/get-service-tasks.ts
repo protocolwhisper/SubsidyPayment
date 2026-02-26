@@ -24,9 +24,28 @@ interface ServiceTaskItem {
   active: boolean;
 }
 
+function buildNextActions(serviceKey: string, campaignId?: string) {
+  if (campaignId) {
+    return [
+      {
+        action: 'タスク詳細を開く',
+        prompt: `Please run get_task_details with campaign_id=${campaignId}.`,
+        tool: 'get_task_details',
+      },
+    ];
+  }
+  return [
+    {
+      action: '別サービスで再検索',
+      prompt: `Please run search_services with q=${serviceKey} to search again.`,
+      tool: 'search_services',
+    },
+  ];
+}
+
 function unauthorizedSessionResponse(publicUrl: string) {
   return {
-    content: [{ type: 'text' as const, text: 'Login is required to perform this action.' }],
+    content: [{ type: 'text' as const, text: 'Login is required to perform this action. 次は「authenticate_user を実行してください」と入力してください。' }],
     _meta: {
       'mcp/www_authenticate': [
         `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`,
@@ -152,7 +171,8 @@ export function registerGetServiceTasksTool(server: McpServer, config: BackendCo
     'get_service_tasks',
     {
       title: 'Get Service Tasks',
-      description: 'List all available subsidized tasks for a specific service.',
+      description:
+        'List subsidized tasks for a selected service and return the exact next prompt for task detail retrieval.',
       inputSchema: getServiceTasksInputSchema.shape,
       annotations: {
         readOnlyHint: true,
@@ -166,8 +186,10 @@ export function registerGetServiceTasksTool(server: McpServer, config: BackendCo
         ui: { resourceUri: 'ui://widget/service-tasks.html' },
         'openai/resultCanProduceWidget': true,
         'openai/widgetAccessible': true,
+        'openai/widgetDescription':
+          'Shows task candidates for one service. After choosing a campaign, continue in chat with get_task_details.',
         'openai/toolInvocation/invoking': 'Loading service tasks...',
-        'openai/toolInvocation/invoked': 'Service tasks loaded',
+        'openai/toolInvocation/invoked': 'Service tasks loaded. Next prompt is ready.',
         'openai/outputTemplate': 'ui://widget/service-tasks.html',
       },
     },
@@ -199,6 +221,7 @@ export function registerGetServiceTasksTool(server: McpServer, config: BackendCo
               task_count: 0,
               sponsor_names: [],
               total_subsidy_cents: 0,
+              next_actions: buildNextActions(input.service_key),
             },
             content: [
               {
@@ -226,6 +249,7 @@ export function registerGetServiceTasksTool(server: McpServer, config: BackendCo
             task_count: result.tasks.length,
             sponsor_names: result.sponsor_names,
             total_subsidy_cents: result.total_subsidy_cents,
+            next_actions: buildNextActions(input.service_key, result.tasks[0]?.campaign_id),
           },
           content: [
             { type: 'text' as const, text: message },
@@ -238,7 +262,7 @@ export function registerGetServiceTasksTool(server: McpServer, config: BackendCo
       } catch (error) {
         if (error instanceof BackendClientError) {
           return {
-            content: [{ type: 'text' as const, text: error.message }],
+            content: [{ type: 'text' as const, text: `${error.message} 次は「get_prompt_guide_flow を実行してください」と入力してください。` }],
             _meta: { code: error.code, details: error.details },
             isError: true,
           };
@@ -247,6 +271,7 @@ export function registerGetServiceTasksTool(server: McpServer, config: BackendCo
         return {
           content: [
             { type: 'text' as const, text: 'An unexpected error occurred while fetching service tasks.' },
+            { type: 'text' as const, text: '次は「get_prompt_guide_flow を実行してください」と入力してください。' },
           ],
           _meta: { code: 'unexpected_error' },
           isError: true,

@@ -37,6 +37,35 @@
         box-shadow: 0 18px 44px rgba(2, 6, 23, 0.45);
       }
 
+      .chat-guide {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        border-bottom: 1px solid rgba(245, 158, 11, 0.45);
+        background: linear-gradient(90deg, #f59e0b 0%, #f97316 100%);
+        color: #111827;
+        padding: 12px 14px;
+      }
+
+      .chat-guide button {
+        width: 100%;
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 14px;
+        font-weight: 800;
+        color: #111827;
+        background: #fff7ed;
+        cursor: pointer;
+      }
+
+      .chat-guide small {
+        display: block;
+        margin-top: 6px;
+        font-size: 11px;
+        color: rgba(17, 24, 39, 0.8);
+      }
+
       .header {
         display: grid;
         grid-template-columns: auto 1fr auto;
@@ -299,6 +328,27 @@
         return app?.setWidgetState?.(nextState);
       }
 
+      async function onGuideClick() {
+        const prompt = mode === 'payment_required'
+          ? `Please run run_service with service=${data.service ?? 'github'} and input=__pay_direct__.`
+          : `Please run run_service with service=${data.service ?? 'github'}.`;
+        if (typeof app?.sendFollowUpMessage === 'function') {
+          await app.sendFollowUpMessage(prompt);
+        }
+      }
+
+      function renderGuideBanner() {
+        const example = mode === 'payment_required'
+          ? `Please run run_service with service=${data.service ?? 'github'} and input=__pay_direct__.`
+          : `Please run run_service with service=${data.service ?? 'github'}.`;
+        return `
+          <section class="chat-guide">
+            <button type="button" id="chat-guide-btn">Please ask in chat to do tasks</button>
+            <small>Example: ${escapeHtml(example)}</small>
+          </section>
+        `;
+      }
+
       function resolveRowsFromOutput() {
         const fallback = [
           { asset: 'Bitcoin', price: '$97,245.00', change: '+2.34%', cap: '$1.92T' },
@@ -381,6 +431,7 @@
 
       function renderPaymentRequired() {
         root.innerHTML = `
+          ${renderGuideBanner()}
           <section class="header">
             <button class="back" id="back-btn">←</button>
             <div>
@@ -422,10 +473,14 @@
         root.querySelector('#back-btn')?.addEventListener('click', () => {
           void backToTasks();
         });
+        root.querySelector('#chat-guide-btn')?.addEventListener('click', () => {
+          void onGuideClick();
+        });
       }
 
       function renderSuccessSummary() {
         root.innerHTML = `
+          ${renderGuideBanner()}
           <section class="header">
             <button class="back" id="back-btn">←</button>
             <div>
@@ -470,6 +525,9 @@
           await setWidgetState({ ...(widgetState ?? {}), showAgentExecution: false });
           await callTool('get_service_tasks', { service_key: widgetState?.selectedServiceKey ?? data.service ?? '' });
         });
+        root.querySelector('#chat-guide-btn')?.addEventListener('click', () => {
+          void onGuideClick();
+        });
       }
 
       function renderAgentExecution() {
@@ -489,6 +547,7 @@
           .join('');
 
         root.innerHTML = `
+          ${renderGuideBanner()}
           <section class="header">
             <button class="back" id="back-btn">←</button>
             <div>
@@ -535,6 +594,9 @@
           await setWidgetState({ ...(widgetState ?? {}), showAgentExecution: false });
           renderSuccessSummary();
         });
+        root.querySelector('#chat-guide-btn')?.addEventListener('click', () => {
+          void onGuideClick();
+        });
       }
 
       function render() {
@@ -550,11 +612,15 @@
           }
         } else {
           root.innerHTML = `
+            ${renderGuideBanner()}
             <section class="hero" style="margin-top:16px;">
               <h3 class="hero-title">Service Access</h3>
               <p class="hero-msg">Run a service to see sponsor verification or x402 payment states.</p>
             </section>
           `;
+          root.querySelector('#chat-guide-btn')?.addEventListener('click', () => {
+            void onGuideClick();
+          });
         }
 
         notifyWidgetHeight(app);

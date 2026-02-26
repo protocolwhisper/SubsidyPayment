@@ -38,6 +38,35 @@
         padding: 12px;
       }
 
+      .chat-guide {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        border: 1px solid #f59e0b;
+        border-radius: 12px;
+        background: linear-gradient(90deg, #fef3c7 0%, #fed7aa 100%);
+        padding: 10px;
+        margin-bottom: 12px;
+      }
+
+      .chat-guide button {
+        width: 100%;
+        border: 0;
+        border-radius: 9px;
+        background: #fff;
+        color: #7c2d12;
+        font-weight: 800;
+        padding: 10px;
+        cursor: pointer;
+      }
+
+      .chat-guide small {
+        display: block;
+        margin-top: 6px;
+        color: #7c2d12;
+        font-size: 12px;
+      }
+
       .panel {
         background: var(--surface);
         border: 1px solid var(--border);
@@ -197,9 +226,23 @@
         await sendFollowUpMessage('Service execution started. I will check the result.');
       }
 
+      async function onGuideClick() {
+        const firstReady = available_services.find((item) => item?.ready);
+        const prompt = firstReady
+          ? `Please run run_service with service=${firstReady.service}.`
+          : 'Please run search_services with q=github to find candidates.';
+        if (typeof app?.sendFollowUpMessage === 'function') {
+          await app.sendFollowUpMessage(prompt);
+        }
+      }
+
       function render() {
         if (!root) return;
         root.innerHTML = `
+          <section class="chat-guide">
+            <button type="button" id="chat-guide-btn">Please ask in chat to do tasks</button>
+            <small>Example: ${available_services.length > 0 ? 'Please run run_service with a service value.' : 'Please run search_services with q=github.'}</small>
+          </section>
           <section class="panel">
             <h2>User Info</h2>
             <p class="meta">email: ${email}</p>
@@ -223,6 +266,9 @@
             }
           });
         }
+        root.querySelector('#chat-guide-btn')?.addEventListener('click', () => {
+          void onGuideClick();
+        });
       }
 
       render();

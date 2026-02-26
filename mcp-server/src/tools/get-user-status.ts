@@ -11,9 +11,24 @@ const getUserStatusInputSchema = z.object({
   session_token: z.string().optional(),
 });
 
+function buildNextActions() {
+  return [
+    {
+      action: '利用可能サービスを実行する',
+      prompt: 'Please run run_service with service and input.',
+      tool: 'run_service',
+    },
+    {
+      action: '迷ったらガイドを開く',
+      prompt: 'Please run get_prompt_guide_flow.',
+      tool: 'get_prompt_guide_flow',
+    },
+  ];
+}
+
 function unauthorizedSessionResponse(publicUrl: string) {
   return {
-    content: [{ type: 'text' as const, text: 'Login is required to perform this action.' }],
+    content: [{ type: 'text' as const, text: 'Login is required to perform this action. 次は「authenticate_user を実行してください」と入力してください。' }],
     _meta: {
       'mcp/www_authenticate': [
         `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`,
@@ -47,7 +62,8 @@ export function registerGetUserStatusTool(server: McpServer, config: BackendConf
     'get_user_status',
     {
       title: 'Get User Status',
-      description: 'Check registration status, completed tasks, and available services for the user.',
+      description:
+        'Check registration status, completed tasks, and available services, then return concrete next prompts.',
       inputSchema: getUserStatusInputSchema.shape,
       annotations: {
         readOnlyHint: true,
@@ -61,8 +77,10 @@ export function registerGetUserStatusTool(server: McpServer, config: BackendConf
         ui: { resourceUri: 'ui://widget/user-dashboard.html' },
         'openai/resultCanProduceWidget': true,
         'openai/widgetAccessible': true,
+        'openai/widgetDescription':
+          'Shows completed tasks and runnable services. Continue in chat with run_service or get_prompt_guide_flow.',
         'openai/toolInvocation/invoking': 'Fetching user status...',
-        'openai/toolInvocation/invoked': 'User status fetched',
+        'openai/toolInvocation/invoked': 'User status fetched. Next prompt is ready.',
         'openai/outputTemplate': 'ui://widget/user-dashboard.html',
       },
     },
@@ -89,6 +107,7 @@ export function registerGetUserStatusTool(server: McpServer, config: BackendConf
             email: response.email,
             completed_tasks: response.completed_tasks,
             available_services: response.available_services,
+            next_actions: buildNextActions(),
           },
           content: [
             { type: 'text' as const, text: response.message },
@@ -101,14 +120,14 @@ export function registerGetUserStatusTool(server: McpServer, config: BackendConf
       } catch (error) {
         if (error instanceof BackendClientError) {
           return {
-            content: [{ type: 'text' as const, text: error.message }],
+            content: [{ type: 'text' as const, text: `${error.message} 次は「get_prompt_guide_flow を実行してください」と入力してください。` }],
             _meta: { code: error.code, details: error.details },
             isError: true,
           };
         }
 
         return {
-          content: [{ type: 'text' as const, text: 'An unexpected error occurred while fetching user status.' }],
+          content: [{ type: 'text' as const, text: 'An unexpected error occurred while fetching user status. 次は「get_prompt_guide_flow を実行してください」と入力してください。' }],
           _meta: { code: 'unexpected_error' },
           isError: true,
         };

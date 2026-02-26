@@ -5,6 +5,7 @@ import { registerAuthenticateUserTool } from './authenticate-user.ts';
 import { registerCompleteTaskTool } from './complete-task.ts';
 import { registerCreateCampaignFromGoalTool } from './create-campaign-from-goal.ts';
 import { registerGetPreferencesTool } from './get-preferences.ts';
+import { registerGetPromptGuideFlowTool } from './get-prompt-guide-flow.ts';
 import { registerGetServiceTasksTool } from './get-service-tasks.ts';
 import { registerGetTaskDetailsTool } from './get-task-details.ts';
 import { registerGetUserStatusTool } from './get-user-status.ts';
@@ -24,6 +25,7 @@ import { registerWeatherTool } from './weather.ts';
  */
 export function registerAllTools(server: McpServer, config: BackendConfig): void {
   registerSearchServicesTool(server, config);
+  registerGetPromptGuideFlowTool(server, config);
   registerAuthenticateUserTool(server, config);
   registerCreateCampaignFromGoalTool(server, config);
   registerGetServiceTasksTool(server, config);

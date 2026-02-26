@@ -8,6 +8,8 @@ export function createServer(config: BackendConfig): McpServer {
   const server = new McpServer({
     name: 'subsidypayment',
     version: '1.0.0',
+    description:
+      'Guided 6-step MCP flow. Always show one explicit next prompt and prefer get_prompt_guide_flow when the user is unsure.',
   });
 
   registerAllTools(server, config);

@@ -17,9 +17,19 @@ function isUuid(s: string): boolean {
   return UUID_REGEX.test(s);
 }
 
+function buildNextActions(campaignId: string) {
+  return [
+    {
+      action: 'タスクを完了する',
+      prompt: `Please run complete_task with campaign_id=${campaignId}.`,
+      tool: 'complete_task',
+    },
+  ];
+}
+
 function unauthorizedSessionResponse(publicUrl: string) {
   return {
-    content: [{ type: 'text' as const, text: 'Login is required to perform this action.' }],
+    content: [{ type: 'text' as const, text: 'Login is required to perform this action. 次は「authenticate_user を実行してください」と入力してください。' }],
     _meta: {
       'mcp/www_authenticate': [
         `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`,
@@ -53,7 +63,7 @@ export function registerGetTaskDetailsTool(server: McpServer, config: BackendCon
     'get_task_details',
     {
       title: 'Get Task Details',
-      description: 'Get required task details for a campaign.',
+      description: 'Get required task details for a campaign and provide the next prompt to complete the task.',
       inputSchema: getTaskDetailsInputSchema.shape,
       annotations: {
         readOnlyHint: true,
@@ -67,8 +77,10 @@ export function registerGetTaskDetailsTool(server: McpServer, config: BackendCon
         ui: { resourceUri: 'ui://widget/task-form.html' },
         'openai/resultCanProduceWidget': true,
         'openai/widgetAccessible': true,
+        'openai/widgetDescription':
+          'Shows required task fields and consent inputs. After filling them, continue in chat with complete_task.',
         'openai/toolInvocation/invoking': 'Fetching task details...',
-        'openai/toolInvocation/invoked': 'Task details fetched',
+        'openai/toolInvocation/invoked': 'Task details fetched. Next prompt is ready.',
         'openai/outputTemplate': 'ui://widget/task-form.html',
       },
     },
@@ -107,6 +119,7 @@ export function registerGetTaskDetailsTool(server: McpServer, config: BackendCon
             task_input_format: response.task_input_format,
             already_completed: response.already_completed,
             subsidy_amount_cents: response.subsidy_amount_cents,
+            next_actions: buildNextActions(response.campaign_id),
           },
           content: [
             { type: 'text' as const, text: response.message },
@@ -119,14 +132,14 @@ export function registerGetTaskDetailsTool(server: McpServer, config: BackendCon
       } catch (error) {
         if (error instanceof BackendClientError) {
           return {
-            content: [{ type: 'text' as const, text: error.message }],
+            content: [{ type: 'text' as const, text: `${error.message} 次は「get_prompt_guide_flow を実行してください」と入力してください。` }],
             _meta: { code: error.code, details: error.details },
             isError: true,
           };
         }
 
         return {
-          content: [{ type: 'text' as const, text: 'An unexpected error occurred while fetching task details.' }],
+          content: [{ type: 'text' as const, text: 'An unexpected error occurred while fetching task details. 次は「get_prompt_guide_flow を実行してください」と入力してください。' }],
           _meta: { code: 'unexpected_error' },
           isError: true,
         };

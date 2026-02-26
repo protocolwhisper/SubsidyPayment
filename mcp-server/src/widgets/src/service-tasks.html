@@ -36,6 +36,36 @@
         box-shadow: 0 18px 44px rgba(2, 6, 23, 0.45);
       }
 
+      .chat-guide {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        border-bottom: 1px solid rgba(245, 158, 11, 0.45);
+        background: linear-gradient(90deg, #f59e0b 0%, #f97316 100%);
+        color: #111827;
+        padding: 12px 14px;
+      }
+
+      .chat-guide button {
+        width: 100%;
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 0.2px;
+        color: #111827;
+        background: #fff7ed;
+        cursor: pointer;
+      }
+
+      .chat-guide small {
+        display: block;
+        margin-top: 6px;
+        font-size: 11px;
+        color: rgba(17, 24, 39, 0.8);
+      }
+
       .header {
         display: flex;
         align-items: center;
@@ -249,6 +279,23 @@
         return app?.setWidgetState?.(nextState);
       }
 
+      async function onGuideClick() {
+        const prompt = `Please run get_task_details with campaign_id=${tasks[0]?.campaign_id ?? '<campaign_id>'}.`;
+        if (typeof app?.sendFollowUpMessage === 'function') {
+          await app.sendFollowUpMessage(prompt);
+        }
+      }
+
+      function renderGuideBanner() {
+        const prompt = `Please run get_task_details with campaign_id=${tasks[0]?.campaign_id ?? '<campaign_id>'}.`;
+        return `
+          <section class="chat-guide">
+            <button type="button" id="chat-guide-btn">Please ask in chat to do tasks</button>
+            <small>Example: ${escapeHtml(prompt)}</small>
+          </section>
+        `;
+      }
+
       async function onStartTask(campaignId, sponsor, requiredTask) {
         await setWidgetState({
           ...(widgetState ?? {}),
@@ -297,6 +344,7 @@
         if (!root) return;
 
         root.innerHTML = `
+          ${renderGuideBanner()}
           <section class="header">
             <button class="back" id="back-btn">←</button>
             <div>
@@ -318,6 +366,9 @@
 
         root.querySelector('#back-btn')?.addEventListener('click', () => {
           void onBack();
+        });
+        root.querySelector('#chat-guide-btn')?.addEventListener('click', () => {
+          void onGuideClick();
         });
 
         for (const button of root.querySelectorAll('.start')) {

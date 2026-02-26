@@ -15,7 +15,7 @@ const widgetFiles = [
 
 for (const file of widgetFiles) {
   const src = readFileSync(resolve(mcpRoot, file), 'utf8');
-  assert.match(src, /チャットに入力してください（ask in chat to do tasks）/, `${file} must show chat guide banner text`);
+  assert.match(src, /Please ask in chat to do tasks/, `${file} must show chat guide banner text`);
   assert.match(src, /sendFollowUpMessage/, `${file} must support follow-up message guidance`);
 }
 

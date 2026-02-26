@@ -28,9 +28,24 @@ const completeTaskInputSchema = z.object({
   }),
 });
 
+function buildNextActions() {
+  return [
+    {
+      action: '実行可否を確認する',
+      prompt: 'Please run get_user_status.',
+      tool: 'get_user_status',
+    },
+    {
+      action: 'サービスを実行する',
+      prompt: 'Please run run_service using the selected service_key as service.',
+      tool: 'run_service',
+    },
+  ];
+}
+
 function unauthorizedSessionResponse(publicUrl: string) {
   return {
-    content: [{ type: 'text' as const, text: 'Login is required to perform this action.' }],
+    content: [{ type: 'text' as const, text: 'Login is required to perform this action. 次は「authenticate_user を実行してください」と入力してください。' }],
     _meta: {
       'mcp/www_authenticate': [
         `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`,
@@ -64,7 +79,8 @@ export function registerCompleteTaskTool(server: McpServer, config: BackendConfi
     'complete_task',
     {
       title: 'Complete Task',
-      description: 'Record task completion details and consent data.',
+      description:
+        'Record task completion details and consent data, then return the next prompt for status check and service run.',
       inputSchema: completeTaskInputSchema.shape,
       annotations: {
         readOnlyHint: false,
@@ -75,8 +91,10 @@ export function registerCompleteTaskTool(server: McpServer, config: BackendConfi
         securitySchemes: config.authEnabled
           ? [{ type: 'oauth2', scopes: ['tasks.write'] }]
           : [{ type: 'noauth' }],
+        'openai/widgetDescription':
+          'Completes the selected task. After completion, continue in chat with get_user_status and run_service.',
         'openai/toolInvocation/invoking': 'Recording task completion...',
-        'openai/toolInvocation/invoked': 'Task completed',
+        'openai/toolInvocation/invoked': 'Task completed. Next prompt is ready.',
       },
     },
     async (input, context: any) => {
@@ -139,6 +157,7 @@ export function registerCompleteTaskTool(server: McpServer, config: BackendConfi
             sponsor,
             campaign_name: campaignName,
             subsidy_amount_cents: subsidyAmountCents,
+            next_actions: buildNextActions(),
           },
           content: [{ type: 'text' as const, text: response.message }],
           _meta: {
@@ -148,14 +167,14 @@ export function registerCompleteTaskTool(server: McpServer, config: BackendConfi
       } catch (error) {
         if (error instanceof BackendClientError) {
           return {
-            content: [{ type: 'text' as const, text: error.message }],
+            content: [{ type: 'text' as const, text: `${error.message} 次は「get_prompt_guide_flow を実行してください」と入力してください。` }],
             _meta: { code: error.code, details: error.details },
             isError: true,
           };
         }
 
         return {
-          content: [{ type: 'text' as const, text: 'An unexpected error occurred while recording task completion.' }],
+          content: [{ type: 'text' as const, text: 'An unexpected error occurred while recording task completion. 次は「get_prompt_guide_flow を実行してください」と入力してください。' }],
           _meta: { code: 'unexpected_error' },
           isError: true,
         };

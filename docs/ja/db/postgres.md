@@ -52,6 +52,9 @@ DATABASE_URL=postgres://postgres:postgres@localhost:55432/payloadexchange ./scri
 # GitHub Issue 作成用 Campaign データ投入
 ./scripts/seed-github-issue-campaign.sh
 
+# データを削除する場合
+./scripts/clear-db-data.sh
+
 # 接続先を明示して実行する場合
 DATABASE_URL=postgres://postgres:postgres@localhost:55432/payloadexchange ./scripts/seed-sample-services.sh
 DATABASE_URL=postgres://postgres:postgres@localhost:55432/payloadexchange ./scripts/seed-github-issue-campaign.sh

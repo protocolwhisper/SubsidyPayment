@@ -15,9 +15,24 @@ const authenticateUserInputSchema = z.object({
   tools_used: z.array(z.string()).optional().default([]),
 });
 
+function buildNextActions() {
+  return [
+    {
+      action: 'サービス検索を開始',
+      prompt: 'Please run search_services with q=github to start.',
+      tool: 'search_services',
+    },
+    {
+      action: '利用状況を確認',
+      prompt: 'Please run get_user_status.',
+      tool: 'get_user_status',
+    },
+  ];
+}
+
 function unauthorizedAuthResponse(publicUrl: string) {
   return {
-    content: [{ type: 'text' as const, text: 'Login is required to perform this action.' }],
+    content: [{ type: 'text' as const, text: 'Login is required to perform this action. 次はOAuthログイン後に authenticate_user を再実行してください。' }],
     _meta: {
       'mcp/www_authenticate': [
         `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`,
@@ -66,7 +81,8 @@ export function registerAuthenticateUserTool(server: McpServer, config: BackendC
     'authenticate_user',
     {
       title: 'Authenticate User',
-      description: 'Authenticate and register a user using OAuth token details.',
+      description:
+        'Authenticate and register a user, then return the next prompt to continue with service search or status check.',
       inputSchema: authenticateUserInputSchema.shape,
       annotations: {
         readOnlyHint: false,
@@ -79,8 +95,10 @@ export function registerAuthenticateUserTool(server: McpServer, config: BackendC
           : [{ type: 'noauth' }],
         'openai/resultCanProduceWidget': true,
         'openai/widgetAccessible': true,
+        'openai/widgetDescription':
+          'Use this for initial registration. After success, continue in chat with search_services or get_user_status.',
         'openai/toolInvocation/invoking': 'Authenticating user...',
-        'openai/toolInvocation/invoked': 'Authentication complete',
+        'openai/toolInvocation/invoked': 'Authentication complete. Next prompt is ready.',
         'openai/outputTemplate': 'ui://widget/user-dashboard.html',
       },
     },
@@ -122,6 +140,7 @@ export function registerAuthenticateUserTool(server: McpServer, config: BackendC
             user_id: response.user_id,
             email: response.email,
             is_new_user: response.is_new_user,
+            next_actions: buildNextActions(),
           },
           content: [
             { type: 'text' as const, text: response.message },
@@ -134,14 +153,14 @@ export function registerAuthenticateUserTool(server: McpServer, config: BackendC
       } catch (error) {
         if (error instanceof BackendClientError) {
           return {
-            content: [{ type: 'text' as const, text: error.message }],
+            content: [{ type: 'text' as const, text: `${error.message} 次は「get_prompt_guide_flow を実行してください」と入力してください。` }],
             _meta: { code: error.code, details: error.details },
             isError: true,
           };
         }
 
         return {
-          content: [{ type: 'text' as const, text: 'An unexpected error occurred during authentication.' }],
+          content: [{ type: 'text' as const, text: 'An unexpected error occurred during authentication. 次は「get_prompt_guide_flow を実行してください」と入力してください。' }],
           _meta: { code: 'unexpected_error' },
           isError: true,
         };

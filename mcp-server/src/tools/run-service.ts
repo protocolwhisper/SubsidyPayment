@@ -16,9 +16,19 @@ const runServiceInputSchema = z.object({
 
 const DIRECT_PAYMENT_SENTINEL = '__pay_direct__';
 
+function nextActionRunAgain(service: string) {
+  return [
+    {
+      action: '同じサービスを再実行',
+      prompt: `Please run run_service with service=${service} and a different input.`,
+      tool: 'run_service',
+    },
+  ];
+}
+
 function unauthorizedSessionResponse(publicUrl: string) {
   return {
-    content: [{ type: 'text' as const, text: 'Login is required to perform this action.' }],
+    content: [{ type: 'text' as const, text: 'Login is required to perform this action. 次は「authenticate_user を実行してください」と入力してください。' }],
     _meta: {
       'mcp/www_authenticate': [
         `Bearer resource_metadata="${publicUrl}/.well-known/oauth-protected-resource"`,
@@ -89,6 +99,7 @@ function serviceExecutedResult(response: {
       sponsored_by: response.sponsored_by,
       tx_hash: response.tx_hash,
       message: response.message,
+      next_actions: nextActionRunAgain(response.service),
     },
     content: [
       { type: 'text' as const, text: response.message },
@@ -109,6 +120,13 @@ function paymentRequiredResult(payment: PaymentRequiredResponse) {
       payment_required: payment.payment_required,
       next_step: payment.next_step,
       payment_mode: 'user_direct',
+      next_actions: [
+        {
+          action: 'x402で直接支払う',
+          prompt: `Please run run_service with service=${payment.service} and input=__pay_direct__.`,
+          tool: 'run_service',
+        },
+      ],
     },
     content: [
       { type: 'text' as const, text: `x402 payment required. ${payment.next_step}` },
@@ -141,6 +159,7 @@ async function directPayFallbackResult(
         sponsored_by: response.sponsored_by,
         tx_hash: response.tx_hash,
         message: 'Service executed through proxy.',
+        next_actions: nextActionRunAgain(service),
       },
       content: [
         { type: 'text' as const, text: 'Service executed through proxy.' },
@@ -203,6 +222,13 @@ async function taskRequiredResult(client: BackendClient, service: string, sessio
       subsidy_amount_cents: task.subsidy_amount_cents,
       task_options: taskOptions,
       payment_mode: 'sponsored',
+      next_actions: [
+        {
+          action: '必須タスクを開く',
+          prompt: `Please run get_task_details with campaign_id=${task.campaign_id}.`,
+          tool: 'get_task_details',
+        },
+      ],
     },
     content: [
       {
@@ -228,7 +254,8 @@ export function registerRunServiceTool(server: McpServer, config: BackendConfig)
     'run_service',
     {
       title: 'Run Service',
-      description: 'Execute a service with sponsor-backed payment.',
+      description:
+        'Execute a service with sponsor-backed payment and always return the next prompt for task completion or direct payment.',
       inputSchema: runServiceInputSchema.shape,
       annotations: {
         readOnlyHint: false,
@@ -242,8 +269,10 @@ export function registerRunServiceTool(server: McpServer, config: BackendConfig)
         ui: { resourceUri: 'ui://widget/service-access.html' },
         'openai/resultCanProduceWidget': true,
         'openai/widgetAccessible': true,
+        'openai/widgetDescription':
+          'Shows execution/payment state. Continue in chat with the suggested next prompt shown in next_actions.',
         'openai/toolInvocation/invoking': 'Running service...',
-        'openai/toolInvocation/invoked': 'Service run completed',
+        'openai/toolInvocation/invoked': 'Service run completed. Next prompt is ready.',
         'openai/outputTemplate': 'ui://widget/service-access.html',
       },
     },
@@ -268,13 +297,13 @@ export function registerRunServiceTool(server: McpServer, config: BackendConfig)
         } catch (error) {
           if (error instanceof BackendClientError) {
             return {
-              content: [{ type: 'text' as const, text: error.message }],
+              content: [{ type: 'text' as const, text: `${error.message} 次は「get_prompt_guide_flow を実行してください」と入力してください。` }],
               _meta: { code: error.code, details: error.details },
               isError: true,
             };
           }
           return {
-            content: [{ type: 'text' as const, text: 'An unexpected error occurred while preparing direct payment.' }],
+            content: [{ type: 'text' as const, text: 'An unexpected error occurred while preparing direct payment. 次は「get_prompt_guide_flow を実行してください」と入力してください。' }],
             _meta: { code: 'unexpected_error' },
             isError: true,
           };
@@ -316,14 +345,14 @@ export function registerRunServiceTool(server: McpServer, config: BackendConfig)
           }
 
           return {
-            content: [{ type: 'text' as const, text: error.message }],
+            content: [{ type: 'text' as const, text: `${error.message} 次は「get_prompt_guide_flow を実行してください」と入力してください。` }],
             _meta: { code: error.code, details: error.details },
             isError: true,
           };
         }
 
         return {
-          content: [{ type: 'text' as const, text: 'An unexpected error occurred while running the service.' }],
+          content: [{ type: 'text' as const, text: 'An unexpected error occurred while running the service. 次は「get_prompt_guide_flow を実行してください」と入力してください。' }],
           _meta: { code: 'unexpected_error' },
           isError: true,
         };

@@ -42,6 +42,35 @@
         box-shadow: 0 18px 44px rgba(2, 6, 23, 0.45);
       }
 
+      .chat-guide {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        border-bottom: 1px solid rgba(245, 158, 11, 0.45);
+        background: linear-gradient(90deg, #f59e0b 0%, #f97316 100%);
+        color: #111827;
+        padding: 12px 14px;
+      }
+
+      .chat-guide button {
+        width: 100%;
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 14px;
+        font-weight: 800;
+        color: #111827;
+        background: #fff7ed;
+        cursor: pointer;
+      }
+
+      .chat-guide small {
+        display: block;
+        margin-top: 6px;
+        font-size: 11px;
+        color: rgba(17, 24, 39, 0.8);
+      }
+
       .header {
         display: flex;
         align-items: center;
@@ -425,6 +454,30 @@
         return app?.setWidgetState?.(nextState);
       }
 
+      async function onGuideClick() {
+        const serviceKey =
+          typeof currentWidgetState()?.selectedServiceKey === 'string' && currentWidgetState().selectedServiceKey.length > 0
+            ? currentWidgetState().selectedServiceKey
+            : 'github';
+        const prompt = `Please run get_service_tasks with service_key=${serviceKey}.`;
+        if (typeof app?.sendFollowUpMessage === 'function') {
+          await app.sendFollowUpMessage(prompt);
+        }
+      }
+
+      function renderGuideBanner() {
+        const serviceKey =
+          typeof currentWidgetState()?.selectedServiceKey === 'string' && currentWidgetState().selectedServiceKey.length > 0
+            ? currentWidgetState().selectedServiceKey
+            : 'github';
+        return `
+          <section class="chat-guide">
+            <button type="button" id="chat-guide-btn">Please ask in chat to do tasks</button>
+            <small>Example: Please run get_service_tasks with service_key=${escapeHtml(serviceKey)}.</small>
+          </section>
+        `;
+      }
+
       function persistWidgetState(nextState) {
         widgetState = nextState;
         try {
@@ -627,6 +680,7 @@
           : '<div class="empty">No services match the current criteria.</div>';
 
         root.innerHTML = `
+          ${renderGuideBanner()}
           <section class="header">
             <div class="header-left">
               <span class="sparkles">✦</span>
@@ -695,6 +749,9 @@
             }
           });
         }
+        root.querySelector('#chat-guide-btn')?.addEventListener('click', () => {
+          void onGuideClick();
+        });
 
         notifyWidgetHeight(app);
         setTimeout(() => notifyWidgetHeight(app), 50);
@@ -705,7 +762,13 @@
           render();
         } catch (error) {
           if (root) {
-            root.innerHTML = `<div class="empty">Widget render error: ${escapeHtml(error?.message || 'unknown error')}</div>`;
+            root.innerHTML = `
+              ${renderGuideBanner()}
+              <div class="empty">Widget render error: ${escapeHtml(error?.message || 'unknown error')}</div>
+            `;
+            root.querySelector('#chat-guide-btn')?.addEventListener('click', () => {
+              void onGuideClick();
+            });
           }
           console.error('services-list widget render error', error);
           notifyWidgetHeight(app);

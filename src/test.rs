@@ -636,6 +636,7 @@ async fn verify_gpt_api_key_rejects_missing_header() {
     {
         let mut s = state.inner.write().await;
         s.config.gpt_actions_api_key = Some("test-secret".to_string());
+        s.config.gpt_api_key_enforcement = true;
     }
 
     let app = Router::new()
@@ -663,6 +664,7 @@ async fn verify_gpt_api_key_rejects_wrong_key() {
     {
         let mut s = state.inner.write().await;
         s.config.gpt_actions_api_key = Some("correct-key".to_string());
+        s.config.gpt_api_key_enforcement = true;
     }
 
     let app = Router::new()
@@ -691,6 +693,7 @@ async fn verify_gpt_api_key_passes_with_valid_key() {
     {
         let mut s = state.inner.write().await;
         s.config.gpt_actions_api_key = Some("valid-key".to_string());
+        s.config.gpt_api_key_enforcement = true;
     }
 
     let app = Router::new()
@@ -727,9 +730,9 @@ async fn verify_gpt_api_key_passes_when_key_not_configured() {
     use axum::middleware;
 
     let (_, state) = test_app();
-    // gpt_actions_api_key defaults to None — middleware should passthrough
     {
-        let s = state.inner.read().await;
+        let mut s = state.inner.write().await;
+        s.config.gpt_api_key_enforcement = true;
         assert!(s.config.gpt_actions_api_key.is_none());
     }
 
@@ -758,6 +761,7 @@ async fn verify_gpt_api_key_rejects_invalid_bearer_format() {
     {
         let mut s = state.inner.write().await;
         s.config.gpt_actions_api_key = Some("test-secret".to_string());
+        s.config.gpt_api_key_enforcement = true;
     }
 
     let app = Router::new()
@@ -3861,6 +3865,7 @@ async fn gpt_auth_middleware_rejects_without_api_key_when_configured() {
     {
         let mut s = state.inner.write().await;
         s.config.gpt_actions_api_key = Some("test-secret-key".to_string());
+        s.config.gpt_api_key_enforcement = true;
     }
 
     let app = build_app(state, DEFAULT_AGENT_DISCOVERY_RATE_LIMIT_PER_MIN as u32);
@@ -3892,6 +3897,7 @@ async fn gpt_auth_middleware_rejects_invalid_api_key() {
     {
         let mut s = state.inner.write().await;
         s.config.gpt_actions_api_key = Some("correct-key".to_string());
+        s.config.gpt_api_key_enforcement = true;
     }
 
     let app = build_app(state, DEFAULT_AGENT_DISCOVERY_RATE_LIMIT_PER_MIN as u32);
@@ -3922,6 +3928,7 @@ async fn gpt_auth_middleware_accepts_valid_api_key() {
     {
         let mut s = state.inner.write().await;
         s.config.gpt_actions_api_key = Some("correct-key".to_string());
+        s.config.gpt_api_key_enforcement = true;
     }
 
     let app = build_app(state, DEFAULT_AGENT_DISCOVERY_RATE_LIMIT_PER_MIN as u32);
@@ -3951,9 +3958,9 @@ async fn gpt_auth_middleware_skips_when_no_key_configured() {
     let state = SharedState {
         inner: Arc::new(RwLock::new(AppState::new())),
     };
-    // No API key configured (default)
     {
-        let s = state.inner.read().await;
+        let mut s = state.inner.write().await;
+        s.config.gpt_api_key_enforcement = true;
         assert!(
             s.config.gpt_actions_api_key.is_none()
                 || s.config.gpt_actions_api_key.as_deref() == Some("")
@@ -4913,6 +4920,7 @@ async fn gpt_preferences_behind_auth_middleware() {
     {
         let mut s = state.inner.write().await;
         s.config.gpt_actions_api_key = Some("pref-test-key".to_string());
+        s.config.gpt_api_key_enforcement = true;
     }
     let app = build_app(state, DEFAULT_AGENT_DISCOVERY_RATE_LIMIT_PER_MIN as u32);
 
