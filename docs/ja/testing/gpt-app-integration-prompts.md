@@ -258,3 +258,35 @@ run_service がうまく通らないので切り分けをお願いします。
 - Step7 run_service: pass/fail（理由1行）
 最後に未解決課題があれば最大3件で示してください。
 ```
+
+---
+
+## 6. タスクのフィードバック提出用プロンプト
+
+`product_feedback` を提出するときに、そのまま使えるテンプレです。  
+`<campaign_id>` だけ差し替えて実行してください。
+
+### 入力例（コピペ可）
+
+```text
+プロダクトフィードバックを提出したいです。complete_task を次の内容で実行してください。
+- campaign_id: <campaign_id>
+- task_name: product_feedback
+- details: {
+  "rating": 4,
+  "summary": "全体としてスムーズに使えましたが、初回導線で迷う場面がありました。",
+  "what_worked": [
+    "ガイドに従って進めると目的の操作に到達できた",
+    "run_service 実行までの流れが明確だった"
+  ],
+  "issues": [
+    "キャンペーン作成時のエラーメッセージがやや抽象的",
+    "次に打つべきプロンプトの表示場所が分かりにくい画面がある"
+  ],
+  "improvements": [
+    "エラー時に再実行用プロンプトを必ず1つ表示してほしい",
+    "各ステップで『完了条件』を固定表示してほしい"
+  ]
+}
+- consent: {"data_sharing_agreed": true, "purpose_acknowledged": true, "contact_permission": false}
+```
