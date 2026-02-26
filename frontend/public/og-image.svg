@@ -18,7 +18,7 @@
     <line x1="600" y1="315" x2="0" y2="630" stroke="#333333" stroke-width="2"/>
   </g>
   <g transform="translate(100, 200)">
-    <text x="0" y="0" class="title">SubsidyPayment</text>
+    <text x="0" y="0" class="title">SnapFuel</text>
     <text x="0" y="100" class="subtitle">Sponsor the daily-use services your target users rely on.</text>
     <text x="0" y="180" class="description">Track performance. Pay only for results.</text>
   </g>

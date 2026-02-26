@@ -285,7 +285,7 @@ async fn serve_openapi_yaml() -> Response {
     let public_base_url =
         std::env::var("PUBLIC_BASE_URL").unwrap_or_else(|_| DEFAULT_PUBLIC_BASE_URL.to_string());
     let yaml = yaml.replace(
-        "https://subsidypayment.example.com",
+        "https://snapfuel.example.com",
         public_base_url.trim_end_matches('/'),
     );
     (

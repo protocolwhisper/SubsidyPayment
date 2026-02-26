@@ -1,9 +1,9 @@
-# Project Structure — SubsidyPayment
+# Project Structure — SnapFuel
 
 ## ディレクトリツリー
 
 ```
-SubsidyPayment/
+SnapFuel/
 ├── .claude/              # Kiro コマンド / Skills
 ├── .kiro/
 │   ├── steering/          # AI Steering ファイル（product, tech, structure）

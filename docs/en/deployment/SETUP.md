@@ -11,14 +11,14 @@ This document reflects the current implementation as of 2026-02-25.
 ## 1. Start PostgreSQL
 
 ```bash
-cd /path/to/SubsidyPayment
+cd /path/to/SnapFuel
 docker compose -f docker-compose.postgres.yml up -d
 ```
 
 ## 2. Start Rust backend
 
 ```bash
-cd /path/to/SubsidyPayment
+cd /path/to/SnapFuel
 export DATABASE_URL=postgres://postgres:postgres@localhost:55432/payloadexchange
 export PUBLIC_BASE_URL=http://localhost:3000
 export PORT=3000
@@ -51,7 +51,7 @@ Or:
 ## 3. Start MCP server
 
 ```bash
-cd /path/to/SubsidyPayment/mcp-server
+cd /path/to/SnapFuel/mcp-server
 npm install
 npm run dev
 ```
@@ -85,7 +85,7 @@ AUTH_ENABLED=false npm run dev
 ## 4. Start frontend
 
 ```bash
-cd /path/to/SubsidyPayment/frontend
+cd /path/to/SnapFuel/frontend
 npm install
 npm run dev
 ```
@@ -95,7 +95,7 @@ Frontend URL: `http://localhost:5173`
 ## 5. (Optional) Start x402 sample server
 
 ```bash
-cd /path/to/SubsidyPayment/x402server
+cd /path/to/SnapFuel/x402server
 pnpm install
 pnpm run dev
 ```

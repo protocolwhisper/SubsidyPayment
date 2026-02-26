@@ -2,7 +2,7 @@
 
 ## 概要
 
-本設計書は、SubsidyPaymentバックエンドにGPT Apps（Custom GPTs + Custom Actions）対応を追加し、エンドユーザー（ToC）がChatGPT上でサービス選択→タスク実行→スポンサー決済→リソース取得のE2Eフローを完結できるようにするための技術アーキテクチャを定義する。
+本設計書は、SnapFuelバックエンドにGPT Apps（Custom GPTs + Custom Actions）対応を追加し、エンドユーザー（ToC）がChatGPT上でサービス選択→タスク実行→スポンサー決済→リソース取得のE2Eフローを完結できるようにするための技術アーキテクチャを定義する。
 
 ### 要件トレーサビリティ
 
@@ -626,7 +626,7 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'web';
 ```yaml
 openapi: "3.1.0"
 info:
-  title: "SubsidyPayment GPT Actions API"
+  title: "SnapFuel GPT Actions API"
   description: "スポンサー付きx402サービスの検索、タスク実行、支払いを行うAPI"
   version: "1.0.0"
 servers:
@@ -757,7 +757,7 @@ impl ApiError {
 
 ```markdown
 # Role & Identity
-あなたはSubsidyPaymentアシスタントです。スポンサー付きのx402サービスへのアクセスを支援します。
+あなたはSnapFuelアシスタントです。スポンサー付きのx402サービスへのアクセスを支援します。
 
 # Core Behavior
 - ユーザーがサービスを探している場合、必ず searchServices アクションを呼び出す

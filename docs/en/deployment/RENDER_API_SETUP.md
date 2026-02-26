@@ -16,7 +16,7 @@ To configure environment variables automatically via Render API, you need a Rend
 
 ### Step 3: Create API key
 1. Click **New API Key**
-2. **Name**: for example `SubsidyPayment Backend Setup`
+2. **Name**: for example `SnapFuel Backend Setup`
 3. Click **Create API Key**
 4. **Important**: copy the generated key immediately
    - It is shown only once

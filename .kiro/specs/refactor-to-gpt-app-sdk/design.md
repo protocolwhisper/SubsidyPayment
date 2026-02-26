@@ -197,7 +197,7 @@
 
 ```typescript
 interface BackendConfig {
-  /** Rust バックエンドの URL (例: https://subsidypayment.onrender.com) */
+  /** Rust バックエンドの URL (例: https://snapfuel.onrender.com) */
   rustBackendUrl: string;
   /** MCP→Rust 内部通信用 API キー (= GPT_ACTIONS_API_KEY) */
   mcpInternalApiKey: string;
@@ -235,7 +235,7 @@ function createServer(config: BackendConfig): McpServer;
 ```
 
 **動作**:
-1. `new McpServer({ name: "subsidypayment", version: "1.0.0" })` で生成
+1. `new McpServer({ name: "snapfuel", version: "1.0.0" })` で生成
 2. `registerAllTools(server, config)` で8ツールを登録
 3. `registerAllResources(server)` で3ウィジェットリソースを登録
 4. McpServer インスタンスを返却
@@ -585,7 +585,7 @@ session_token を使用して以降の BackendClient メソッドを呼び出し
 | PKCE | S256 必須 |
 | Allowed Callback URLs | `https://chatgpt.com/connector_platform_oauth_redirect`, `https://platform.openai.com/apps-manage/oauth` |
 | Token Endpoint Auth Method | `none`（パブリッククライアント） |
-| API Audience | `https://subsidypayment-mcp.onrender.com` |
+| API Audience | `https://snapfuel-mcp.onrender.com` |
 | スコープ | `user.read`, `user.write`, `tasks.read`, `tasks.write`, `services.execute` |
 
 #### 5.5: 認証エラーレスポンス
@@ -1093,12 +1093,12 @@ mcp-server/
 services:
   # 既存: Rust バックエンド
   - type: web
-    name: subsidypayment
+    name: snapfuel
     # ... (既存設定)
 
   # 新規: MCP Server
   - type: web
-    name: subsidypayment-mcp
+    name: snapfuel-mcp
     runtime: node
     buildCommand: cd mcp-server && npm ci && npm run build
     startCommand: cd mcp-server && npm start
@@ -1106,7 +1106,7 @@ services:
       - key: RUST_BACKEND_URL
         fromService:
           type: web
-          name: subsidypayment
+          name: snapfuel
           property: host
       - key: MCP_INTERNAL_API_KEY
         sync: false

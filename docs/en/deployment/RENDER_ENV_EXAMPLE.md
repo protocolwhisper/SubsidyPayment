@@ -34,7 +34,7 @@ This page reflects the current implementation as of 2026-02-25.
 | `ZKPASSPORT_VERIFICATION_TTL_SECS` | `900` | Token TTL |
 | `ZKPASSPORT_HASH_SALT` | `replace-in-production` | Hash salt for unique identifier |
 
-## 2. MCP server service (`subsidypayment-mcp-server`)
+## 2. MCP server service (`snapfuel-mcp-server`)
 
 ### Required
 

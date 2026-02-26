@@ -3755,7 +3755,7 @@ async fn gpt_builder_served_schema_matches_source_file() {
     // serve_openapi_yaml replaces the placeholder URL with PUBLIC_BASE_URL
     // (defaults to DEFAULT_PUBLIC_BASE_URL when env var is unset)
     let expected = source.replace(
-        "https://subsidypayment.example.com",
+        "https://snapfuel.example.com",
         crate::types::DEFAULT_PUBLIC_BASE_URL,
     );
 

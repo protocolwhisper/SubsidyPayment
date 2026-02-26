@@ -4,9 +4,9 @@ If API-based env-var setup does not work, use this manual dashboard procedure.
 
 ## 📋 Current context
 
-- **Service Name**: SubsidyPayment
+- **Service Name**: SnapFuel
 - **Service ID**: srv-d65pl3esb7us73fb96tg
-- **Service URL**: https://subsidypayment.onrender.com
+- **Service URL**: https://snapfuel.onrender.com
 - **Current env vars**: not configured
 
 ## 🔧 Manual setup steps
@@ -15,7 +15,7 @@ If API-based env-var setup does not work, use this manual dashboard procedure.
 
 1. Sign in to https://dashboard.render.com
 2. Click **Services** in left menu
-3. Open **SubsidyPayment** service
+3. Open **SnapFuel** service
 
 ### Step 2: Open environment section
 
@@ -30,7 +30,7 @@ Add the following in order:
 
 1. Click **Add Environment Variable**
 2. **Key**: `PUBLIC_BASE_URL`
-3. **Value**: `https://subsidypayment.onrender.com`
+3. **Value**: `https://snapfuel.onrender.com`
 4. Click **Save Changes**
 
 #### Env var 2: RUST_LOG
@@ -76,7 +76,7 @@ Add the following in order:
 
 ### Step 5: Set DATABASE_URL on service
 
-1. Return to **SubsidyPayment** service
+1. Return to **SnapFuel** service
 2. Open **Environment** tab
 3. Click **Add Environment Variable**
 4. **Key**: `DATABASE_URL`
@@ -87,9 +87,9 @@ Add the following in order:
 
 ### 1. Confirm env vars
 
-In **Environment** tab of **SubsidyPayment**, confirm:
+In **Environment** tab of **SnapFuel**, confirm:
 
-- ✅ `PUBLIC_BASE_URL` = `https://subsidypayment.onrender.com`
+- ✅ `PUBLIC_BASE_URL` = `https://snapfuel.onrender.com`
 - ✅ `RUST_LOG` = `info`
 - ✅ `DATABASE_URL` = `postgres://...`
 
@@ -105,7 +105,7 @@ Render triggers redeploy when env vars are saved.
 After deployment, open:
 
 ```text
-https://subsidypayment.onrender.com/health
+https://snapfuel.onrender.com/health
 ```
 
 Expected response:
@@ -121,7 +121,7 @@ After backend env vars are configured:
 1. Update Vercel env var
    - Open `subsidy-payment` project in Vercel
    - Go to **Settings** -> **Environment Variables**
-   - Set `VITE_API_URL` to `https://subsidypayment.onrender.com`
+   - Set `VITE_API_URL` to `https://snapfuel.onrender.com`
    - Click **Save**
 
 2. Verify frontend behavior

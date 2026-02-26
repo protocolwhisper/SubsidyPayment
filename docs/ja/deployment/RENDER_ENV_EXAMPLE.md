@@ -34,7 +34,7 @@
 | `ZKPASSPORT_VERIFICATION_TTL_SECS` | `900` | トークン TTL |
 | `ZKPASSPORT_HASH_SALT` | `replace-in-production` | 識別子ハッシュ用ソルト |
 
-## 2. MCP サーバーサービス（`subsidypayment-mcp-server`）
+## 2. MCP サーバーサービス（`snapfuel-mcp-server`）
 
 ### 必須
 

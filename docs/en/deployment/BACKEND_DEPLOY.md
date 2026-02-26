@@ -15,7 +15,7 @@ Go to https://render.com and sign in with GitHub.
 ## 3. Create a web service
 
 1. Click `New` -> `Web Service`
-2. Connect GitHub repository `cruujon/SubsidyPayment`
+2. Connect GitHub repository `cruujon/SnapFuel`
 3. **Branch**: select `deploy-test`
 4. **Name**: `payloadexchange-backend`
 5. **Environment**: `Rust`

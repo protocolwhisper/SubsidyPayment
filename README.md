@@ -1,4 +1,4 @@
-# SubsidyPayment
+# SnapFuel
 
 Payload Exchange Extended (Campaign + Sponsor Subsidy Layer for x402)
 

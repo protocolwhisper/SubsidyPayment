@@ -5,7 +5,7 @@
 
 API_KEY="rnd_Yq3HwoS5DRE8bIDUyB6jj1GVeeAl"
 SERVICE_ID="srv-d65pl3esb7us73fb96tg"
-SERVICE_URL="https://subsidypayment.onrender.com"
+SERVICE_URL="https://snapfuel.onrender.com"
 
 echo "=== Render環境変数設定 ==="
 echo ""

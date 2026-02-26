@@ -16,7 +16,7 @@ Go to https://vercel.com and sign in with GitHub.
 ### 2. Import project
 
 1. In Vercel dashboard, click `Add New...` -> `Project`
-2. Select GitHub repository `cruujon/SubsidyPayment`
+2. Select GitHub repository `cruujon/SnapFuel`
 3. **Important**: set branch to `deploy-test` (default is `main`)
 4. **Root Directory**: `frontend`
 5. **Framework Preset**: `Vite` (or auto-detected)

@@ -15,7 +15,7 @@ https://render.com にアクセスしてGitHubアカウントでログイン
 ## 3. Webサービスを作成
 
 1. "New" → "Web Service" をクリック
-2. GitHubリポジトリ `cruujon/SubsidyPayment` を接続
+2. GitHubリポジトリ `cruujon/SnapFuel` を接続
 3. **ブランチ**: `deploy-test` を選択
 4. **Name**: `payloadexchange-backend`
 5. **Environment**: `Rust` を選択

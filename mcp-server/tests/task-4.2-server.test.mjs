@@ -14,7 +14,7 @@ assert.match(src, /from\s+['"]@modelcontextprotocol\/sdk\/server\/mcp\.js['"]/, 
 assert.match(src, /from\s+['"]\.\/tools\/index\.ts['"]/, 'must import registerAllTools');
 assert.match(src, /from\s+['"]\.\/widgets\/index\.ts['"]/, 'must import registerAllResources');
 assert.match(src, /export\s+function\s+createServer\s*\(\s*config\s*:\s*BackendConfig\s*\)\s*:\s*McpServer/, 'createServer signature mismatch');
-assert.match(src, /new\s+McpServer\(\s*\{[\s\S]*name:\s*['"]subsidypayment['"][\s\S]*version:\s*['"]1\.0\.0['"][\s\S]*\}\s*\)/, 'McpServer must be initialized with name/version');
+assert.match(src, /new\s+McpServer\(\s*\{[\s\S]*name:\s*['"]snapfuel['"][\s\S]*version:\s*['"]1\.0\.0['"][\s\S]*\}\s*\)/, 'McpServer must be initialized with name/version');
 assert.match(src, /registerAllTools\(\s*server\s*,\s*config\s*\)/, 'must call registerAllTools(server, config)');
 assert.match(src, /registerAllResources\(\s*server\s*\)/, 'must call registerAllResources(server)');
 assert.match(src, /return\s+server\s*;/, 'must return server instance');

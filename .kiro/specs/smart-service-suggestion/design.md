@@ -621,7 +621,7 @@ Router::new()
 ## 7. E2E フロー図
 
 ```
-ユーザー → GPT → SubsidyPayment API
+ユーザー → GPT → SnapFuel API
 
 [スマートサジェストフロー]
 

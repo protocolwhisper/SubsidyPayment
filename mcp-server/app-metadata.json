@@ -1,9 +1,9 @@
 {
-  "appName": "SubsidyPayment MCP",
+  "appName": "SnapFuel MCP",
   "description": "An MCP app that lets you run x402-enabled services without hesitation. From service search → task selection → template response → completion → execution, it clearly shows the next prompt to enter through a 6-step flow.",
   "category": "Productivity",
-  "privacyPolicyUrl": "https://subsidypayment.example.com/privacy",
-  "termsOfServiceUrl": "https://subsidypayment.example.com/terms",
+  "privacyPolicyUrl": "https://snapfuel.example.com/privacy",
+  "termsOfServiceUrl": "https://snapfuel.example.com/terms",
   "icon": {
     "format": "PNG",
     "size": "1024x1024",

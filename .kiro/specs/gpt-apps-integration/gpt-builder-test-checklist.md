@@ -37,7 +37,7 @@
 
 ### 1.3 基本設定
 
-- [ ] Name: `SubsidyPayment アシスタント`
+- [ ] Name: `SnapFuel アシスタント`
 - [ ] Description: `スポンサー付き x402 サービスの検索・タスク実行・支払いを支援します`
 - [ ] Instructions: `gpt-config.md` セクション2のシステムプロンプトを貼り付け
 - [ ] Conversation starters: 4つ設定（`gpt-config.md` セクション3参照）

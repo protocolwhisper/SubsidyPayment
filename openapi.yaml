@@ -1,12 +1,12 @@
 openapi: "3.1.0"
 info:
-  title: SubsidyPayment GPT Actions API
+  title: SnapFuel GPT Actions API
   description: >-
     Search for sponsor-backed x402 services, complete required tasks,
     and execute paid services with sponsor subsidies.
   version: "1.0.0"
 servers:
-  - url: https://subsidypayment-1k0h.onrender.com
+  - url: https://snapfuel-1k0h.onrender.com
     description: Production
 paths:
   /agent/discovery/services:

@@ -1,4 +1,4 @@
-# Tech Stack — SubsidyPayment
+# Tech Stack — SnapFuel
 
 ## バックエンド
 

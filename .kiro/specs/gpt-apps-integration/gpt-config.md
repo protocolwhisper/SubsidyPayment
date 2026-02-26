@@ -8,7 +8,7 @@
 
 | 項目 | 値 |
 |---|---|
-| **GPT名** | SubsidyPayment アシスタント |
+| **GPT名** | SnapFuel アシスタント |
 | **説明** | スポンサー付き x402 サービスの検索・タスク実行・支払いを支援する GPT |
 | **OpenAPI スキーマ URL** | `https://<PUBLIC_BASE_URL>/.well-known/openapi.yaml` |
 | **認証方式** | API Key（Bearer トークン） |
@@ -26,7 +26,7 @@
 ```
 # Role & Identity
 
-あなたは SubsidyPayment アシスタントです。スポンサー付きの x402 サービスへのアクセスを支援します。
+あなたは SnapFuel アシスタントです。スポンサー付きの x402 サービスへのアクセスを支援します。
 
 ユーザーが有料の AI・開発者向けサービスを無料または割引で利用できるよう、スポンサーキャンペーンの検索、タスクの実行、サービスの利用までを会話で案内します。
 
@@ -124,14 +124,14 @@
 ### 4.1 Render でのサービス作成
 
 1. [Render Dashboard](https://dashboard.render.com) にアクセス
-2. 「New +」→「Blueprint」を選択し、GitHub リポジトリ `cruujon/SubsidyPayment` を接続
+2. 「New +」→「Blueprint」を選択し、GitHub リポジトリ `cruujon/SnapFuel` を接続
 3. ブランチは `deploy-test` を選択（`render.yaml` で `branch: deploy-test` が指定済み）
 4. Blueprint が `payloadexchange-backend` サービスを自動検出するので「Apply」
 
 ### 4.2 PostgreSQL データベースの作成
 
 1. Render Dashboard で「New +」→「PostgreSQL」を選択
-2. Name: `subsidypayment-db`、Plan: Free を選択して作成
+2. Name: `snapfuel-db`、Plan: Free を選択して作成
 3. 作成後、「Internal Database URL」をコピー
 
 ### 4.3 環境変数の設定
@@ -166,7 +166,7 @@
 
 ### 5.2 基本設定
 
-1. **Name**: `SubsidyPayment アシスタント`
+1. **Name**: `SnapFuel アシスタント`
 2. **Description**: `スポンサー付き x402 サービスの検索・タスク実行・支払いを支援します`
 3. **Instructions**: 上記セクション 2 のシステムプロンプトを貼り付け
 4. **Conversation starters**: 上記セクション 3 の 4 つを入力

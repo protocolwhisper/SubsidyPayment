@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<USAGE
-Populate SubsidyPayment backend with realistic mock data.
+Populate SnapFuel backend with realistic mock data.
 
 Usage:
   bash test_data/populate_mock_data.sh --api-key <BEARER_KEY> [--base-url <URL>]
@@ -12,7 +12,7 @@ Or with env vars:
   API_KEY=<BEARER_KEY> BASE_URL=<URL> bash test_data/populate_mock_data.sh
 
 Defaults:
-  BASE_URL=https://subsidypayment-1k0h.onrender.com
+  BASE_URL=https://snapfuel-1k0h.onrender.com
 USAGE
 }
 
@@ -21,7 +21,7 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 1
 fi
 
-BASE_URL="${BASE_URL:-https://subsidypayment-1k0h.onrender.com}"
+BASE_URL="${BASE_URL:-https://snapfuel-1k0h.onrender.com}"
 API_KEY="${API_KEY:-}"
 
 while [[ $# -gt 0 ]]; do

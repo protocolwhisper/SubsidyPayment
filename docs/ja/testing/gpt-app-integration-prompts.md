@@ -21,7 +21,7 @@
 
 ## 1. 事前チェック
 
-- GPT App で SubsidyPayment MCP が接続済み
+- GPT App で SnapFuel MCP が接続済み
 - チャットで MCP ツールが実行できる状態
 - 迷ったら `get_prompt_guide_flow` を使う
 
@@ -62,7 +62,7 @@
 ```text
 キャンペーンを新規作成したいです。create_campaign_from_goal を
 purpose=GitHub Issue作成導線の検証,
-sponsor=SubsidyPayment Demo,
+sponsor=SnapFuel Demo,
 target_roles=["developer"],
 target_tools=["github"],
 required_task=product_feedback,

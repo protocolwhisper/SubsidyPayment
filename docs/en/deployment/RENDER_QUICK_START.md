@@ -19,7 +19,7 @@
 
 1. In dashboard, click **New +** -> **Web Service**
 2. Select **Build and deploy from a Git repository**
-3. Connect GitHub repository `cruujon/SubsidyPayment` (if not connected yet)
+3. Connect GitHub repository `cruujon/SnapFuel` (if not connected yet)
 4. Select repository
 5. Configure:
    - **Name**: `payloadexchange-backend`

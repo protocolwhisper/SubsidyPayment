@@ -87,7 +87,7 @@ const ogImageHTML = `<!DOCTYPE html>
   <div class="grid"></div>
   <div class="radial-lines"></div>
   <div class="content">
-    <h1>SubsidyPayment</h1>
+    <h1>SnapFuel</h1>
     <div class="subtitle">Sponsor the daily-use services your target users rely on.</div>
     <div class="description">Track performance. Pay only for results.</div>
   </div>
@@ -121,7 +121,7 @@ const ogImageSVG = `<svg width="1200" height="630" xmlns="http://www.w3.org/2000
     <line x1="600" y1="315" x2="0" y2="630" stroke="#333333" stroke-width="2"/>
   </g>
   <g transform="translate(100, 200)">
-    <text x="0" y="0" class="title">SubsidyPayment</text>
+    <text x="0" y="0" class="title">SnapFuel</text>
     <text x="0" y="100" class="subtitle">Sponsor the daily-use services your target users rely on.</text>
     <text x="0" y="180" class="description">Track performance. Pay only for results.</text>
   </g>

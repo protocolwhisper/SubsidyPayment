@@ -25,9 +25,9 @@ GPT Apps上でユーザーが予算・意図・タスク嗜好を入力すると
 
 #### 受入基準
 
-- **1.1**: ユーザーが予算上限（cents単位）を指定してサービス検索を要求した場合、SubsidyPaymentシステムは `subsidy_per_call_cents` が指定予算以下のサービスのみを返さなければならない（EARS: Event-driven）
-- **1.2**: ユーザーが予算上限を指定しなかった場合、SubsidyPaymentシステムは既存の動作と同様に全アクティブサービスを返さなければならない（EARS: State-driven）
-- **1.3**: 予算フィルタリング後にサービスが0件の場合、SubsidyPaymentシステムは予算を緩和するか直接支払いを検討するよう案内するメッセージを返さなければならない（EARS: State-driven）
+- **1.1**: ユーザーが予算上限（cents単位）を指定してサービス検索を要求した場合、SnapFuelシステムは `subsidy_per_call_cents` が指定予算以下のサービスのみを返さなければならない（EARS: Event-driven）
+- **1.2**: ユーザーが予算上限を指定しなかった場合、SnapFuelシステムは既存の動作と同様に全アクティブサービスを返さなければならない（EARS: State-driven）
+- **1.3**: 予算フィルタリング後にサービスが0件の場合、SnapFuelシステムは予算を緩和するか直接支払いを検討するよう案内するメッセージを返さなければならない（EARS: State-driven）
 - **1.4**: 検索結果は、ユーザーの予算に対する補助金カバー率（補助金額 / サービス価格）が高い順にソートされなければならない（EARS: Ubiquitous）
 
 ---
@@ -38,10 +38,10 @@ GPT Apps上でユーザーが予算・意図・タスク嗜好を入力すると
 
 #### 受入基準
 
-- **2.1**: ユーザーが自然言語で意図（例：「Webサイトのスクリーンショットを撮りたい」「データを保存したい」）を入力した場合、SubsidyPaymentシステムはキャンペーンの `name`、`required_task`、`target_tools` に対してキーワードマッチングを行い、関連サービスを返さなければならない（EARS: Event-driven）
+- **2.1**: ユーザーが自然言語で意図（例：「Webサイトのスクリーンショットを撮りたい」「データを保存したい」）を入力した場合、SnapFuelシステムはキャンペーンの `name`、`required_task`、`target_tools` に対してキーワードマッチングを行い、関連サービスを返さなければならない（EARS: Event-driven）
 - **2.2**: 意図検索は、既存の `q`（キーワード）パラメータと `category` パラメータの両方を組み合わせた複合検索として動作しなければならない（EARS: Ubiquitous）
-- **2.3**: 意図検索の結果が0件の場合、SubsidyPaymentシステムは利用可能な全カテゴリ一覧を返し、ユーザーに選択を促さなければならない（EARS: State-driven）
-- **2.4**: SubsidyPaymentシステムは、キャンペーンおよびSponsored APIに設定されたタグ情報を意図マッチングに使用できなければならない（EARS: Ubiquitous）
+- **2.3**: 意図検索の結果が0件の場合、SnapFuelシステムは利用可能な全カテゴリ一覧を返し、ユーザーに選択を促さなければならない（EARS: State-driven）
+- **2.4**: SnapFuelシステムは、キャンペーンおよびSponsored APIに設定されたタグ情報を意図マッチングに使用できなければならない（EARS: Ubiquitous）
 
 ---
 
@@ -51,10 +51,10 @@ GPT Apps上でユーザーが予算・意図・タスク嗜好を入力すると
 
 #### 受入基準
 
-- **3.1**: ユーザーがタスク嗜好（避けたいタスクタイプ、好むタスクタイプ）を登録した場合、SubsidyPaymentシステムはその嗜好をユーザープロフィールに永続化しなければならない（EARS: Event-driven）
+- **3.1**: ユーザーがタスク嗜好（避けたいタスクタイプ、好むタスクタイプ）を登録した場合、SnapFuelシステムはその嗜好をユーザープロフィールに永続化しなければならない（EARS: Event-driven）
 - **3.2**: タスク嗜好には、タスクタイプ（`survey`、`data_provision`、`registration`、`social_share`、`github_pr` 等）と嗜好レベル（`preferred`、`neutral`、`avoided`）が含まれなければならない（EARS: Ubiquitous）
-- **3.3**: ユーザーが既にタスク嗜好を登録済みの場合、SubsidyPaymentシステムは既存の嗜好を返し、更新を受け付けなければならない（EARS: State-driven）
-- **3.4**: ユーザーがタスク嗜好を更新した場合、SubsidyPaymentシステムは既存の嗜好を上書きし、更新日時を記録しなければならない（EARS: Event-driven）
+- **3.3**: ユーザーが既にタスク嗜好を登録済みの場合、SnapFuelシステムは既存の嗜好を返し、更新を受け付けなければならない（EARS: State-driven）
+- **3.4**: ユーザーがタスク嗜好を更新した場合、SnapFuelシステムは既存の嗜好を上書きし、更新日時を記録しなければならない（EARS: Event-driven）
 - **3.5**: タスク嗜好の登録・更新は、セッショントークンによるユーザー識別を必須としなければならない（EARS: Ubiquitous）
 
 ---
@@ -65,10 +65,10 @@ GPT Apps上でユーザーが予算・意図・タスク嗜好を入力すると
 
 #### 受入基準
 
-- **4.1**: ユーザーがタスク嗜好を登録済みの状態でサービス検索を要求した場合、SubsidyPaymentシステムは `avoided` に設定されたタスクタイプを要求するサービスを検索結果から除外しなければならない（EARS: Event-driven）
+- **4.1**: ユーザーがタスク嗜好を登録済みの状態でサービス検索を要求した場合、SnapFuelシステムは `avoided` に設定されたタスクタイプを要求するサービスを検索結果から除外しなければならない（EARS: Event-driven）
 - **4.2**: ユーザーが `preferred` に設定したタスクタイプを要求するサービスは、検索結果の上位にランキングされなければならない（EARS: Ubiquitous）
-- **4.3**: ユーザーがタスク嗜好を登録していない場合、SubsidyPaymentシステムはフィルタリングを適用せず、既存の動作と同様に全サービスを返さなければならない（EARS: State-driven）
-- **4.4**: 嗜好フィルタリングにより全サービスが除外された場合、SubsidyPaymentシステムは嗜好条件を緩和するか嗜好を更新するよう案内するメッセージを返さなければならない（EARS: State-driven）
+- **4.3**: ユーザーがタスク嗜好を登録していない場合、SnapFuelシステムはフィルタリングを適用せず、既存の動作と同様に全サービスを返さなければならない（EARS: State-driven）
+- **4.4**: 嗜好フィルタリングにより全サービスが除外された場合、SnapFuelシステムは嗜好条件を緩和するか嗜好を更新するよう案内するメッセージを返さなければならない（EARS: State-driven）
 - **4.5**: 嗜好フィルタリングの適用有無は、検索レスポンスに `preferences_applied: true/false` として含まれなければならない（EARS: Ubiquitous）
 
 ---
@@ -79,9 +79,9 @@ GPT Apps上でユーザーが予算・意図・タスク嗜好を入力すると
 
 #### 受入基準
 
-- **5.1**: SubsidyPaymentシステムは、キャンペーンに複数のタグ（`tags` 配列）を設定できなければならない（EARS: Ubiquitous）
+- **5.1**: SnapFuelシステムは、キャンペーンに複数のタグ（`tags` 配列）を設定できなければならない（EARS: Ubiquitous）
 - **5.2**: タグには、サービスカテゴリタグ（例：`web-scraping`、`design`、`storage`）とタスクタイプタグ（例：`survey`、`data_provision`、`github_pr`）の2種類が含まれなければならない（EARS: Ubiquitous）
-- **5.3**: 既存のキャンペーンにタグが未設定の場合、SubsidyPaymentシステムは `target_tools` と `required_task` から自動的にデフォルトタグを推定しなければならない（EARS: State-driven）
+- **5.3**: 既存のキャンペーンにタグが未設定の場合、SnapFuelシステムは `target_tools` と `required_task` から自動的にデフォルトタグを推定しなければならない（EARS: State-driven）
 - **5.4**: タグの追加はキャンペーン作成時および更新時に行えなければならない（EARS: Ubiquitous）
 
 ---
@@ -93,9 +93,9 @@ GPT Apps上でユーザーが予算・意図・タスク嗜好を入力すると
 #### 受入基準
 
 - **6.1**: `GET /gpt/services` エンドポイントは、既存パラメータ（`q`、`category`）に加えて、`max_budget_cents`（予算上限）、`intent`（自然言語の意図）、`session_token`（嗜好適用用）のオプショナルパラメータを受け付けなければならない（EARS: Ubiquitous）
-- **6.2**: 複数のフィルタが同時に指定された場合、SubsidyPaymentシステムはAND条件で全フィルタを適用しなければならない（EARS: Event-driven）
+- **6.2**: 複数のフィルタが同時に指定された場合、SnapFuelシステムはAND条件で全フィルタを適用しなければならない（EARS: Event-driven）
 - **6.3**: 検索レスポンスには、適用されたフィルタ情報（`applied_filters` オブジェクト）が含まれなければならない（EARS: Ubiquitous）
-- **6.4**: 拡張パラメータが一切指定されない場合、SubsidyPaymentシステムは既存の `gpt-apps-integration` と完全に同一の動作をしなければならない（EARS: State-driven）
+- **6.4**: 拡張パラメータが一切指定されない場合、SnapFuelシステムは既存の `gpt-apps-integration` と完全に同一の動作をしなければならない（EARS: State-driven）
 - **6.5**: 検索結果の各サービスには、マッチスコア（`relevance_score`）が含まれなければならない。スコアは予算適合度、意図マッチ度、嗜好適合度の加重平均で算出される（EARS: Ubiquitous）
 
 ---
@@ -119,8 +119,8 @@ GPT Apps上でユーザーが予算・意図・タスク嗜好を入力すると
 
 #### 受入基準
 
-- **8.1**: SubsidyPaymentシステムは、`POST /gpt/preferences` エンドポイントでタスク嗜好の登録・更新を受け付けなければならない（EARS: Ubiquitous）
-- **8.2**: SubsidyPaymentシステムは、`GET /gpt/preferences` エンドポイントでユーザーの現在のタスク嗜好を返さなければならない（EARS: Ubiquitous）
+- **8.1**: SnapFuelシステムは、`POST /gpt/preferences` エンドポイントでタスク嗜好の登録・更新を受け付けなければならない（EARS: Ubiquitous）
+- **8.2**: SnapFuelシステムは、`GET /gpt/preferences` エンドポイントでユーザーの現在のタスク嗜好を返さなければならない（EARS: Ubiquitous）
 - **8.3**: 嗜好管理エンドポイントは、セッショントークンによるユーザー識別を必須としなければならない（EARS: Ubiquitous）
 - **8.4**: 嗜好管理エンドポイントは、既存のGPTサブルーターの認証ミドルウェアとレート制限ミドルウェアの配下で動作しなければならない（EARS: Ubiquitous）
 - **8.5**: 嗜好管理エンドポイントは、OpenAPIスキーマに追加され、GPTが適切なタイミングで呼び出せるよう `operationId` と `description` が定義されなければならない（EARS: Ubiquitous）

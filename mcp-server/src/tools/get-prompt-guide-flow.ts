@@ -65,7 +65,7 @@ function buildFlow(step: FlowStep, service?: string, campaignId?: string): FlowD
         goal: 'キャンペーンを作成して、以降のタスク導線を有効化する。',
         recommendedNextPrompt: `create_campaign_from_goal を使って ${resolvedService} 向けキャンペーンを作成してください。`,
         copyPastePrompts: [
-          `create_campaign_from_goal を purpose=GitHub Issue作成導線の検証, sponsor=SubsidyPayment Demo, target_roles=[\"developer\"], target_tools=[\"${resolvedService}\"], budget_cents=50000 で実行してください。`,
+          `create_campaign_from_goal を purpose=GitHub Issue作成導線の検証, sponsor=SnapFuel Demo, target_roles=[\"developer\"], target_tools=[\"${resolvedService}\"], budget_cents=50000 で実行してください。`,
           '作成後に campaign_id と selected_service_key を1行で報告してください。',
         ],
         nextActions: [
@@ -186,7 +186,7 @@ function buildFlow(step: FlowStep, service?: string, campaignId?: string): FlowD
         goal: '迷わないよう、最初に固定ガイドで開始する。',
         recommendedNextPrompt: `create_campaign_from_goal で ${resolvedService} 向けキャンペーンを作成し、その後に search_services を実行してください。`,
         copyPastePrompts: [
-          `create_campaign_from_goal を purpose=GitHub Issue作成導線の検証, sponsor=SubsidyPayment Demo, target_roles=[\"developer\"], target_tools=[\"${resolvedService}\"], budget_cents=50000 で実行してください。`,
+          `create_campaign_from_goal を purpose=GitHub Issue作成導線の検証, sponsor=SnapFuel Demo, target_roles=[\"developer\"], target_tools=[\"${resolvedService}\"], budget_cents=50000 で実行してください。`,
           `次に search_services を q=${resolvedService}, intent=GitHub Issueを作成したい, max_budget_cents=50000 で実行してください。`,
           '迷ったら get_prompt_guide_flow を context_step=1 で再実行してください。',
         ],

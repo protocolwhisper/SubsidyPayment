@@ -16,7 +16,7 @@ https://vercel.com にアクセスしてGitHubアカウントでログイン
 ### 2. プロジェクトをインポート
 
 1. Vercelダッシュボードで "Add New..." → "Project" をクリック
-2. GitHubリポジトリ `cruujon/SubsidyPayment` を選択
+2. GitHubリポジトリ `cruujon/SnapFuel` を選択
 3. **重要**: ブランチを `deploy-test` に変更（デフォルトは `main` なので注意！）
 4. **Root Directory**: `frontend` に設定
 5. **Framework Preset**: Vite を選択（自動検出される場合もあります）

@@ -21,7 +21,7 @@ Examples:
 
 Options:
   --api-key <KEY>      Backend bearer key (required for populate)
-  --base-url <URL>     Backend URL (default: https://subsidypayment-1k0h.onrender.com)
+  --base-url <URL>     Backend URL (default: https://snapfuel-1k0h.onrender.com)
   --run-tag <TAG>      Tag for sponsor demo seed and/or cleanup targeting
   --clean-first        Run cleanup before populating
   --all-demo           With --clean-first, remove all known demo campaigns
@@ -31,7 +31,7 @@ USAGE
 }
 
 API_KEY="${API_KEY:-}"
-BASE_URL="${BASE_URL:-https://subsidypayment-1k0h.onrender.com}"
+BASE_URL="${BASE_URL:-https://snapfuel-1k0h.onrender.com}"
 RUN_TAG="${RUN_TAG:-}"
 CLEAN_FIRST="false"
 ALL_DEMO="false"

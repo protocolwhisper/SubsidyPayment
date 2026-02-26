@@ -4,9 +4,9 @@ RenderのAPI経由での環境変数設定がうまくいかないため、**Ren
 
 ## 📋 現在の状況
 
-- **サービス名**: SubsidyPayment
+- **サービス名**: SnapFuel
 - **サービスID**: srv-d65pl3esb7us73fb96tg
-- **サービスURL**: https://subsidypayment.onrender.com
+- **サービスURL**: https://snapfuel.onrender.com
 - **現在の環境変数**: 未設定
 
 ## 🔧 手動設定手順
@@ -15,7 +15,7 @@ RenderのAPI経由での環境変数設定がうまくいかないため、**Ren
 
 1. https://dashboard.render.com にログイン
 2. 左側のメニューから **"Services"** をクリック
-3. **"SubsidyPayment"** サービスをクリック
+3. **"SnapFuel"** サービスをクリック
 
 ### ステップ2: 環境変数セクションを開く
 
@@ -30,7 +30,7 @@ RenderのAPI経由での環境変数設定がうまくいかないため、**Ren
 
 1. **"Add Environment Variable"** をクリック
 2. **Key**: `PUBLIC_BASE_URL`
-3. **Value**: `https://subsidypayment.onrender.com`
+3. **Value**: `https://snapfuel.onrender.com`
 4. **"Save Changes"** をクリック
 
 #### 環境変数2: RUST_LOG
@@ -80,7 +80,7 @@ RenderのAPI経由での環境変数設定がうまくいかないため、**Ren
 
 ### ステップ5: DATABASE_URLを設定
 
-1. **SubsidyPayment** サービスに戻る
+1. **SnapFuel** サービスに戻る
 2. **"Environment"** タブを開く
 3. **"Add Environment Variable"** をクリック
 4. **Key**: `DATABASE_URL`
@@ -91,9 +91,9 @@ RenderのAPI経由での環境変数設定がうまくいかないため、**Ren
 
 ### 1. 環境変数の確認
 
-**SubsidyPayment** サービスの **"Environment"** タブで、以下の3つの環境変数が設定されていることを確認：
+**SnapFuel** サービスの **"Environment"** タブで、以下の3つの環境変数が設定されていることを確認：
 
-- ✅ `PUBLIC_BASE_URL` = `https://subsidypayment.onrender.com`
+- ✅ `PUBLIC_BASE_URL` = `https://snapfuel.onrender.com`
 - ✅ `RUST_LOG` = `info`
 - ✅ `DATABASE_URL` = `postgres://...`（PostgreSQLのURL）
 
@@ -109,7 +109,7 @@ RenderのAPI経由での環境変数設定がうまくいかないため、**Ren
 デプロイ完了後、以下のURLにアクセスして確認：
 
 ```
-https://subsidypayment.onrender.com/health
+https://snapfuel.onrender.com/health
 ```
 
 成功すると、以下のJSONが返ってきます：
@@ -125,7 +125,7 @@ https://subsidypayment.onrender.com/health
 1. **Vercelの環境変数を更新**
    - Vercelダッシュボードで `subsidy-payment` プロジェクトを開く
    - **"Settings"** → **"Environment Variables"** を開く
-   - `VITE_API_URL` の値を `https://subsidypayment.onrender.com` に設定
+   - `VITE_API_URL` の値を `https://snapfuel.onrender.com` に設定
    - **"Save"** をクリック
 
 2. **フロントエンドの動作確認**

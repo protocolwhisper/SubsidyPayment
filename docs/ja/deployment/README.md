@@ -1,6 +1,6 @@
 # Deployment Guides
 
-この章では、SubsidyPayment のデプロイおよび環境設定に関する手順をまとめています。
+この章では、SnapFuel のデプロイおよび環境設定に関する手順をまとめています。
 
 ## 目次
 

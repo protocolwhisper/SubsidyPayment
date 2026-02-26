@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Populate SubsidyPayment backend with sponsor-vs-service demo data.
+Populate SnapFuel backend with sponsor-vs-service demo data.
 
 This script creates campaigns for distinct sponsor archetypes:
 - Hackathon/conference providers
@@ -25,7 +25,7 @@ Or with env vars:
   API_KEY=<BEARER_KEY> BASE_URL=<URL> bash test_data/populate_sponsor_service_demo.sh
 
 Defaults:
-  BASE_URL=https://subsidypayment-1k0h.onrender.com
+  BASE_URL=https://snapfuel-1k0h.onrender.com
   RUN_TAG=current timestamp (YYYYMMDDHHMMSS)
 USAGE
 }
@@ -35,7 +35,7 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 1
 fi
 
-BASE_URL="${BASE_URL:-https://subsidypayment-1k0h.onrender.com}"
+BASE_URL="${BASE_URL:-https://snapfuel-1k0h.onrender.com}"
 API_KEY="${API_KEY:-}"
 RUN_TAG="${RUN_TAG:-}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"

@@ -2,7 +2,7 @@
 
 ## サマリー
 
-GPT Apps（Custom GPTs + Custom Actions）をSubsidyPaymentバックエンドに統合するための技術調査を実施。既存のRust/Axumバックエンド、PostgreSQLスキーマ、x402決済フローとの統合ポイントを特定し、GPT Actions固有の制約と認証方式を調査した。
+GPT Apps（Custom GPTs + Custom Actions）をSnapFuelバックエンドに統合するための技術調査を実施。既存のRust/Axumバックエンド、PostgreSQLスキーマ、x402決済フローとの統合ポイントを特定し、GPT Actions固有の制約と認証方式を調査した。
 
 ### 調査スコープ
 
@@ -24,7 +24,7 @@ GPT Apps（Custom GPTs + Custom Actions）をSubsidyPaymentバックエンドに
 - GPT Actionsは3つの認証方式をサポート: **None**, **API Key**, **OAuth**
 - **API Key認証**: GPT Builder UIでAPIキーを設定。OpenAIがキーを暗号化して保存。リクエスト時に`Authorization`ヘッダーで送信される
 - **OAuth認証**: ユーザー個別のトークンを使用。`authorization_url`, `token_url`, `client_id`, `client_secret` を設定。リダイレクトURLは `https://chatgpt.com/aip/{g-YOUR-GPT-ID-HERE}/oauth/callback`
-- **推奨**: 初期フェーズではAPIキー認証を採用。理由: 実装が単純、ユーザーのサインインフローが不要（ドロップオフ防止）、SubsidyPaymentのユーザー識別はAPI内で行う
+- **推奨**: 初期フェーズではAPIキー認証を採用。理由: 実装が単純、ユーザーのサインインフローが不要（ドロップオフ防止）、SnapFuelのユーザー識別はAPI内で行う
 
 **影響**:
 - バックエンド側で `Authorization: Bearer <api_key>` ヘッダーを検証するミドルウェアが必要

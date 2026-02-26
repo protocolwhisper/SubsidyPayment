@@ -22,7 +22,7 @@ services:
     branch: deploy-test
 
   - type: web
-    name: subsidypayment-mcp
+    name: snapfuel-mcp
     env: node
     buildCommand: cd mcp-server && npm ci --include=optional && npm run build
     startCommand: cd mcp-server && npm start

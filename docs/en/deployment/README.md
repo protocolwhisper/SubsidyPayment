@@ -1,6 +1,6 @@
 # Deployment Guides
 
-This chapter consolidates deployment and environment setup instructions for SubsidyPayment.
+This chapter consolidates deployment and environment setup instructions for SnapFuel.
 
 ## Contents
 

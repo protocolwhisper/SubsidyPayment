@@ -1,5 +1,5 @@
 {
-  "name": "SubsidyPayment Discovery",
+  "name": "SnapFuel Discovery",
   "openapi_url": "https://YOUR_BACKEND/.well-known/openapi.yaml",
   "auth": {
     "type": "bearer",

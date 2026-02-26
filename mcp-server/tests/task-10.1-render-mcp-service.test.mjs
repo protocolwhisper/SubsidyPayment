@@ -7,7 +7,7 @@ import { mcpRoot, repoRoot } from './test-paths.mjs';
 
 const renderYaml = readFileSync(resolve(repoRoot, 'render.yaml'), 'utf8');
 
-assert.match(renderYaml, /name:\s*subsidypayment-mcp/, 'render.yaml must define subsidypayment-mcp service');
+assert.match(renderYaml, /name:\s*snapfuel-mcp/, 'render.yaml must define snapfuel-mcp service');
 assert.match(
   renderYaml,
   /buildCommand:\s*cd mcp-server && npm ci\b.*&& npm run build/,

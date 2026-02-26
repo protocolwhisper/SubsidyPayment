@@ -19,7 +19,7 @@
 
 1. ダッシュボードで **"New +"** → **"Web Service"** をクリック
 2. **"Build and deploy from a Git repository"** を選択
-3. GitHubリポジトリ `cruujon/SubsidyPayment` を接続（まだ接続していない場合）
+3. GitHubリポジトリ `cruujon/SnapFuel` を接続（まだ接続していない場合）
 4. リポジトリを選択
 5. 設定を入力：
    - **Name**: `payloadexchange-backend`

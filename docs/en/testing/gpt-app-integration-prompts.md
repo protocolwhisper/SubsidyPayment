@@ -1,6 +1,6 @@
 # GPT App Integration Testing (Chat Input Templates)
 
-This page provides practical prompt templates to run SubsidyPayment integration tests in ChatGPT Apps.
+This page provides practical prompt templates to run SnapFuel integration tests in ChatGPT Apps.
 
 Target flow (6 steps):
 1. Service search and list retrieval
@@ -24,7 +24,7 @@ Target flow (6 steps):
 ## 1) First message template (GPT Actions)
 
 ```text
-I want to run an integration test for SubsidyPayment. Use only Action calls and do not supplement with prior knowledge.
+I want to run an integration test for SnapFuel. Use only Action calls and do not supplement with prior knowledge.
 Follow these 6 steps. For each step, report: "Action name", "key input", and "key output".
 
 [Test Conditions]
@@ -63,7 +63,7 @@ Follow these 6 steps. For each step, report: "Action name", "key input", and "ke
 ## 2) First message template (MCP tools)
 
 ```text
-Run a 6-step MCP integration test for SubsidyPayment.
+Run a 6-step MCP integration test for SnapFuel.
 Use tool outputs only; do not infer missing data.
 For each step, report: tool name, input summary, and output summary.
 

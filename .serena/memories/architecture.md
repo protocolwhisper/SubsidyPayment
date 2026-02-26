@@ -1,4 +1,4 @@
-# Architecture — SubsidyPayment（更新: 2026-02-25）
+# Architecture — SnapFuel（更新: 2026-02-25）
 
 ## システム全体
 ```

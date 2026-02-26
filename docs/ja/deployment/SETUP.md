@@ -11,14 +11,14 @@
 ## 1. PostgreSQL を起動
 
 ```bash
-cd /path/to/SubsidyPayment
+cd /path/to/SnapFuel
 docker compose -f docker-compose.postgres.yml up -d
 ```
 
 ## 2. Rust バックエンドを起動
 
 ```bash
-cd /path/to/SubsidyPayment
+cd /path/to/SnapFuel
 export DATABASE_URL=postgres://postgres:postgres@localhost:55432/payloadexchange
 export PUBLIC_BASE_URL=http://localhost:3000
 export PORT=3000
@@ -51,7 +51,7 @@ cargo run
 ## 3. MCP サーバーを起動
 
 ```bash
-cd /path/to/SubsidyPayment/mcp-server
+cd /path/to/SnapFuel/mcp-server
 npm install
 npm run dev
 ```
@@ -85,7 +85,7 @@ AUTH_ENABLED=false npm run dev
 ## 4. フロントエンドを起動
 
 ```bash
-cd /path/to/SubsidyPayment/frontend
+cd /path/to/SnapFuel/frontend
 npm install
 npm run dev
 ```
@@ -95,7 +95,7 @@ npm run dev
 ## 5. （任意）x402 サンプルサーバーを起動
 
 ```bash
-cd /path/to/SubsidyPayment/x402server
+cd /path/to/SnapFuel/x402server
 pnpm install
 pnpm run dev
 ```

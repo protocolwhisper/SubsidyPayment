@@ -38,7 +38,7 @@ function resolveEmail(payload: JwtPayload): string | null {
     return payload.email;
   }
 
-  const customEmail = payload['https://subsidypayment/email'];
+  const customEmail = payload['https://snapfuel/email'];
   if (typeof customEmail === 'string' && customEmail.length > 0) {
     return customEmail;
   }

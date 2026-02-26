@@ -1,4 +1,4 @@
-# Project Overview — SubsidyPayment（更新: 2026-02-25）
+# Project Overview — SnapFuel（更新: 2026-02-25）
 
 ## 目的
 x402 の HTTP 402 ペイウォールをプロキシで仲介し、

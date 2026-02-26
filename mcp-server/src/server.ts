@@ -6,7 +6,7 @@ import { registerAllResources } from './widgets/index.ts';
 
 export function createServer(config: BackendConfig): McpServer {
   const server = new McpServer({
-    name: 'subsidypayment',
+    name: 'snapfuel',
     version: '1.0.0',
     description:
       'Guided 6-step MCP flow. Always show one explicit next prompt and prefer get_prompt_guide_flow when the user is unsure.',
